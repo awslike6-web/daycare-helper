@@ -111,18 +111,35 @@ class DaycareHandler(SimpleHTTPRequestHandler):
             raw_memo = body.get("rawMemo", "")
             mode = body.get("mode", "partial")
             activity_area = body.get("activityArea", "자유놀이")
+            persona = body.get("persona") or {}
             api_key = body.get("apiKey") or GEMINI_API_KEY
 
             # 실명 마스킹
             masked_memo = raw_memo.replace(child_name, "[아동A]")
+            sample_note = (persona.get("sampleNote") or "").replace(child_name, "[아동A]")
+            call_style = persona.get("callStyle", "우리 [아동A]")
+            emoji_level = persona.get("emojiLevel", "moderate")
+            closing_greeting = persona.get("closingGreeting", "")
 
             if api_key:
                 try:
                     # Gemini 3.8 Flash 실제 호출
+                    sample_instruction = f"""
+[⭐ 최우선 복제 기준: 선생님의 실제 평소 알림장 예시]
+반드시 아래 예시문의 '문장 길이, 어미 스타일(~했지요, ~했답니다 등), 이모지 습관, 말투'를 100% 모방하라:
+\"\"\"
+{sample_note}
+\"\"\"""" if sample_note else ""
+
                     prompt = f"""너는 대한민국 어린이집 15년차 보육교사다. 원아는 '[아동A]'로만 칭한다.
 원아 정보: [아동A] ({body.get('childAge', '만 4세')})
 작성 모드: {'부분/시간대별 (3~4줄 간결형)' if mode == 'partial' else '하루 전체 통합형'}
 활동 영역: {activity_area}
+원아 호칭: '{call_style}'
+이모지 스타일: {emoji_level}
+단골 맺음말: {closing_greeting}
+{sample_instruction}
+
 교사 메모: {masked_memo}
 
 반드시 다음 JSON 형식으로만 응답하라:

@@ -56,15 +56,35 @@ export function unmaskDeep(obj, childName) {
 /**
  * 시스템 인스트럭션 생성
  */
-function buildSystemInstruction(mode, activityArea, teacherStyle) {
+function buildSystemInstruction(mode, activityArea, teacherStyle, persona = {}) {
   const isPartial = mode === 'partial';
+
+  const sampleNoteText = persona.sampleNote ? `
+[⭐ 최우선 복제 기준: 선생님의 실제 평소 알림장 예시 (Few-shot Imitation)]
+다음은 이 선생님이 평소 학부모님께 실제로 보냈던 알림장 문장이다.
+반드시 아래 예시문의 '문장 길이, 어미 스타일(~했답니다, ~했지요 등), 이모지 사용 패턴, 줄바꿈 호흡, 특유의 말투'를 100% 모방하여 동일한 필체로 작성하라:
+"""
+${persona.sampleNote}
+"""
+` : '';
+
+  const emojiRule = {
+    none: '이모지를 일체 사용하지 말고 단정하고 깔끔한 텍스트로만 작성할 것.',
+    moderate: '이모지는 과하지 않게 문맥에 맞추어 1~2개 정도만 자연스럽게 넣을 것 (예: ^^, 🌱, ✨).',
+    rich: '이모지를 적절히 풍부하고 발랄하게 사용하여 생동감을 살릴 것 (예: 🥰, 💖, 👏, 🌈).'
+  }[persona.emojiLevel || 'moderate'];
+
+  const callRule = persona.callStyle || '우리 [아동A]';
+  const closingGreeting = persona.closingGreeting || '';
 
   return `너는 대한민국 어린이집 및 유치원의 15년 차 수석 보육교사이자 보육 평가제(평가인증) 수석 컨설턴트다.
 원아의 개인정보를 철저히 보호하기 위해 원아는 오직 '[아동A]'로만 호칭한다.
 
-[핵심 임무]
-입력받은 메모, 관찰 내용, 그리고 제공된 활동 사진(있는 경우)과 이전 관찰 기록을 분석하여
-'학부모용 키즈노트 알림장'과 '보육평가제 관찰일지'를 동시에 생성하라.
+[선생님 페르소나 & 스타일 가이드]
+- 원아 호칭 규칙: 원아를 부를 때 '${callRule}' 형태로 다정하게 호칭하라.
+- 이모지 스타일: ${emojiRule}
+${sampleNoteText}
+${closingGreeting ? `- 단골 맺음말 지침: 알림장 본문 끝부분에 다음 맺음말을 자연스럽게 포함하거나 반영하라: "${closingGreeting}"` : ''}
 
 [작성 모드 지침]
 ${isPartial ? `
@@ -81,7 +101,7 @@ ${isPartial ? `
 [어조 및 문체 규격]
 1. kidsnote (키즈노트 알림장):
    - 학부모 안심 및 공감을 위한 따뜻하고 다정한 어조 (~했답니다, ~하는 모습이 정말 사랑스러웠어요, ~했어요 체).
-   - 선생님 문체 스타일: ${teacherStyle || '다정친절체'}
+   - 페르소나 기본 문체: ${persona.name || teacherStyle || '다정친절체'}
    - 사진이 있다면 사진 속 아이의 즐거운 행동, 사용한 교구, 친구와의 상호작용을 생생히 묘사.
 
 2. observation_log (평가제 관찰일지):
@@ -187,7 +207,8 @@ export async function generateDaycareLog({
   pastLogs = [],
   mode = 'partial',
   activityArea = '자유놀이',
-  teacherStyle = '다정친절체'
+  teacherStyle = '다정친절체',
+  persona = {}
 }) {
   if (!apiKey) {
     throw new Error('Gemini API 키가 제공되지 않았습니다.');
@@ -202,8 +223,14 @@ export async function generateDaycareLog({
     raw_memo: maskName(log.raw_memo || '', childName)
   }));
 
+  // 페르소나 예시문 내의 아동 실명도 안전 마스킹
+  const maskedPersona = {
+    ...persona,
+    sampleNote: maskName(persona.sampleNote || '', childName)
+  };
+
   // 2. 시스템 인스트럭션 및 프롬프트 빌드
-  const systemInstruction = buildSystemInstruction(mode, activityArea, teacherStyle);
+  const systemInstruction = buildSystemInstruction(mode, activityArea, teacherStyle, maskedPersona);
   const userTextPrompt = buildUserPrompt({
     maskedMemo,
     childAge,

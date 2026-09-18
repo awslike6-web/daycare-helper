@@ -705,3 +705,49 @@ body {
   font-size: 20px;
   cursor: pointer;
 }
+
+/* 🎭 페르소나 프리셋 칩 그리드 */
+.persona-preset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.persona-preset-chip {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: all 0.15s ease;
+}
+
+.persona-preset-chip:hover {
+  background: var(--primary-light);
+}
+
+.persona-preset-chip.active {
+  background: #EEF2FF;
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+}
+
+.preset-icon {
+  font-size: 16px;
+}
+
+.preset-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.preset-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.2;
+}

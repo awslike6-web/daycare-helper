@@ -24,10 +24,13 @@
         </div>
       </div>
       <div class="header-actions">
+        <button type="button" id="headerPersonaBtn" class="badge" style="background: #EEF2FF; color: var(--primary); border: 1px solid #C7D2FE; cursor: pointer;">
+          <span>🎭</span> <span id="headerPersonaText">스피디 실속형</span>
+        </button>
         <span id="notionStatusBadge" class="badge badge-mock">
           <span>●</span> <span id="notionStatusText">연결 준비</span>
         </span>
-        <button id="settingsBtn" class="settings-btn" title="설정">⚙️</button>
+        <button type="button" id="settingsBtn" class="settings-btn" title="설정">⚙️</button>
       </div>
     </header>
 
@@ -169,37 +172,109 @@
       </section>
     </main>
 
-    <!-- ⚙️ 환경 설정 모달 -->
+    <!-- 🎭 선생님 페르소나 맞춤 설정 모달 -->
     <div class="modal-overlay" id="settingsModal">
-      <div class="modal-content">
+      <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
         <div class="modal-header">
-          <div class="modal-title">⚙️ 환경 설정</div>
+          <div class="modal-title">🎭 선생님 페르소나 맞춤 설정</div>
           <button type="button" class="close-btn" id="closeSettingsBtn">&times;</button>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+        
+        <div style="display: flex; flex-direction: column; gap: 14px; font-size: 13px;">
+          <!-- 1. 퀵 프리셋 선택 칩 -->
           <div>
-            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Google Gemini API 키 (선택)</label>
-            <input type="password" id="customApiKeyInput" class="memo-textarea" style="min-height: 40px;" placeholder="서버 기본 키 사용 중 (직접 입력 가능)">
-            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-              * 기본적으로 Cloudflare Worker에 설정된 시크릿 키가 사용됩니다.
+            <label style="font-weight: 700; display: block; margin-bottom: 6px; color: var(--text-main);">
+              1. 대표 페르소나 퀵 프리셋
+            </label>
+            <div class="persona-preset-grid" id="personaPresetGrid">
+              <button type="button" class="persona-preset-chip active" data-preset="wife">
+                <span class="preset-icon">⚡</span>
+                <span class="preset-name">스피디 실속형</span>
+                <span class="preset-desc">아내 스타일 · 군더더기 0% 3~4줄</span>
+              </button>
+              <button type="button" class="persona-preset-chip" data-preset="sister">
+                <span class="preset-icon">📚</span>
+                <span class="preset-name">베테랑 꼼꼼형</span>
+                <span class="preset-desc">처형 스타일 · 10년차 전문 관찰</span>
+              </button>
+              <button type="button" class="persona-preset-chip" data-preset="mother">
+                <span class="preset-icon">🌸</span>
+                <span class="preset-name">따뜻한 엄마형</span>
+                <span class="preset-desc">공감 가득 · 사랑과 칭찬 피드백</span>
+              </button>
+              <button type="button" class="persona-preset-chip" data-preset="energy">
+                <span class="preset-icon">✨</span>
+                <span class="preset-name">발랄 에너지형</span>
+                <span class="preset-desc">이모지 톡톡 · 활기찬 교실 분위기</span>
+              </button>
             </div>
           </div>
+
+          <!-- 2. Few-shot 학습: 실제 평소 알림장 예시문 -->
           <div>
-            <label style="font-weight: 600; display: block; margin-bottom: 4px;">선생님 문체 스타일</label>
-            <select id="teacherStyleSelect" class="memo-textarea" style="min-height: 40px; padding: 6px;">
-              <option value="다정친절체" selected>다정친절체 (~했답니다, ~했어요)</option>
-              <option value="단정격식체">단정격식체 (~하였습니다, ~했습니다)</option>
-              <option value="활발발랄체">활발발랄체 (~했답니다! ^-^)</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-weight: 600; display: block; margin-bottom: 4px;">보육 모델</label>
-            <div style="padding: 8px; background: #EEF2FF; border-radius: 6px; color: var(--primary); font-weight: 600;">
-              ✨ Google Gemini 3.8 Flash (2026 표준)
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label style="font-weight: 700; color: var(--text-main);">
+                2. 평소 내가 쓴 실제 알림장 예시문 (Few-shot)
+              </label>
+              <span style="font-size: 11px; color: var(--primary); font-weight: 600;">말투 100% 모방</span>
+            </div>
+            <textarea 
+              id="personaSampleNote" 
+              class="memo-textarea" 
+              style="min-height: 90px; font-size: 12px; line-height: 1.5;"
+              placeholder="선생님이 평소 학부모님께 보냈던 알림장 1~2개를 그대로 붙여넣으세요. AI가 그 말투와 호흡, 어미를 그대로 복제합니다."
+            ></textarea>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+              * 예시문의 문장 길이, 종결어미(~했지요, ~했답니다 등), 줄바꿈 습관을 그대로 학습합니다.
             </div>
           </div>
-          <button type="button" id="saveSettingsBtn" class="submit-btn" style="padding: 10px; margin-top: 8px;">
-            설정 저장
+
+          <!-- 3. 세부 맞춤 조절 -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+              <label style="font-weight: 600; display: block; margin-bottom: 4px;">원아 호칭 스타일</label>
+              <select id="personaCallStyle" class="memo-textarea" style="min-height: 38px; padding: 6px; font-size: 12px;">
+                <option value="우리 [아동A]" selected>우리 민서 (다정형)</option>
+                <option value="[아동A]">민서 (담백형)</option>
+                <option value="[아동A] 어린이">민서 어린이 (격식형)</option>
+                <option value="[아동A] 친구">민서 친구 (기관형)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-weight: 600; display: block; margin-bottom: 4px;">이모지 사용 빈도</label>
+              <select id="personaEmojiLevel" class="memo-textarea" style="min-height: 38px; padding: 6px; font-size: 12px;">
+                <option value="moderate" selected>자연스럽게 (1~2개)</option>
+                <option value="none">사용 안 함 (깔끔단정)</option>
+                <option value="rich">생동감 있게 (풍부하게)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 4. 단골 맺음말 -->
+          <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">나만의 단골 맺음말 (선택)</label>
+            <input 
+              type="text" 
+              id="personaClosingGreeting" 
+              class="memo-textarea" 
+              style="min-height: 38px; padding: 6px 10px; font-size: 12px;" 
+              placeholder="예: 가정에서도 편안하고 따뜻한 저녁 되세요^^"
+            >
+          </div>
+
+          <!-- 5. 고급 설정 (접기/펼치기 가능) -->
+          <details style="margin-top: 4px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px;">
+            <summary style="font-weight: 600; font-size: 12px; cursor: pointer; color: var(--text-muted);">
+              🔧 고급 설정 (Gemini API 키)
+            </summary>
+            <div style="margin-top: 8px;">
+              <label style="font-weight: 600; display: block; margin-bottom: 4px; font-size: 11px;">Google Gemini API 키</label>
+              <input type="password" id="customApiKeyInput" class="memo-textarea" style="min-height: 36px; font-size: 12px;" placeholder="서버 기본 키 사용 중">
+            </div>
+          </details>
+
+          <button type="button" id="saveSettingsBtn" class="submit-btn" style="padding: 12px; margin-top: 4px;">
+            💾 페르소나 설정 저장하기
           </button>
         </div>
       </div>

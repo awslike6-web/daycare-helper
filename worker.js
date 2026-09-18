@@ -86,6 +86,7 @@ export default {
             mode = 'partial',
             activityArea = '자유놀이',
             teacherStyle = '다정친절체',
+            persona = {},
             apiKey: customApiKey
           } = body;
 
@@ -123,7 +124,8 @@ export default {
             pastLogs,
             mode,
             activityArea,
-            teacherStyle
+            teacherStyle,
+            persona
           });
 
           return jsonResponse(generated);
