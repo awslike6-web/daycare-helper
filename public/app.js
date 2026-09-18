@@ -62,7 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
     persona: initialPersona,
     isRecording: false,
     recognition: null,
-    lastResult: null
+    lastResult: null,
+    originalResult: null // ↺ 최초 생성본 (원래대로 복원용)
   };
 
   // ============================================================================
@@ -79,32 +80,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const modeSwitcher = document.getElementById('modeSwitcher');
   const areaSection = document.getElementById('areaSection');
   const areaGrid = document.getElementById('areaGrid');
-
-  const rawMemoInput = document.getElementById('rawMemoInput');
   const voiceMicBtn = document.getElementById('voiceMicBtn');
   const micIcon = document.getElementById('micIcon');
   const micStatusText = document.getElementById('micStatusText');
-
+  const rawMemoInput = document.getElementById('rawMemoInput');
   const photoFileInput = document.getElementById('photoFileInput');
   const photoPreviews = document.getElementById('photoPreviews');
-
   const generateBtn = document.getElementById('generateBtn');
   const loadingBox = document.getElementById('loadingBox');
   const loadingStepText = document.getElementById('loadingStepText');
 
+  // 결과 영역 요소들
   const resultsSection = document.getElementById('resultsSection');
+  const resultTabs = document.getElementById('resultTabs');
   const resultTabBtns = document.querySelectorAll('.result-tab-btn');
   const kidsnoteCard = document.getElementById('kidsnoteCard');
-  const observationCard = document.getElementById('observationCard');
-  const dailyCareCard = document.getElementById('dailyCareCard');
-  const counselingCard = document.getElementById('counselingCard');
-  const playSupportCard = document.getElementById('playSupportCard');
-
   const kidsnoteTitle = document.getElementById('kidsnoteTitle');
-  const kidsnoteTags = document.getElementById('kidsnoteTags');
   const kidsnoteContent = document.getElementById('kidsnoteContent');
+  const kidsnoteTags = document.getElementById('kidsnoteTags');
   const copyKidsnoteBtn = document.getElementById('copyKidsnoteBtn');
   const shareKidsnoteBtn = document.getElementById('shareKidsnoteBtn');
+
+  // 🪄 AI 실시간 다듬기 (Quick Refine) 요소들
+  const kidsnoteRefineBox = document.getElementById('kidsnoteRefineBox');
+  const refiningSpinner = document.getElementById('refiningSpinner');
+  const resetKidsnoteBtn = document.getElementById('resetKidsnoteBtn');
+  const customRefineInput = document.getElementById('customRefineInput');
+  const customRefineBtn = document.getElementById('customRefineBtn');
 
   const obsStandardArea = document.getElementById('obsStandardArea');
   const obsActivityName = document.getElementById('obsActivityName');
@@ -280,6 +282,49 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = `[놀이 지원 & 환경구성안]\n\n1. 확장 놀이 아이디어:\n${playExtension.value}\n\n2. 추천 준비 교구:\n${playMaterials.value}\n\n3. 교사 추천 발문 팁:\n${playTips.value}`;
         copyTextToClipboard(text, '📋 놀이 지원 및 환경구성안이 복사되었습니다.');
       });
+    }
+
+    // 🪄 AI 실시간 다듬기 (Quick Refine) 칩 클릭
+    if (kidsnoteRefineBox) {
+      const refinePrompts = {
+        cheerful: '문맥에 어울리는 따뜻하고 예쁜 이모지를 1~2개 더 자연스럽게 넣고, 한층 더 다정하고 발랄하며 사랑스러운 말투로 다듬어줘',
+        detailed: '아이가 놀잇감을 조작하며 집중한 표정과 놀이 과정을 조금 더 자세하고 풍성하게 1~2문장 늘려서 서술해줘',
+        compact: '문장의 군더더기를 줄이고 핵심 놀이와 성취감 중심으로 조금 더 간결하고 단정하게 다듬어줘',
+        meal: '본문 끝부분에 오늘 점심 식사 시간에 스스로 숟가락으로 골고루 맛있게 잘 먹었다는 기특한 식습관 칭찬 1줄을 자연스럽게 덧붙여줘'
+      };
+
+      kidsnoteRefineBox.querySelectorAll('.refine-chip[data-refine]').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const type = chip.dataset.refine;
+          const prompt = refinePrompts[type];
+          if (prompt) handleRefine(prompt);
+        });
+      });
+
+      // ↺ 원래대로 복원 버튼
+      if (resetKidsnoteBtn) {
+        resetKidsnoteBtn.addEventListener('click', handleResetOriginal);
+      }
+
+      // 직접 지시 입력창 및 버튼
+      if (customRefineBtn && customRefineInput) {
+        customRefineBtn.addEventListener('click', () => {
+          const val = customRefineInput.value.trim();
+          if (val) {
+            handleRefine(val);
+            customRefineInput.value = '';
+          }
+        });
+        customRefineInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            const val = customRefineInput.value.trim();
+            if (val) {
+              handleRefine(val);
+              customRefineInput.value = '';
+            }
+          }
+        });
+      }
     }
 
     // 노션 저장
@@ -636,8 +681,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       state.lastResult = resultData;
+      state.originalResult = JSON.parse(JSON.stringify(resultData)); // ↺ 최초 생성 원본 백업 (원래대로 복원용)
       renderResults(resultData);
-      showToast('🎉 알림장과 관찰일지가 완성되었습니다!');
+      showToast('🎉 맞춤 보육 기록이 완성되었습니다!');
     } catch (err) {
       console.error('Generate Error:', err);
       showToast(`오류: ${err.message}`);
@@ -646,6 +692,59 @@ document.addEventListener('DOMContentLoaded', () => {
       generateBtn.disabled = false;
       loadingBox.style.display = 'none';
     }
+  }
+
+  // ============================================================================
+  // 10-B. AI 실시간 알림장 다듬기 (Quick Refine)
+  // ============================================================================
+  async function handleRefine(instruction) {
+    if (!instruction || !instruction.trim()) return;
+    if (!kidsnoteContent.value.trim()) {
+      showToast('다듬을 알림장 내용이 없습니다.');
+      return;
+    }
+
+    const currentTitle = kidsnoteTitle.textContent;
+    const currentContent = kidsnoteContent.value;
+    const childName = state.selectedChild ? state.selectedChild.name : '김민서';
+
+    if (refiningSpinner) refiningSpinner.style.display = 'inline';
+    const chips = kidsnoteRefineBox ? kidsnoteRefineBox.querySelectorAll('.refine-chip, .refine-custom-btn') : [];
+    chips.forEach(b => b.disabled = true);
+
+    try {
+      if (window.GeminiClient && typeof window.GeminiClient.refine === 'function') {
+        const refined = await window.GeminiClient.refine({
+          currentTitle,
+          currentContent,
+          instruction,
+          childName,
+          persona: state.persona
+        });
+        kidsnoteTitle.textContent = refined.title;
+        kidsnoteContent.value = refined.content;
+        showToast('✨ 요청하신 내용으로 자연스럽게 다듬어졌습니다!');
+      } else {
+        throw new Error('다듬기 엔진이 준비되지 않았습니다.');
+      }
+    } catch (err) {
+      console.error('Refine Error:', err);
+      showToast(`다듬기 오류: ${err.message}`);
+    } finally {
+      if (refiningSpinner) refiningSpinner.style.display = 'none';
+      chips.forEach(b => b.disabled = false);
+    }
+  }
+
+  // ↺ 원래대로 복원
+  function handleResetOriginal() {
+    if (!state.originalResult || !state.originalResult.kidsnote) {
+      showToast('복원할 최초 생성본이 없습니다.');
+      return;
+    }
+    kidsnoteTitle.textContent = state.originalResult.kidsnote.title || '오늘의 알림장';
+    kidsnoteContent.value = state.originalResult.kidsnote.content || '';
+    showToast('↺ 처음 생성된 원본 초안으로 복원되었습니다.');
   }
 
   // ============================================================================

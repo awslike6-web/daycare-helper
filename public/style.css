@@ -774,3 +774,98 @@ body {
   color: var(--text-muted);
   line-height: 1.2;
 }
+
+/* 🪄 AI 실시간 다듬기 (Quick Refine) */
+.refine-box {
+  margin-top: 10px;
+  background: #F8FAFC;
+  border: 1px dashed #CBD5E1;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.refine-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.refine-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.refine-chip {
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.refine-chip:hover {
+  background: #EEF2FF;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.refine-chip-reset {
+  background: #FFF1F2;
+  border-color: #FECDD3;
+  color: #E11D48;
+  margin-left: auto;
+}
+
+.refine-chip-reset:hover {
+  background: #FFE4E6;
+  border-color: #FDA4AF;
+  color: #BE123C;
+}
+
+.refine-custom-row {
+  display: flex;
+  gap: 6px;
+}
+
+.refine-custom-input {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 11px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  outline: none;
+  background: #FFFFFF;
+}
+
+.refine-custom-input:focus {
+  border-color: var(--primary);
+}
+
+.refine-custom-btn {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--primary);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.refine-custom-btn:hover {
+  background: var(--primary-dark);
+}

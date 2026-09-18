@@ -208,9 +208,69 @@ ${maskedMemo}
     return { success: true, data: unmasked };
   }
 
+  async function refineKidsnoteText({ currentTitle, currentContent, instruction, childName, persona = {} }) {
+    const apiKey = await getGeminiKey();
+    if (!apiKey) {
+      throw new Error('API 키가 없습니다.');
+    }
+
+    const maskedContent = maskText(currentContent, childName);
+    const callStyle = persona.callStyle || '우리 [아동A]';
+    const closingGreeting = persona.closingGreeting || '';
+
+    const prompt = `너는 대한민국 어린이집 15년 차 수석 보육교사다.
+원아는 오직 '[아동A]'로만 칭한다.
+
+[기존 작성된 알림장]
+${maskedContent}
+
+[선생님의 다듬기/추가 요청 사항]
+"${instruction}"
+
+[다듬기 지침]
+1. 기존 글의 따뜻하고 다정한 어조와 핵심 놀이 맥락을 충실히 유지하라.
+2. 선생님의 요청 사항("${instruction}")을 본문에 억지스럽지 않고 자연스럽게 스며들도록 반영하라.
+3. 원아 호칭은 '${callStyle}' 형태를 유지하고, 맺음말("${closingGreeting}")이 있다면 자연스럽게 어우러지게 하라.
+4. 품격 있는 긍정 서술(부정적 어휘 배제, 아이의 회복탄력성 존중)을 엄격히 준수하라.
+5. 오직 아래 JSON 형식으로만 응답하라:
+{
+  "title": "수정된 알림장 제목",
+  "content": "수정된 알림장 본문"
+}`;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.6,
+          responseMimeType: 'application/json'
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`다듬기 오류 (${response.status}): ${errText}`);
+    }
+
+    const data = await response.json();
+    const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawContent) throw new Error('응답이 비어있습니다.');
+
+    const parsed = JSON.parse(rawContent);
+    return {
+      title: unmaskDeep(parsed.title || currentTitle, childName),
+      content: unmaskDeep(parsed.content || currentContent, childName)
+    };
+  }
+
   window.GeminiClient = {
     getKey: getGeminiKey,
-    generate: generateWithGeminiClient
+    generate: generateWithGeminiClient,
+    refine: refineKidsnoteText
   };
 
 })(window);

@@ -141,6 +141,25 @@
           </div>
           <textarea id="kidsnoteContent" class="result-body-text" rows="5"></textarea>
           
+          <!-- 🪄 AI 실시간 다듬기 (Quick Refine) -->
+          <div class="refine-box" id="kidsnoteRefineBox">
+            <div class="refine-header">
+              <span>🪄 AI 실시간 다듬기 (클릭 시 1초 만에 수정)</span>
+              <span id="refiningSpinner" style="display: none; color: var(--primary); font-size: 11px;">⏳ 다듬는 중...</span>
+            </div>
+            <div class="refine-chips">
+              <button type="button" class="refine-chip" data-refine="cheerful">🎈 더 다정하고 발랄하게</button>
+              <button type="button" class="refine-chip" data-refine="detailed">📏 조금 더 자세하고 길게</button>
+              <button type="button" class="refine-chip" data-refine="compact">✂️ 핵심만 간결하게</button>
+              <button type="button" class="refine-chip" data-refine="meal">🍱 점심/식사 칭찬 1줄 추가</button>
+              <button type="button" class="refine-chip refine-chip-reset" id="resetKidsnoteBtn" title="처음 생성된 초안으로 되돌립니다">↺ 원래대로 복원</button>
+            </div>
+            <div class="refine-custom-row">
+              <input type="text" id="customRefineInput" class="refine-custom-input" placeholder="직접 지시: 예) 블록 무너졌을 때 씩씩하게 웃었다는 말 더 강조해줘">
+              <button type="button" id="customRefineBtn" class="refine-custom-btn">수정</button>
+            </div>
+          </div>
+
           <div class="action-btn-row">
             <button type="button" id="copyKidsnoteBtn" class="action-btn action-btn-copy">
               <span>📋</span> <span>알림장 원터치 복사</span>
