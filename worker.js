@@ -86,19 +86,18 @@ export default {
             mode = 'partial',
             activityArea = '자유놀이',
             teacherStyle = '다정친절체',
-            persona = {},
-            apiKey: customApiKey
+            persona = {}
           } = body;
 
           if (!childName) {
             return jsonResponse({ error: '원아 이름이 필요합니다.' }, 400);
           }
 
-          const apiKey = customApiKey || env.GEMINI_API_KEY;
+          const apiKey = env.GEMINI_API_KEY;
           if (!apiKey) {
             return jsonResponse({
-              error: 'GEMINI_API_KEY가 설정되지 않았습니다. .dev.vars 또는 화면 설정에서 API 키를 입력해주세요.'
-            }, 400);
+              error: 'Cloudflare Worker에 GEMINI_API_KEY 시크릿이 설정되지 않았습니다. Cloudflare 대시보드 Settings -> Variables and Secrets에서 등록해 주세요.'
+            }, 500);
           }
 
           // 최근 과거 기록 조회 (문맥 연계 및 Citation용)

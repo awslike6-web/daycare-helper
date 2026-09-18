@@ -60,7 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
     photos: [], // base64 strings
     teacherStyle: localStorage.getItem('daycare_teacher_style') || '다정친절체',
     persona: initialPersona,
-    customApiKey: localStorage.getItem('daycare_custom_api_key') || '',
     isRecording: false,
     recognition: null,
     lastResult: null
@@ -138,7 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsModal = document.getElementById('settingsModal');
   const closeSettingsBtn = document.getElementById('closeSettingsBtn');
   const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-  const customApiKeyInput = document.getElementById('customApiKeyInput');
   const headerPersonaBtn = document.getElementById('headerPersonaBtn');
   const headerPersonaText = document.getElementById('headerPersonaText');
   const personaPresetGrid = document.getElementById('personaPresetGrid');
@@ -156,8 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
     headerDateText.textContent = now.toLocaleDateString('ko-KR', options);
 
-    // 설정 값 복원
-    if (state.customApiKey) customApiKeyInput.value = state.customApiKey;
     updatePersonaUI();
 
     // Web Speech API 초기화
@@ -321,11 +317,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 페르소나 설정 저장
     saveSettingsBtn.addEventListener('click', () => {
-      if (customApiKeyInput) {
-        state.customApiKey = customApiKeyInput.value.trim();
-        localStorage.setItem('daycare_custom_api_key', state.customApiKey);
-      }
-
       state.persona = {
         preset: state.persona.preset || 'custom',
         name: state.persona.name || '맞춤 페르소나',
@@ -610,8 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mode: state.mode,
         activityArea: state.activityArea,
         teacherStyle: state.teacherStyle,
-        persona: state.persona,
-        apiKey: state.customApiKey || undefined
+        persona: state.persona
       };
 
       const res = await fetch('/api/generate', {
