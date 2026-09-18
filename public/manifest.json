@@ -1,0 +1,15 @@
+{
+  "name": "어린이집 AI 보육 비서 - daycare-helper",
+  "short_name": "보육비서",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#6366F1",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧸</text></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

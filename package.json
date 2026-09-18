@@ -1,0 +1,25 @@
+{
+  "name": "daycare-helper",
+  "version": "1.0.0",
+  "description": "어린이집/유치원 교사 맞춤형 AI 보육 비서 (알림장 & 일지 자동화)",
+  "main": "worker.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "keywords": [
+    "daycare",
+    "kindergarten",
+    "kidsnote",
+    "gemini",
+    "cloudflare-workers",
+    "notion"
+  ],
+  "author": "awslike6-web",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.114.0"
+  }
+}

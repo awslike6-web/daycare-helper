@@ -1,0 +1,14 @@
+name = "daycare-helper"
+main = "worker.js"
+compatibility_date = "2026-06-26"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[vars]
+DEFAULT_TEACHER_NAME = "김선생님"
+DEFAULT_CLASS_NAME = "햇살반"
+NOTION_VERSION = "2022-06-28"
+GEMINI_MODEL = "gemini-3.8-flash"

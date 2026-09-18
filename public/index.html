@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>🧸 daycare-helper | 어린이집 교사 맞춤형 AI 보육 비서</title>
+  
+  <!-- 모바일 웹 앱 메타 태그 -->
+  <meta name="theme-color" content="#6366F1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- 🏰 고정 상단 헤더 -->
+    <header class="app-header">
+      <div class="brand-area">
+        <span class="brand-logo">🧸</span>
+        <div>
+          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span></div>
+          <div class="brand-sub" id="headerDateText">오늘의 보육 기록</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span id="notionStatusBadge" class="badge badge-mock">
+          <span>●</span> <span id="notionStatusText">연결 준비</span>
+        </span>
+        <button id="settingsBtn" class="settings-btn" title="설정">⚙️</button>
+      </div>
+    </header>
+
+    <!-- 👶 원아 퀵 선택 가로 스크롤 섹션 -->
+    <section class="child-selector-section">
+      <div class="section-label">
+        <span>원아 선택</span>
+        <span id="selectedChildAge" style="font-weight: 500;">만 4세</span>
+      </div>
+      <div class="child-scroll-container" id="childScrollContainer">
+        <!-- 원아 칩들이 JS로 동적 렌더링됨 -->
+        <div class="child-chip active">
+          <span class="child-avatar">👧</span>
+          <span>김민서</span>
+        </div>
+      </div>
+      <div class="child-info-card" id="childInfoCard">
+        <div class="child-traits-text" id="childTraitsText">💡 성향: 손으로 만지는 조작 놀이를 즐김 (소근육 발달 중)</div>
+        <div class="child-alert-text" id="childAlertText" style="display: none;">⚠️ 주의: 우유 과다 섭취 주의</div>
+      </div>
+    </section>
+
+    <!-- 📝 입력 폼 메인 영역 -->
+    <main class="content-area">
+      <!-- 🎛️ 듀얼 모드 스위처 -->
+      <div class="mode-switcher" id="modeSwitcher">
+        <button type="button" class="mode-btn active" data-mode="partial">
+          <span>🧸 부분/시간대별</span>
+          <span class="mode-subtext">3~4줄 간결 복붙형</span>
+        </button>
+        <button type="button" class="mode-btn" data-mode="daily_integrated">
+          <span>📋 하루 전체 통합</span>
+          <span class="mode-subtext">평가제 종합 관찰형</span>
+        </button>
+      </div>
+
+      <!-- 🧩 활동 영역 칩 (부분 모드일 때 활성화) -->
+      <div class="area-section" id="areaSection">
+        <div class="section-label">활동 영역 선택</div>
+        <div class="area-grid" id="areaGrid">
+          <div class="area-chip active" data-area="자유놀이">🧸 자유놀이</div>
+          <div class="area-chip" data-area="식습관/점심">🍱 점심/식습관</div>
+          <div class="area-chip" data-area="낮잠/배변">😴 낮잠/배변</div>
+          <div class="area-chip" data-area="실외활동">🌳 실외활동</div>
+          <div class="area-chip" data-area="미술/감각">🎨 미술/감각</div>
+          <div class="area-chip" data-area="신체/음악">🎵 신체/음악</div>
+        </div>
+      </div>
+
+      <!-- 🎙️ 스마트 메모 입력 카드 (STT 음성 메모 연동) -->
+      <div class="memo-card">
+        <div class="memo-header">
+          <span class="memo-title">📝 관찰 메모 / 키워드</span>
+          <button type="button" id="voiceMicBtn" class="mic-btn">
+            <span id="micIcon">🎙️</span>
+            <span id="micStatusText">음성 메모</span>
+          </button>
+        </div>
+        <textarea 
+          id="rawMemoInput" 
+          class="memo-textarea" 
+          placeholder="거친 단편 메모를 편하게 입력하세요.&#10;예) 블록으로 성 높이 쌓음, 친구가 지나가다 쳤는데 화 안내고 다시 쌓음, 양손으로 균형 잘 맞춤"
+        ></textarea>
+        
+        <!-- 📷 사진 첨부 영역 -->
+        <div class="photo-area">
+          <div class="photo-previews" id="photoPreviews"></div>
+          <label class="photo-upload-label">
+            <span>📷 사진 첨부 (최대 2장)</span>
+            <input type="file" id="photoFileInput" accept="image/*" multiple style="display: none;">
+          </label>
+        </div>
+      </div>
+
+      <!-- 🚀 생성 버튼 -->
+      <button type="button" id="generateBtn" class="submit-btn">
+        <span>✨ 알림장 & 관찰일지 즉시 생성</span>
+      </button>
+
+      <!-- ⏳ 로딩 인디케이터 -->
+      <div class="loading-box" id="loadingBox">
+        <div class="loading-spinner"></div>
+        <div class="loading-step-text" id="loadingStepText">🛡️ 원아 실명 마스킹 보호 중...</div>
+      </div>
+
+      <!-- 🎁 생성 결과 섹션 -->
+      <section class="results-section" id="resultsSection">
+        <!-- 탭 스위처 -->
+        <div class="result-tabs">
+          <button type="button" class="result-tab-btn active" data-tab="kidsnote">💌 키즈노트 알림장</button>
+          <button type="button" class="result-tab-btn" data-tab="observation">📑 평가제 관찰일지</button>
+        </div>
+
+        <!-- 탭 1: 키즈노트 알림장 카드 -->
+        <div class="result-card" id="kidsnoteCard">
+          <div class="result-card-header">
+            <div class="result-title" id="kidsnoteTitle">블록으로 높이높이 성을 쌓았어요!</div>
+            <div class="tag-list" id="kidsnoteTags"></div>
+          </div>
+          <textarea id="kidsnoteContent" class="result-body-text" rows="5"></textarea>
+          
+          <div class="action-btn-row">
+            <button type="button" id="copyKidsnoteBtn" class="action-btn action-btn-copy">
+              <span>📋</span> <span>원터치 복사</span>
+            </button>
+            <button type="button" id="shareKidsnoteBtn" class="action-btn action-btn-share">
+              <span>🚀</span> <span>키즈노트 앱 열기/공유</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 탭 2: 평가제 관찰일지 카드 -->
+        <div class="result-card" id="observationCard" style="display: none;">
+          <div class="result-card-header">
+            <div class="result-title" id="obsStandardArea">표준보육 영역: 신체운동·건강</div>
+            <span class="tag-badge" id="obsActivityName">활동: 자유놀이</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted);">[객관적 행동 관찰]</div>
+            <textarea id="obsBehaviorContent" class="result-body-text" rows="4"></textarea>
+            
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted);">[교사의 지원 및 발달 평가]</div>
+            <textarea id="obsEvaluationContent" class="result-body-text" rows="3"></textarea>
+          </div>
+
+          <!-- 📌 과거 기록 출처 (Citation) 배지 -->
+          <div class="citation-box" id="citationBox" style="display: none;">
+            <span class="citation-icon">📌</span>
+            <span id="citationSummaryText">과거 기록 연계 내용</span>
+          </div>
+
+          <div class="action-btn-row">
+            <button type="button" id="saveNotionBtn" class="action-btn action-btn-save">
+              <span>💾</span> <span>노션 3대 DB에 안전 저장</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ⚙️ 환경 설정 모달 -->
+    <div class="modal-overlay" id="settingsModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">⚙️ 환경 설정</div>
+          <button type="button" class="close-btn" id="closeSettingsBtn">&times;</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+          <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Google Gemini API 키 (선택)</label>
+            <input type="password" id="customApiKeyInput" class="memo-textarea" style="min-height: 40px;" placeholder="서버 기본 키 사용 중 (직접 입력 가능)">
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+              * 기본적으로 Cloudflare Worker에 설정된 시크릿 키가 사용됩니다.
+            </div>
+          </div>
+          <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">선생님 문체 스타일</label>
+            <select id="teacherStyleSelect" class="memo-textarea" style="min-height: 40px; padding: 6px;">
+              <option value="다정친절체" selected>다정친절체 (~했답니다, ~했어요)</option>
+              <option value="단정격식체">단정격식체 (~하였습니다, ~했습니다)</option>
+              <option value="활발발랄체">활발발랄체 (~했답니다! ^-^)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">보육 모델</label>
+            <div style="padding: 8px; background: #EEF2FF; border-radius: 6px; color: var(--primary); font-weight: 600;">
+              ✨ Google Gemini 3.8 Flash (2026 표준)
+            </div>
+          </div>
+          <button type="button" id="saveSettingsBtn" class="submit-btn" style="padding: 10px; margin-top: 8px;">
+            설정 저장
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🍞 알림 토스트 -->
+    <div class="toast" id="toastMessage">클립보드에 복사되었습니다.</div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
