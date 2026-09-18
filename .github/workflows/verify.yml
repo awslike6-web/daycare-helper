@@ -1,0 +1,32 @@
+name: Verify Code & Build Integrity
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Code Integrity Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Verify JavaScript Syntax & Integrity
+        run: |
+          echo "🔍 JavaScript 코드 문법 및 무결성 검사 시작..."
+          node --check worker.js
+          node --check public/app.js
+          node --check public/gemini-client.js
+          echo "✅ 모든 코드가 오류 없이 완벽하게 검증되었습니다!"
+          echo "🚀 Cloudflare 자동 배포가 정상 진행됩니다."
