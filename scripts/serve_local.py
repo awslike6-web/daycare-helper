@@ -21,6 +21,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 PUBLIC_DIR = BASE_DIR / "public"
 PORT = 8787
 
+# .dev.vars 로컬 환경변수 자동 로드
+DEV_VARS_FILE = BASE_DIR / ".dev.vars"
+if DEV_VARS_FILE.exists():
+    with open(DEV_VARS_FILE, "r", encoding="utf-8-sig") as f:
+        for line in f:
+            line = line.strip().lstrip("\ufeff")
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ[k.strip()] = v.strip()
+
 # Gemini 설정
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = "gemini-3.8-flash"
@@ -96,6 +106,10 @@ class DaycareHandler(SimpleHTTPRequestHandler):
 
         if self.path == "/api/children":
             self._send_json({"source": "local_dev", "children": CHILDREN})
+            return
+
+        if self.path == "/api/gemini-key":
+            self._send_json({"status": "ok" if GEMINI_API_KEY else "empty", "key": GEMINI_API_KEY})
             return
 
         # 기본 정적 파일 서빙

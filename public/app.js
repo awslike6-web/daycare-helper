@@ -604,20 +604,39 @@ document.addEventListener('DOMContentLoaded', () => {
         persona: state.persona
       };
 
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      let resultData = null;
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || '생성 중 오류가 발생했습니다.');
+      // 1. 한국 브라우저 IP 직통 호출 시도 (Cloudflare 유럽 노드 지역 제한 400 원천 회피)
+      if (window.GeminiClient && typeof window.GeminiClient.generate === 'function') {
+        try {
+          const clientRes = await window.GeminiClient.generate(payload);
+          if (clientRes && clientRes.success) {
+            resultData = clientRes.data;
+          }
+        } catch (clientErr) {
+          console.warn('클라이언트 직통 호출 실패, 서버 엔드포인트로 폴백:', clientErr);
+        }
       }
 
-      const json = await res.json();
-      state.lastResult = json.data;
-      renderResults(json.data);
+      // 2. 서버 폴백 (/api/generate)
+      if (!resultData) {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || '생성 중 오류가 발생했습니다.');
+        }
+
+        const json = await res.json();
+        resultData = json.data;
+      }
+
+      state.lastResult = resultData;
+      renderResults(resultData);
       showToast('🎉 알림장과 관찰일지가 완성되었습니다!');
     } catch (err) {
       console.error('Generate Error:', err);

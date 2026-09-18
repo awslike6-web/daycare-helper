@@ -54,6 +54,16 @@ export default {
       });
     }
 
+    // 2-B. 🔑 Gemini 런타임 보안 키 디스펜서 (/api/gemini-key)
+    // Cloudflare Worker Secret을 사용자 브라우저(한국 IP) 런타임 메모리에 안전 수급
+    if (url.pathname === '/api/gemini-key') {
+      const apiKey = env.GEMINI_API_KEY || '';
+      return jsonResponse({
+        status: apiKey ? 'ok' : 'empty',
+        key: apiKey
+      });
+    }
+
     // 3. API 라우트 핸들링 (/api/*)
     if (url.pathname.startsWith('/api/')) {
       try {
