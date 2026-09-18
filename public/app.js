@@ -357,8 +357,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const files = Array.from(e.target.files);
     if (!files || files.length === 0) return;
 
-    if (state.photos.length + files.length > 2) {
-      showToast('사진은 최대 2장까지만 첨부할 수 있습니다.');
+    if (state.photos.length + files.length > 6) {
+      showToast('사진은 최대 6장까지만 첨부할 수 있습니다.');
       return;
     }
 

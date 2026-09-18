@@ -218,7 +218,7 @@ export async function generateDaycareLog({
   const parts = [{ text: userTextPrompt }];
 
   if (Array.isArray(images)) {
-    for (const img of images.slice(0, 2)) {
+    for (const img of images.slice(0, 6)) {
       const part = parseImageData(img);
       if (part) parts.push(part);
     }
