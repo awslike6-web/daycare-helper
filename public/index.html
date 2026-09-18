@@ -55,19 +55,23 @@
 
     <!-- 📝 입력 폼 메인 영역 -->
     <main class="content-area">
-      <!-- 🎛️ 듀얼 모드 스위처 -->
+      <!-- 🎛️ 3대 목적별 집중 모드 스위처 -->
       <div class="mode-switcher" id="modeSwitcher">
-        <button type="button" class="mode-btn active" data-mode="partial">
-          <span>🧸 부분/시간대별</span>
-          <span class="mode-subtext">3~4줄 간결 복붙형</span>
+        <button type="button" class="mode-btn active" data-mode="play_story">
+          <span>📸 놀이 알림장</span>
+          <span class="mode-subtext">놀이·사진 집중 서술형</span>
         </button>
-        <button type="button" class="mode-btn" data-mode="daily_integrated">
-          <span>📋 하루 전체 통합</span>
-          <span class="mode-subtext">평가제 종합 관찰형</span>
+        <button type="button" class="mode-btn" data-mode="observation">
+          <span>🧸 관찰일지</span>
+          <span class="mode-subtext">평가제 객관 관찰</span>
+        </button>
+        <button type="button" class="mode-btn" data-mode="all_suite">
+          <span>📋 5대 서식 종합</span>
+          <span class="mode-subtext">하루 일과 풀팩</span>
         </button>
       </div>
 
-      <!-- 🧩 활동 영역 칩 (부분 모드일 때 활성화) -->
+      <!-- 🧩 활동 영역 칩 -->
       <div class="area-section" id="areaSection">
         <div class="section-label">활동 영역 선택</div>
         <div class="area-grid" id="areaGrid">
@@ -83,7 +87,7 @@
       <!-- 🎙️ 스마트 메모 입력 카드 (STT 음성 메모 연동) -->
       <div class="memo-card">
         <div class="memo-header">
-          <span class="memo-title">📝 관찰 메모 / 키워드</span>
+          <span class="memo-title">📝 놀이 관찰 메모 / 키워드</span>
           <button type="button" id="voiceMicBtn" class="mic-btn">
             <span id="micIcon">🎙️</span>
             <span id="micStatusText">음성 메모</span>
@@ -92,14 +96,14 @@
         <textarea 
           id="rawMemoInput" 
           class="memo-textarea" 
-          placeholder="거친 단편 메모를 편하게 입력하세요.&#10;예) 블록으로 성 높이 쌓음, 친구가 지나가다 쳤는데 화 안내고 다시 쌓음, 양손으로 균형 잘 맞춤"
+          placeholder="오늘 아이가 몰입했던 놀이 장면이나 키워드를 편하게 남겨주세요.&#10;예) 블록으로 큰 동물원 우리를 만들며 기린 인형에게 풀을 주는 흉내를 냄. 친구와 웃으며 울타리를 넓혀감."
         ></textarea>
         
         <!-- 📷 사진 첨부 영역 -->
         <div class="photo-area">
           <div class="photo-previews" id="photoPreviews"></div>
           <label class="photo-upload-label">
-            <span>📷 사진 첨부 (최대 6장)</span>
+            <span>📷 놀이 사진 첨부 (선택, 최대 6장)</span>
             <input type="file" id="photoFileInput" accept="image/*" multiple style="display: none;">
           </label>
         </div>
@@ -107,7 +111,7 @@
 
       <!-- 🚀 생성 버튼 -->
       <button type="button" id="generateBtn" class="submit-btn">
-        <span>✨ 알림장 & 관찰일지 즉시 생성</span>
+        <span>✨ 맞춤 보육 기록 즉시 생성</span>
       </button>
 
       <!-- ⏳ 로딩 인디케이터 -->
@@ -270,28 +274,28 @@
           <!-- 1. 퀵 프리셋 선택 칩 -->
           <div>
             <label style="font-weight: 700; display: block; margin-bottom: 6px; color: var(--text-main);">
-              1. 대표 페르소나 퀵 프리셋
+              1. 대표 문체 스타일 퀵 프리셋
             </label>
             <div class="persona-preset-grid" id="personaPresetGrid">
-              <button type="button" class="persona-preset-chip active" data-preset="wife">
-                <span class="preset-icon">⚡</span>
-                <span class="preset-name">스피디 실속형</span>
-                <span class="preset-desc">아내 스타일 · 군더더기 0% 3~4줄</span>
+              <button type="button" class="persona-preset-chip active" data-preset="play_friendly">
+                <span class="preset-icon">🌿</span>
+                <span class="preset-name">놀이 중심 다정체</span>
+                <span class="preset-desc">아이의 즐거움과 성취감을 따뜻하게 서술</span>
               </button>
-              <button type="button" class="persona-preset-chip" data-preset="sister">
-                <span class="preset-icon">📚</span>
-                <span class="preset-name">베테랑 꼼꼼형</span>
-                <span class="preset-desc">처형 스타일 · 10년차 전문 관찰</span>
+              <button type="button" class="persona-preset-chip" data-preset="growth_detail">
+                <span class="preset-icon">📖</span>
+                <span class="preset-name">발달 관찰 서술체</span>
+                <span class="preset-desc">놀이 속 언어·신체 발달을 꼼꼼하고 유려하게</span>
               </button>
-              <button type="button" class="persona-preset-chip" data-preset="mother">
+              <button type="button" class="persona-preset-chip" data-preset="warm_parent">
                 <span class="preset-icon">🌸</span>
-                <span class="preset-name">따뜻한 엄마형</span>
-                <span class="preset-desc">공감 가득 · 사랑과 칭찬 피드백</span>
+                <span class="preset-name">따뜻한 공감형</span>
+                <span class="preset-desc">가정 연계 칭찬과 정서적 지지 중심</span>
               </button>
-              <button type="button" class="persona-preset-chip" data-preset="energy">
+              <button type="button" class="persona-preset-chip" data-preset="lively_vivid">
                 <span class="preset-icon">✨</span>
-                <span class="preset-name">발랄 에너지형</span>
-                <span class="preset-desc">이모지 톡톡 · 활기찬 교실 분위기</span>
+                <span class="preset-name">밝고 생동감 있는 문체</span>
+                <span class="preset-desc">활기찬 교실 분위기와 경쾌한 어조</span>
               </button>
             </div>
           </div>
@@ -300,7 +304,7 @@
           <div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
               <label style="font-weight: 700; color: var(--text-main);">
-                2. 평소 내가 쓴 실제 알림장 예시문 (Few-shot)
+                2. 평소 내가 작성하는 알림장 예시문 (선택 권장)
               </label>
               <span style="font-size: 11px; color: var(--primary); font-weight: 600;">말투 100% 모방</span>
             </div>
@@ -308,10 +312,10 @@
               id="personaSampleNote" 
               class="memo-textarea" 
               style="min-height: 90px; font-size: 12px; line-height: 1.5;"
-              placeholder="선생님이 평소 학부모님께 보냈던 알림장 1~2개를 그대로 붙여넣으세요. AI가 그 말투와 호흡, 어미를 그대로 복제합니다."
+              placeholder="선생님이 평소 학부모님께 보냈던 알림장을 1~2개 편하게 붙여넣어 주세요. 선생님 고유의 문장 호흡, 어미(~했답니다, ~했지요 등), 따뜻한 말투를 그대로 담아냅니다."
             ></textarea>
             <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
-              * 예시문의 문장 길이, 종결어미(~했지요, ~했답니다 등), 줄바꿈 습관을 그대로 학습합니다.
+              * 예시문의 문장 호흡, 종결어미(~했답니다, ~했어요 등), 이모지 감성을 그대로 학습하여 작성합니다.
             </div>
           </div>
 

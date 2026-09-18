@@ -213,21 +213,22 @@ body {
   gap: 16px;
 }
 
-/* 🎛️ 모드 스위처 (Segmented Control) */
+/* 🎛️ 모드 스위처 (Segmented Control - 3대 집중 모드) */
 .mode-switcher {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   background: #E2E8F0;
   padding: 4px;
   border-radius: var(--radius-md);
   position: relative;
+  gap: 2px;
 }
 
 .mode-btn {
   border: none;
   background: transparent;
-  padding: 10px 8px;
-  font-size: 13px;
+  padding: 8px 4px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-muted);
   border-radius: 10px;
@@ -237,6 +238,14 @@ body {
   align-items: center;
   gap: 2px;
   transition: all 0.2s ease;
+  text-align: center;
+}
+
+.mode-btn .mode-subtext {
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.85;
+  letter-spacing: -0.3px;
 }
 
 .mode-btn.active {

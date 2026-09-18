@@ -8,36 +8,36 @@ document.addEventListener('DOMContentLoaded', () => {
   // 0. 4대 대표 페르소나 프리셋 (Presets)
   // ============================================================================
   const PERSONA_PRESETS = {
-    wife: {
-      preset: 'wife',
-      name: '스피디 실속형 (아내 스타일)',
-      icon: '⚡',
-      sampleNote: '오늘 우리 민서는 블록 영역에서 친구들과 높은 성을 쌓았답니다. 양손으로 균형을 맞춰가며 집중하는 모습이 대견했어요. 점심도 골고루 맛있게 잘 먹었습니다.^^',
+    play_friendly: {
+      preset: 'play_friendly',
+      name: '놀이 중심 다정체',
+      icon: '🌿',
+      sampleNote: '오늘 우리 민서는 블록 영역에서 친구들과 커다란 동물원 울타리를 만들며 신나게 놀이했답니다. 기린 인형을 울타리 안에 넣고 나뭇잎 먹이를 주는 흉내를 내며 활짝 웃는 모습이 참 사랑스러웠어요. 쌓던 블록이 와르르 쓰러져도 속상해하지 않고 씩씩하게 다시 세우는 모습에서 기특한 성장을 느꼈답니다. 가정에서도 오늘 즐거웠던 동물원 놀이에 대해 많은 칭찬 부탁드립니다.^^',
       callStyle: '우리 [아동A]',
       emojiLevel: 'moderate',
       closingGreeting: '가정에서도 편안하고 따뜻한 저녁 되세요^^'
     },
-    sister: {
-      preset: 'sister',
-      name: '베테랑 꼼꼼형 (처형 스타일)',
-      icon: '📚',
-      sampleNote: '오늘 민서는 오전 자유놀이 시간에 조작 영역에 스스로 다가가 블록 놀이에 깊이 몰입하였습니다. 이전보다 손가락 힘과 조절력이 향상되어 10단 이상의 탑을 안정적으로 쌓았으며, 블록이 쓰러지려 할 때 조심스럽게 받쳐 균형을 유지하는 문제해결력을 보였습니다. 또래 친구에게 블록을 나누어주며 긍정적인 사회적 상호작용을 나누는 모습이 무척 인상 깊었습니다. 가정에서도 오늘의 성취에 대해 따뜻한 격려 부탁드립니다.',
+    growth_detail: {
+      preset: 'growth_detail',
+      name: '발달 관찰 서술체',
+      icon: '📖',
+      sampleNote: '오늘 민서는 오전 자유놀이 시간에 조작 영역에 스스로 다가가 블록 놀이에 깊이 몰입하였습니다. 이전보다 손가락 힘과 양손 협응력이 향상되어 10단 이상의 탑을 안정적으로 쌓았으며, 블록이 흔들릴 때 조심스럽게 받쳐 균형을 유지하는 문제해결력을 보였습니다. 또래 친구에게 블록을 나누어주며 긍정적인 사회적 상호작용을 나누는 모습이 무척 인상 깊었습니다. 가정에서도 오늘의 성취에 대해 따뜻한 격려 부탁드립니다.',
       callStyle: '[아동A]',
       emojiLevel: 'none',
       closingGreeting: '가정에서도 오늘의 성취에 대해 따뜻한 격려 부탁드립니다.'
     },
-    mother: {
-      preset: 'mother',
-      name: '따뜻한 엄마형 (다정다감)',
+    warm_parent: {
+      preset: 'warm_parent',
+      name: '따뜻한 공감형',
       icon: '🌸',
-      sampleNote: '어머님 안녕하세요~^^ 오늘 우리 민서가 원에 들어올 때부터 환한 미소로 인사를 건네주어 선생님도 덩달아 행복해졌답니다! 블록 놀이를 하면서 "선생님 이것 보세요!" 하며 자랑스럽게 보여주는데 어찌나 사랑스럽던지요. 친구를 배려하는 따뜻한 마음씨에 가슴이 뭉클했답니다. 오늘 밤 가정에서도 민서 많이 안아주세요💕',
+      sampleNote: '어머님 안녕하세요~^^ 오늘 우리 민서가 원에 들어올 때부터 환한 미소로 인사를 건네주어 교실이 온통 환해졌답니다! 블록 놀이를 하면서 "선생님 이것 보세요!" 하며 자랑스럽게 보여주는데 어찌나 사랑스럽던지요. 친구를 배려하는 따뜻한 마음씨에 가슴이 뭉클했답니다. 오늘 밤 가정에서도 민서 많이 안아주세요💕',
       callStyle: '우리 [아동A]',
       emojiLevel: 'rich',
       closingGreeting: '오늘 밤 가정에서도 우리 민서 꼭 안아주세요💕'
     },
-    energy: {
-      preset: 'energy',
-      name: '발랄 에너지형 (이모지 톡톡)',
+    lively_vivid: {
+      preset: 'lively_vivid',
+      name: '밝고 생동감 있는 문체',
       icon: '✨',
       sampleNote: '오늘 우리 민서의 하루는 에너지 만점! 🌟 친구들과 함께 블록으로 거대한 우주선을 만들었답니다! 🚀 뚝딱뚝딱 손끝이 야무진 우리 민서, 친구들과 "출발!"을 외치며 신나게 웃는 모습이 교실을 환하게 밝혔어요. 🥰 내일도 신나게 놀자 민서야~!',
       callStyle: '우리 [아동A]',
@@ -50,15 +50,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // 1. 애플리케이션 상태 (State)
   // ============================================================================
   const savedPersona = localStorage.getItem('daycare_persona');
-  const initialPersona = savedPersona ? JSON.parse(savedPersona) : PERSONA_PRESETS.wife;
+  const initialPersona = savedPersona ? JSON.parse(savedPersona) : PERSONA_PRESETS.play_friendly;
 
   const state = {
     children: [],
     selectedChild: null,
-    mode: 'partial', // 'partial' | 'daily_integrated'
+    mode: 'play_story', // 'play_story' (놀이 알림장 집중) | 'observation' | 'all_suite'
     activityArea: '자유놀이',
     photos: [], // base64 strings
-    teacherStyle: localStorage.getItem('daycare_teacher_style') || '다정친절체',
+    teacherStyle: localStorage.getItem('daycare_teacher_style') || '놀이 중심 다정체',
     persona: initialPersona,
     isRecording: false,
     recognition: null,
@@ -200,8 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.add('active');
         state.mode = btn.dataset.mode;
         
-        // 부분 모드일 때만 활동 영역 선택 표시
-        if (state.mode === 'partial') {
+        // 놀이 알림장 또는 관찰일지 모드일 때 활동 영역 선택 표시
+        if (state.mode === 'play_story' || state.mode === 'partial' || state.mode === 'observation') {
           areaSection.style.display = 'flex';
         } else {
           areaSection.style.display = 'none';
@@ -701,6 +701,17 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       citationBox.style.display = 'none';
     }
+
+    // 선택된 모드에 맞추어 메인 탭 전환
+    const targetTab = state.mode === 'observation' ? 'observation' : 'kidsnote';
+    resultTabBtns.forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === targetTab);
+    });
+    kidsnoteCard.style.display = targetTab === 'kidsnote' ? 'flex' : 'none';
+    observationCard.style.display = targetTab === 'observation' ? 'flex' : 'none';
+    if (dailyCareCard) dailyCareCard.style.display = 'none';
+    if (counselingCard) counselingCard.style.display = 'none';
+    if (playSupportCard) playSupportCard.style.display = 'none';
 
     // 결과 섹션 노출 및 스크롤
     resultsSection.style.display = 'flex';
