@@ -116,12 +116,17 @@
         <div class="loading-step-text" id="loadingStepText">🛡️ 원아 실명 마스킹 보호 중...</div>
       </div>
 
-      <!-- 🎁 생성 결과 섹션 -->
+      <!-- 🎁 5대 보육 표준 서식 결과 섹션 -->
       <section class="results-section" id="resultsSection">
-        <!-- 탭 스위처 -->
-        <div class="result-tabs">
-          <button type="button" class="result-tab-btn active" data-tab="kidsnote">💌 키즈노트 알림장</button>
-          <button type="button" class="result-tab-btn" data-tab="observation">📑 평가제 관찰일지</button>
+        <!-- 5대 서식 가로 스크롤 탭 스위처 -->
+        <div class="result-tabs-scroll">
+          <div class="result-tabs" id="resultTabs">
+            <button type="button" class="result-tab-btn active" data-tab="kidsnote">💌 키즈노트 알림장</button>
+            <button type="button" class="result-tab-btn" data-tab="observation">🧸 평가제 관찰일지</button>
+            <button type="button" class="result-tab-btn" data-tab="daily_care">📋 일일 보육일지</button>
+            <button type="button" class="result-tab-btn" data-tab="counseling">🗣️ 학부모 상담일지</button>
+            <button type="button" class="result-tab-btn" data-tab="play_support">🎯 놀이 지원안</button>
+          </div>
         </div>
 
         <!-- 탭 1: 키즈노트 알림장 카드 -->
@@ -134,7 +139,7 @@
           
           <div class="action-btn-row">
             <button type="button" id="copyKidsnoteBtn" class="action-btn action-btn-copy">
-              <span>📋</span> <span>원터치 복사</span>
+              <span>📋</span> <span>알림장 원터치 복사</span>
             </button>
             <button type="button" id="shareKidsnoteBtn" class="action-btn action-btn-share">
               <span>🚀</span> <span>키즈노트 앱 열기/공유</span>
@@ -164,8 +169,89 @@
           </div>
 
           <div class="action-btn-row">
-            <button type="button" id="saveNotionBtn" class="action-btn action-btn-save">
-              <span>💾</span> <span>노션 3대 DB에 안전 저장</span>
+            <button type="button" id="copyObservationBtn" class="action-btn action-btn-copy">
+              <span>📋</span> <span>관찰일지 복사</span>
+            </button>
+            <button type="button" id="saveNotionBtn" class="action-btn action-btn-save" style="grid-column: span 1;">
+              <span>💾</span> <span>노션 3대 DB 저장</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 탭 3: 일일 보육일지 카드 (반 전체 놀이 평가 & 내일 지원) -->
+        <div class="result-card" id="dailyCareCard" style="display: none;">
+          <div class="result-card-header">
+            <div class="result-title">📋 반 전체 보육일지 (놀이 평가)</div>
+            <span class="tag-badge" style="background: #DEF7EC; color: #03543F;">원장 결재용</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted);">[오늘의 주요 놀이 흐름 요약]</div>
+            <textarea id="dailyPlaySummary" class="result-body-text" rows="3"></textarea>
+
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted);">[놀이에 대한 교사 평가 및 유아 배움 분석]</div>
+            <textarea id="dailyPlayEval" class="result-body-text" rows="3"></textarea>
+
+            <div style="font-size: 12px; font-weight: 700; color: var(--primary);">⭐ [내일 놀이 연계 및 환경/자료 지원 계획]</div>
+            <textarea id="dailyNextPlan" class="result-body-text" rows="3" style="border-color: var(--primary); background: #F5F3FF;"></textarea>
+          </div>
+
+          <div class="action-btn-row">
+            <button type="button" id="copyDailyCareBtn" class="action-btn action-btn-copy" style="grid-column: span 2;">
+              <span>📋</span> <span>보육일지(놀이평가/지원계획) 전체 복사</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 탭 4: 학부모 상담 면담일지 카드 -->
+        <div class="result-card" id="counselingCard" style="display: none;">
+          <div class="result-card-header">
+            <div class="result-title">🗣️ 학부모 상담 면담일지 요약</div>
+            <span class="tag-badge" style="background: #FEF3C7; color: #92400E;">상/하반기 상담용</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted);">[기본생활습관 (식사/수면/배변/정리)]</div>
+            <textarea id="counselRoutine" class="result-body-text" rows="2"></textarea>
+
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted);">[대인관계 및 사회성 (또래/교사 상호작용)]</div>
+            <textarea id="counselSocial" class="result-body-text" rows="2"></textarea>
+
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted);">[발달 특성 및 놀이 몰입도]</div>
+            <textarea id="counselDev" class="result-body-text" rows="2"></textarea>
+
+            <div style="font-size: 12px; font-weight: 700; color: #B45309;">[교사 종합 상담 의견 및 가정 연계 제안]</div>
+            <textarea id="counselOpinion" class="result-body-text" rows="3" style="border-color: #FCD34D; background: #FFFDF5;"></textarea>
+          </div>
+
+          <div class="action-btn-row">
+            <button type="button" id="copyCounselingBtn" class="action-btn action-btn-copy" style="grid-column: span 2;">
+              <span>📋</span> <span>학부모 상담 일지 전체 복사</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 탭 5: 놀이 지원 & 환경구성안 카드 -->
+        <div class="result-card" id="playSupportCard" style="display: none;">
+          <div class="result-card-header">
+            <div class="result-title">🎯 놀이 지원 & 환경구성안</div>
+            <span class="tag-badge" style="background: #E0E7FF; color: #3730A3;">놀이 계획/준비용</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted);">[유아 흥미 기반 확장 놀이 아이디어]</div>
+            <textarea id="playExtension" class="result-body-text" rows="2"></textarea>
+
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted);">[추천 준비 교구 및 환경구성 자료]</div>
+            <textarea id="playMaterials" class="result-body-text" rows="2"></textarea>
+
+            <div style="font-size: 12px; font-weight: 700; color: var(--primary);">[사고 확장을 돕는 교사 추천 발문 팁]</div>
+            <textarea id="playTips" class="result-body-text" rows="3" style="background: #F8FAFC;"></textarea>
+          </div>
+
+          <div class="action-btn-row">
+            <button type="button" id="copyPlaySupportBtn" class="action-btn action-btn-copy" style="grid-column: span 2;">
+              <span>📋</span> <span>놀이 지원 및 환경구성안 복사</span>
             </button>
           </div>
         </div>

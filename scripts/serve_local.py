@@ -155,6 +155,22 @@ class DaycareHandler(SimpleHTTPRequestHandler):
     "behavior": "객관적 행동 관찰문 (~함 체)",
     "evaluation": "교사의 지원 및 발달 평가 (~를 도움)"
   }},
+  "daily_care_log": {{
+    "play_summary": "오늘 우리 반 유아들의 전반적인 놀이 흐름 요약",
+    "play_evaluation": "놀이에 대한 교사의 종합 평가 및 배움 분석",
+    "next_support_plan": "내일 놀이 확장을 위한 공간/자료 및 교사 지원 계획"
+  }},
+  "parent_counseling": {{
+    "daily_routine": "식습관, 낮잠, 배변 등 기본생활습관 특징",
+    "social_relations": "또래 및 교사와의 긍정적 상호작용과 사회성",
+    "development_feature": "놀이 몰입도 및 신체/언어 발달 강점",
+    "counseling_opinion": "가정 연계 및 학부모 상담 시 안내할 종합 조언"
+  }},
+  "play_support_plan": {{
+    "extension_idea": "아이들의 관심사에 맞춘 심화 확장 놀이 아이디어",
+    "recommended_materials": "추가 배치할 놀이 교구 및 환경구성 자료",
+    "interaction_tips": "아이의 사고 확장을 돕는 교사의 추천 발문 팁"
+  }},
   "citation": {{
     "has_citation": true,
     "summary": "📌 참고한 과거 기록: [2026-09-05] 가위질 미숙 기록 대비 양손 협응력 향상 관찰됨"
@@ -181,7 +197,7 @@ class DaycareHandler(SimpleHTTPRequestHandler):
                 except Exception as e:
                     print(f"[Gemini Error]: {e}")
 
-            # 로컬 시뮬레이션 폴백 응답
+            # 로컬 시뮬레이션 폴백 응답 (5대 서식 완비)
             mock_res = {
                 "kidsnote": {
                     "title": f"{child_name}가 신나게 참여한 {activity_area} 시간!",
@@ -193,6 +209,22 @@ class DaycareHandler(SimpleHTTPRequestHandler):
                     "activity_name": activity_area,
                     "behavior": f"{child_name}는 {activity_area}에서 {raw_memo or '블록을 양손으로 조작하여 성 모양으로 구성함'}. 놀이 중 블록이 흔들리자 조심스럽게 균형을 잡는 모습을 보임.",
                     "evaluation": f"눈과 손의 협응력 및 소근육 조절력이 향상되고 있으며, 문제 상황 시 스스로 해결하려는 끈기를 격려함."
+                },
+                "daily_care_log": {
+                    "play_summary": f"유아들이 {activity_area} 영역에 자발적으로 모여 다양한 크기의 교구를 탐색하고 자신만의 구조물을 만드는 놀이가 활발히 전개됨.",
+                    "play_evaluation": f"블록의 균형을 맞추며 공간 감각과 소근육 조절력을 기르고, 친구와 교구를 나누어 쓰는 긍정적 또래 상호작용이 관찰됨.",
+                    "next_support_plan": f"유아들의 성 쌓기 흥미를 확장하여 내일은 동물 피규어와 바퀴 달린 자동차 소품을 함께 배치하여 마을 구성 놀이로 연계 지원할 계획임."
+                },
+                "parent_counseling": {
+                    "daily_routine": f"{child_name}는 정해진 일과 순서를 잘 인지하고 스스로 정리정돈에 적극적으로 참여하며 규칙적인 식습관을 형성해 가고 있음.",
+                    "social_relations": f"친구들에게 먼저 다가가 관심 있는 놀이를 제안하고 갈등 발생 시 교사의 중재를 경청하며 타협점을 찾는 모습이 돋보임.",
+                    "development_feature": f"조작 및 구성 놀이에 대한 집중 시간이 길고 소근육 협응력이 또래 대비 안정적으로 발달하고 있음.",
+                    "counseling_opinion": f"가정에서도 {child_name}의 훌륭한 자기 조절력과 성취감을 칭찬해 주시고, 다양한 재료를 만지는 촉감 놀이를 함께해 주시면 더욱 좋습니다."
+                },
+                "play_support_plan": {
+                    "extension_idea": f"블록 성에 간판을 달아주는 '우리 동네 마을 만들기' 미술/역할 놀이로 확장.",
+                    "recommended_materials": "도로 매트, 신호등 소품, 다양한 표정의 사람 및 동물 피규어.",
+                    "interaction_tips": "'이 성에는 어떤 친구들이 살고 있을까?'처럼 상상력을 자극하는 열린 발문 지원."
                 },
                 "citation": {
                     "has_citation": True,

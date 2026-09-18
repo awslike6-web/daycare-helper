@@ -98,7 +98,7 @@ ${isPartial ? `
 - 공백 포함 300~500자 내외로 풍부하고 연속성 있게 서술할 것.
 `}
 
-[어조 및 문체 규격]
+[어조 및 5대 보육 표준 서식 규격]
 1. kidsnote (키즈노트 알림장):
    - 학부모 안심 및 공감을 위한 따뜻하고 다정한 어조 (~했답니다, ~하는 모습이 정말 사랑스러웠어요, ~했어요 체).
    - 페르소나 기본 문체: ${persona.name || teacherStyle || '다정친절체'}
@@ -110,26 +110,53 @@ ${isPartial ? `
    - 표준보육과정 5대 영역 중 가장 부합하는 영역(신체운동·건강, 의사소통, 사회관계, 예술경험, 자연탐구) 매핑.
    - '행동 관찰(behavior)'과 '교사의 지원 및 평가(evaluation)'를 명확히 분리 서술.
 
-3. citation (과거 기록 연계):
+3. daily_care_log (일일 보육일지 - 반 전체 놀이 평가):
+   - 공문서 결재용 단정체 (~을 지원함, ~가 나타남 체).
+   - 오늘 우리 반의 주요 놀이 흐름(summary), 교사의 종합 놀이 평가(evaluation), **내일 놀이 연계 및 환경/교구 지원 계획(next_plan)** 포함.
+
+4. parent_counseling (학부모 상담 면담일지 요약):
+   - 1학기/2학기 학부모 개별 상담에 즉시 인용할 수 있는 체계적 분석.
+   - 기본생활습관(routine), 대인관계/사회성(social), 발달 특성(development), 교사 종합 상담 의견(opinion).
+
+5. play_support_plan (놀이 지원 & 환경구성안):
+   - 아이들이 오늘 보인 놀이를 더 깊고 넓게 확장할 수 있는 아이디어(extension_idea), 필요한 공간 및 추가 교구(supplies), 교사의 상호작용 발문 팁(interaction_tips).
+
+6. citation (과거 기록 연계):
    - 이전 기록이 제공된 경우, 이전 기록 대비 아동의 발달적 성장점/변화점(예: 소근육 조절력 향상, 또래 관심 증가 등)을 서술에 반영할 것.
    - citation 요약: 반드시 "📌 참고한 과거 기록: [YYYY-MM-DD] ..." 형식으로 한 줄 요약 작성. 이전 기록이 없으면 빈 문자열.
 
 [반환 형식]: 반드시 아래 JSON 스키마를 엄격히 준수하여 응답하라 (추가 텍스트나 마크다운 코드블록 없이 순수 JSON만 반환).
 {
   "kidsnote": {
-    "title": "알림장 제목 (예: 블록으로 높이높이 성을 쌓았어요!)",
+    "title": "알림장 제목",
     "content": "학부모용 다정체 서술문",
-    "tags": ["#영역태그1", "#영역태그2"]
+    "tags": ["#태그1", "#태그2"]
   },
   "observation_log": {
-    "standard_area": "표준보육 영역 (예: 신체운동·건강 또는 예술경험)",
-    "activity_name": "활동명 (예: 블록 쌓기 놀이)",
+    "standard_area": "표준보육 영역 (예: 신체운동·건강)",
+    "activity_name": "활동명",
     "behavior": "객관적 행동 관찰문 (~함 체)",
-    "evaluation": "교사의 상호작용 지원 및 발달 평가 (~를 격려함, ~발달이 촉진됨 체)"
+    "evaluation": "교사의 상호작용 지원 및 발달 평가"
+  },
+  "daily_care_log": {
+    "play_summary": "오늘 우리 반 유아들의 전반적인 놀이 흐름 요약",
+    "play_evaluation": "놀이에 대한 교사의 종합 평가 및 배움 분석",
+    "next_support_plan": "내일 놀이 확장을 위한 공간/자료 및 교사 지원 계획"
+  },
+  "parent_counseling": {
+    "daily_routine": "식습관, 낮잠, 배변 등 기본생활습관 특징",
+    "social_relations": "또래 및 교사와의 긍정적 상호작용과 사회성",
+    "development_feature": "놀이 몰입도 및 신체/언어 발달 강점",
+    "counseling_opinion": "가정 연계 및 학부모 상담 시 안내할 종합 조언"
+  },
+  "play_support_plan": {
+    "extension_idea": "아이들의 관심사에 맞춘 심화 확장 놀이 아이디어",
+    "recommended_materials": "추가 배치할 놀이 교구 및 환경구성 자료",
+    "interaction_tips": "아이의 사고 확장을 돕는 교사의 추천 발문 팁"
   },
   "citation": {
-    "has_citation": true or false,
-    "summary": "📌 참고한 과거 기록: [2026-09-05] 가위질 미숙 기록 대비 양손 협응력 향상 관찰됨"
+    "has_citation": true,
+    "summary": "📌 참고한 과거 기록: [2026-09-05] 대비 성장 요약"
   }
 }`;
 }

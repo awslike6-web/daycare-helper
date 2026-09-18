@@ -97,6 +97,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const resultTabBtns = document.querySelectorAll('.result-tab-btn');
   const kidsnoteCard = document.getElementById('kidsnoteCard');
   const observationCard = document.getElementById('observationCard');
+  const dailyCareCard = document.getElementById('dailyCareCard');
+  const counselingCard = document.getElementById('counselingCard');
+  const playSupportCard = document.getElementById('playSupportCard');
 
   const kidsnoteTitle = document.getElementById('kidsnoteTitle');
   const kidsnoteTags = document.getElementById('kidsnoteTags');
@@ -110,7 +113,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const obsEvaluationContent = document.getElementById('obsEvaluationContent');
   const citationBox = document.getElementById('citationBox');
   const citationSummaryText = document.getElementById('citationSummaryText');
+  const copyObservationBtn = document.getElementById('copyObservationBtn');
   const saveNotionBtn = document.getElementById('saveNotionBtn');
+
+  // 3대 추가 서식 필드 및 복사 버튼
+  const dailyPlaySummary = document.getElementById('dailyPlaySummary');
+  const dailyPlayEval = document.getElementById('dailyPlayEval');
+  const dailyNextPlan = document.getElementById('dailyNextPlan');
+  const copyDailyCareBtn = document.getElementById('copyDailyCareBtn');
+
+  const counselRoutine = document.getElementById('counselRoutine');
+  const counselSocial = document.getElementById('counselSocial');
+  const counselDev = document.getElementById('counselDev');
+  const counselOpinion = document.getElementById('counselOpinion');
+  const copyCounselingBtn = document.getElementById('copyCounselingBtn');
+
+  const playExtension = document.getElementById('playExtension');
+  const playMaterials = document.getElementById('playMaterials');
+  const playTips = document.getElementById('playTips');
+  const copyPlaySupportBtn = document.getElementById('copyPlaySupportBtn');
 
   const toastMessage = document.getElementById('toastMessage');
   const settingsBtn = document.getElementById('settingsBtn');
@@ -213,21 +234,57 @@ document.addEventListener('DOMContentLoaded', () => {
         resultTabBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         const tab = btn.dataset.tab;
-        if (tab === 'kidsnote') {
-          kidsnoteCard.style.display = 'flex';
-          observationCard.style.display = 'none';
-        } else {
-          kidsnoteCard.style.display = 'none';
-          observationCard.style.display = 'flex';
-        }
+        
+        // 5대 서식 카드 전체 숨김 후 선택된 탭만 노출
+        kidsnoteCard.style.display = 'none';
+        observationCard.style.display = 'none';
+        if (dailyCareCard) dailyCareCard.style.display = 'none';
+        if (counselingCard) counselingCard.style.display = 'none';
+        if (playSupportCard) playSupportCard.style.display = 'none';
+
+        if (tab === 'kidsnote') kidsnoteCard.style.display = 'flex';
+        else if (tab === 'observation') observationCard.style.display = 'flex';
+        else if (tab === 'daily_care' && dailyCareCard) dailyCareCard.style.display = 'flex';
+        else if (tab === 'counseling' && counselingCard) counselingCard.style.display = 'flex';
+        else if (tab === 'play_support' && playSupportCard) playSupportCard.style.display = 'flex';
       });
     });
 
-    // 원터치 알림장 복사
+    // 1. 키즈노트 알림장 복사 및 공유
     copyKidsnoteBtn.addEventListener('click', handleCopyKidsnote);
-
-    // 키즈노트 앱 열기 / 공유
     shareKidsnoteBtn.addEventListener('click', handleShareKidsnote);
+
+    // 2. 평가제 관찰일지 복사
+    if (copyObservationBtn) {
+      copyObservationBtn.addEventListener('click', () => {
+        const text = `[관찰일지 - ${obsStandardArea.textContent} / ${obsActivityName.textContent}]\n\n[행동 관찰]\n${obsBehaviorContent.value}\n\n[지원 및 평가]\n${obsEvaluationContent.value}`;
+        copyTextToClipboard(text, '📋 평가제 관찰일지가 복사되었습니다.');
+      });
+    }
+
+    // 3. 일일 보육일지 복사
+    if (copyDailyCareBtn) {
+      copyDailyCareBtn.addEventListener('click', () => {
+        const text = `[일일 보육일지 - 놀이 평가 및 지원 계획]\n\n1. 놀이 흐름 요약:\n${dailyPlaySummary.value}\n\n2. 교사 종합 평가:\n${dailyPlayEval.value}\n\n3. 내일 놀이 연계 및 지원 계획:\n${dailyNextPlan.value}`;
+        copyTextToClipboard(text, '📋 보육일지 놀이평가 및 지원계획이 복사되었습니다.');
+      });
+    }
+
+    // 4. 학부모 상담 면담일지 복사
+    if (copyCounselingBtn) {
+      copyCounselingBtn.addEventListener('click', () => {
+        const text = `[학부모 상담 면담일지 요약 - ${state.selectedChild?.name || '원아'}]\n\n1. 기본생활습관: ${counselRoutine.value}\n2. 대인관계 및 사회성: ${counselSocial.value}\n3. 발달 특성: ${counselDev.value}\n4. 종합 상담 의견: ${counselOpinion.value}`;
+        copyTextToClipboard(text, '📋 학부모 상담 일지가 복사되었습니다.');
+      });
+    }
+
+    // 5. 놀이 지원안 복사
+    if (copyPlaySupportBtn) {
+      copyPlaySupportBtn.addEventListener('click', () => {
+        const text = `[놀이 지원 & 환경구성안]\n\n1. 확장 놀이 아이디어:\n${playExtension.value}\n\n2. 추천 준비 교구:\n${playMaterials.value}\n\n3. 교사 추천 발문 팁:\n${playTips.value}`;
+        copyTextToClipboard(text, '📋 놀이 지원 및 환경구성안이 복사되었습니다.');
+      });
+    }
 
     // 노션 저장
     saveNotionBtn.addEventListener('click', handleSaveNotion);
@@ -608,7 +665,26 @@ document.addEventListener('DOMContentLoaded', () => {
     obsBehaviorContent.value = obs.behavior || '';
     obsEvaluationContent.value = obs.evaluation || '';
 
-    // 3. 과거 기록 출처 (Citation) 표기
+    // 3. 일일 보육일지 (놀이 평가 및 내일 지원) 채우기
+    const dc = data.daily_care_log || {};
+    if (dailyPlaySummary) dailyPlaySummary.value = dc.play_summary || '';
+    if (dailyPlayEval) dailyPlayEval.value = dc.play_evaluation || '';
+    if (dailyNextPlan) dailyNextPlan.value = dc.next_support_plan || '';
+
+    // 4. 학부모 상담 면담일지 채우기
+    const pc = data.parent_counseling || {};
+    if (counselRoutine) counselRoutine.value = pc.daily_routine || '';
+    if (counselSocial) counselSocial.value = pc.social_relations || '';
+    if (counselDev) counselDev.value = pc.development_feature || '';
+    if (counselOpinion) counselOpinion.value = pc.counseling_opinion || '';
+
+    // 5. 놀이 지원 & 환경구성안 채우기
+    const ps = data.play_support_plan || {};
+    if (playExtension) playExtension.value = ps.extension_idea || '';
+    if (playMaterials) playMaterials.value = ps.recommended_materials || '';
+    if (playTips) playTips.value = ps.interaction_tips || '';
+
+    // 6. 과거 기록 출처 (Citation) 표기
     const cit = data.citation || {};
     if (cit.has_citation && cit.summary) {
       citationBox.style.display = 'flex';
@@ -623,7 +699,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================================
-  // 12. 알림장 복사 및 키즈노트 공유
+  // 12. 공통 클립보드 복사 헬퍼
+  // ============================================================================
+  async function copyTextToClipboard(text, successMsg = '📋 클립보드에 복사되었습니다.') {
+    if (!text) {
+      showToast('복사할 내용이 없습니다.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(successMsg);
+    } catch (e) {
+      const tempArea = document.createElement('textarea');
+      tempArea.value = text;
+      document.body.appendChild(tempArea);
+      tempArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempArea);
+      showToast(successMsg);
+    }
+  }
+
+  // ============================================================================
+  // 13. 알림장 복사 및 키즈노트 공유
   // ============================================================================
   async function handleCopyKidsnote() {
     const textToCopy = kidsnoteContent.value;

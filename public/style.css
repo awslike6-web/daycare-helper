@@ -487,24 +487,38 @@ body {
   gap: 14px;
 }
 
+.result-tabs-scroll {
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.result-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .result-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  gap: 4px;
   background: #E2E8F0;
-  padding: 3px;
+  padding: 4px;
   border-radius: var(--radius-md);
+  width: max-content;
+  min-width: 100%;
 }
 
 .result-tab-btn {
   border: none;
   background: transparent;
-  padding: 8px;
-  font-size: 13px;
+  padding: 8px 12px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-muted);
   border-radius: 10px;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .result-tab-btn.active {
