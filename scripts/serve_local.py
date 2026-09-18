@@ -112,6 +112,35 @@ class DaycareHandler(SimpleHTTPRequestHandler):
             self._send_json({"status": "ok" if GEMINI_API_KEY else "empty", "key": GEMINI_API_KEY})
             return
 
+        if self.path.startswith("/api/session"):
+            import time
+            from datetime import datetime, timezone
+            now_sec = int(time.time())
+            is_mock_expiring = "mock_expiring=true" in self.path
+            
+            if is_mock_expiring:
+                exp_sec = now_sec + 5 * 86400  # 5일 뒤 만료
+                self._send_json({
+                    "protected": True,
+                    "email": "wife_teacher@daycare.kr",
+                    "exp": exp_sec,
+                    "expiresAt": datetime.fromtimestamp(exp_sec, timezone.utc).isoformat(),
+                    "remainingDays": 5,
+                    "remainingSeconds": 5 * 86400,
+                    "isExpiringSoon": True,
+                    "isExpired": False,
+                    "mock": True
+                })
+            else:
+                self._send_json({
+                    "protected": False,
+                    "email": "local-dev@localhost",
+                    "remainingDays": None,
+                    "isExpiringSoon": False,
+                    "message": "로컬 개발 환경입니다. (?mock_expiring=true 로 D-5 테스트 가능)"
+                })
+            return
+
         # 기본 정적 파일 서빙
         super().do_GET()
 

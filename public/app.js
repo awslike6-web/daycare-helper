@@ -147,6 +147,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const personaEmojiLevel = document.getElementById('personaEmojiLevel');
   const personaClosingGreeting = document.getElementById('personaClosingGreeting');
 
+  // 🔐 Cloudflare Access 보안 세션 배너 및 모달 요소
+  const sessionExpiryBanner = document.getElementById('sessionExpiryBanner');
+  const sessionDdayBadge = document.getElementById('sessionDdayBadge');
+  const sessionDescText = document.getElementById('sessionDescText');
+  const dismissSessionBannerBtn = document.getElementById('dismissSessionBannerBtn');
+  const closeSessionBannerBtn = document.getElementById('closeSessionBannerBtn');
+  const sessionStatusTag = document.getElementById('sessionStatusTag');
+  const sessionUserEmailText = document.getElementById('sessionUserEmailText');
+  const sessionExpiryDateText = document.getElementById('sessionExpiryDateText');
+  const sessionDaysLeftText = document.getElementById('sessionDaysLeftText');
+  const testBannerToggleBtn = document.getElementById('testBannerToggleBtn');
+
+  let currentSessionData = null;
+
   // ============================================================================
   // 3. 초기화 (Init)
   // ============================================================================
@@ -158,6 +172,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updatePersonaUI();
 
+    // 🔐 보안 세션 확인 (Cloudflare Access D-7 체크)
+    checkSecuritySession();
+
     // Web Speech API 초기화
     setupSpeechRecognition();
 
@@ -167,6 +184,92 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 이벤트 리스너 등록
     setupEventListeners();
+  }
+
+  // ============================================================================
+  // 3-B. Cloudflare Access 보안 세션 및 D-7 만료 사전 알림 로직
+  // ============================================================================
+  async function checkSecuritySession() {
+    try {
+      const res = await fetch('/api/session');
+      if (!res.ok) return;
+      const data = await res.json();
+      currentSessionData = data;
+      updateSessionUI(data);
+    } catch (err) {
+      console.warn('보안 세션 확인 실패:', err);
+    }
+  }
+
+  function updateSessionUI(data) {
+    if (!data) return;
+
+    if (sessionUserEmailText) {
+      sessionUserEmailText.textContent = data.email || '인증 사용자';
+    }
+
+    if (data.protected) {
+      if (sessionStatusTag) {
+        sessionStatusTag.textContent = '보안 인증됨';
+        sessionStatusTag.style.background = '#ECFDF5';
+        sessionStatusTag.style.color = '#047857';
+      }
+
+      if (sessionExpiryDateText && data.exp) {
+        const expDate = new Date(data.exp * 1000);
+        sessionExpiryDateText.textContent = expDate.toLocaleDateString('ko-KR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      if (sessionDaysLeftText && data.remainingDays !== null) {
+        sessionDaysLeftText.textContent = `${data.remainingDays}일 남음`;
+      }
+
+      // 만료 7일 전(D-7) 사전 안내 배너 판정
+      if (data.isExpiringSoon && data.remainingDays <= 7) {
+        const dismissedExp = localStorage.getItem('daycare_dismissed_session_exp');
+        const isDismissed = dismissedExp && Number(dismissedExp) === data.exp;
+
+        if (!isDismissed) {
+          showSessionBanner(data.remainingDays, data.exp);
+        } else {
+          hideSessionBanner();
+        }
+      } else {
+        hideSessionBanner();
+      }
+    } else {
+      if (sessionStatusTag) {
+        sessionStatusTag.textContent = '로컬/미보호';
+        sessionStatusTag.style.background = '#F3F4F6';
+        sessionStatusTag.style.color = '#4B5563';
+      }
+      if (sessionExpiryDateText) sessionExpiryDateText.textContent = '세션 제한 없음';
+      if (sessionDaysLeftText) sessionDaysLeftText.textContent = '로컬 개발 환경';
+      hideSessionBanner();
+    }
+  }
+
+  function showSessionBanner(daysLeft, exp) {
+    if (!sessionExpiryBanner) return;
+    if (sessionDdayBadge) {
+      sessionDdayBadge.textContent = `D-${daysLeft}`;
+    }
+    if (sessionDescText) {
+      sessionDescText.textContent = `약 ${daysLeft}일 후 보안 세션이 만료되어 접속 시 이메일 6자리 인증이 다시 요청될 수 있어요.`;
+    }
+    sessionExpiryBanner.style.display = 'flex';
+  }
+
+  function hideSessionBanner() {
+    if (sessionExpiryBanner) {
+      sessionExpiryBanner.style.display = 'none';
+    }
   }
 
   function updatePersonaUI() {
@@ -344,6 +447,37 @@ document.addEventListener('DOMContentLoaded', () => {
     closeSettingsBtn.addEventListener('click', () => {
       settingsModal.style.display = 'none';
     });
+
+    // 🔐 보안 세션 배너 관련 이벤트 리스너
+    if (dismissSessionBannerBtn) {
+      dismissSessionBannerBtn.addEventListener('click', () => {
+        if (currentSessionData && currentSessionData.exp) {
+          localStorage.setItem('daycare_dismissed_session_exp', currentSessionData.exp.toString());
+        } else {
+          localStorage.setItem('daycare_dismissed_session_exp', 'test_dismissed');
+        }
+        hideSessionBanner();
+        showToast('✅ 보안 세션 알림을 확인 완료했습니다. 이번 만료 시점까지 다시 표시되지 않아요.');
+      });
+    }
+
+    if (closeSessionBannerBtn) {
+      closeSessionBannerBtn.addEventListener('click', () => {
+        hideSessionBanner();
+      });
+    }
+
+    if (testBannerToggleBtn) {
+      testBannerToggleBtn.addEventListener('click', () => {
+        if (sessionExpiryBanner && sessionExpiryBanner.style.display === 'none') {
+          showSessionBanner(6, Math.floor(Date.now() / 1000) + 6 * 86400);
+          showToast('🧪 만료 D-6 사전 안내 배너를 화면에 표시했습니다.');
+        } else {
+          hideSessionBanner();
+          showToast('테스트 배너를 닫았습니다.');
+        }
+      });
+    }
 
     // 프리셋 칩 클릭 시 해당 프리셋 데이터 폼에 자동 주입
     if (personaPresetGrid) {

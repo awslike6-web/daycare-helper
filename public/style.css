@@ -869,3 +869,145 @@ body {
 .refine-custom-btn:hover {
   background: var(--primary-dark);
 }
+
+/* 🔐 Cloudflare Access 보안 세션 만료 사전 알림 배너 */
+.session-expiry-banner {
+  background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+  border-bottom: 1px solid #FCD34D;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.08);
+  animation: slideDown 0.3s ease-out;
+  position: sticky;
+  top: 56px;
+  z-index: 95;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.banner-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.banner-text-box {
+  min-width: 0;
+}
+
+.banner-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #92400E;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.session-dday-badge {
+  background: #EF4444;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+}
+
+.banner-desc {
+  font-size: 11px;
+  color: #B45309;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.banner-btn-dismiss {
+  background: #D97706;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.banner-btn-dismiss:hover {
+  background: #B45309;
+}
+
+.banner-btn-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #92400E;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+/* 🔐 설정 모달 내 세션 정보 카드 */
+.session-info-card {
+  background: #F8FAFC;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.session-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.session-info-title {
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.session-info-body {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+@media (max-width: 480px) {
+  .session-expiry-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .banner-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .banner-desc {
+    white-space: normal;
+  }
+}
+

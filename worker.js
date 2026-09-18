@@ -27,6 +27,25 @@ function jsonResponse(data, status = 200) {
   });
 }
 
+function parseJwtPayload(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    console.warn('JWT Payload 디코딩 실패:', e);
+    return null;
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -61,6 +80,41 @@ export default {
       return jsonResponse({
         status: apiKey ? 'ok' : 'empty',
         key: apiKey
+      });
+    }
+
+    // 2-C. 🔐 Cloudflare Access 보안 세션 확인 (/api/session)
+    if (url.pathname === '/api/session' && request.method === 'GET') {
+      const jwtToken = request.headers.get('Cf-Access-Jwt-Assertion');
+      const userEmail = request.headers.get('Cf-Access-Authenticated-User-Email');
+
+      if (jwtToken) {
+        const payload = parseJwtPayload(jwtToken);
+        if (payload && payload.exp) {
+          const nowSec = Math.floor(Date.now() / 1000);
+          const remainingSeconds = payload.exp - nowSec;
+          const remainingDays = Math.max(0, Math.ceil(remainingSeconds / (24 * 3600)));
+          const email = userEmail || payload.email || '인증 사용자';
+
+          return jsonResponse({
+            protected: true,
+            email,
+            exp: payload.exp,
+            expiresAt: new Date(payload.exp * 1000).toISOString(),
+            remainingDays,
+            remainingSeconds,
+            isExpiringSoon: remainingDays <= 7 && remainingSeconds > 0,
+            isExpired: remainingSeconds <= 0
+          });
+        }
+      }
+
+      return jsonResponse({
+        protected: false,
+        email: userEmail || '로컬/미보호 환경',
+        remainingDays: null,
+        isExpiringSoon: false,
+        message: 'Cloudflare Access가 아직 활성화되지 않았거나 로컬 환경입니다.'
       });
     }
 

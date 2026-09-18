@@ -34,6 +34,26 @@
       </div>
     </header>
 
+    <!-- 🔐 Cloudflare Access 보안 세션 만료 D-7 사전 안내 배너 -->
+    <div id="sessionExpiryBanner" class="session-expiry-banner" style="display: none;">
+      <div class="banner-content">
+        <span class="banner-icon">🔐</span>
+        <div class="banner-text-box">
+          <div class="banner-title">
+            <span>보안 세션 만료</span>
+            <span id="sessionDdayBadge" class="session-dday-badge">D-6</span>
+          </div>
+          <div class="banner-desc" id="sessionDescText">
+            조만간 접속 시 이메일 6자리 인증이 다시 요청될 수 있어요.
+          </div>
+        </div>
+      </div>
+      <div class="banner-actions">
+        <button type="button" id="dismissSessionBannerBtn" class="banner-btn-dismiss">알겠어요 (확인 완료)</button>
+        <button type="button" id="closeSessionBannerBtn" class="banner-btn-close" title="닫기">&times;</button>
+      </div>
+    </div>
+
     <!-- 👶 원아 퀵 선택 가로 스크롤 섹션 -->
     <section class="child-selector-section">
       <div class="section-label">
@@ -290,6 +310,25 @@
         </div>
         
         <div style="display: flex; flex-direction: column; gap: 14px; font-size: 13px;">
+          <!-- 🔐 보안 접속 및 세션 상태 카드 -->
+          <div class="session-info-card">
+            <div class="session-info-header">
+              <span class="session-info-title">
+                <span>🔐</span> <span>접속 보안 세션 (Zero Trust)</span>
+              </span>
+              <span id="sessionStatusTag" class="tag-badge" style="background: #E0E7FF; color: var(--primary);">보안 연결</span>
+            </div>
+            <div class="session-info-body">
+              <div>• 로그인 계정: <b id="sessionUserEmailText" style="color: var(--text-main);">-</b></div>
+              <div>• 세션 유지: <span id="sessionExpiryDateText" style="color: var(--text-main); font-weight: 600;">-</span> (<span id="sessionDaysLeftText">30일 유지</span>)</div>
+            </div>
+            <div style="margin-top: 8px; display: flex; gap: 6px;">
+              <button type="button" id="testBannerToggleBtn" class="action-btn" style="font-size: 11px; padding: 4px 8px; border: 1px dashed var(--primary); background: #EEF2FF; color: var(--primary); cursor: pointer;">
+                🧪 만료 D-7 배너 미리보기 테스트
+              </button>
+            </div>
+          </div>
+
           <!-- 1. 퀵 프리셋 선택 칩 -->
           <div>
             <label style="font-weight: 700; display: block; margin-bottom: 6px; color: var(--text-main);">
