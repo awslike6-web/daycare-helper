@@ -1,7 +1,10 @@
 # 🧸 daycare-helper (어린이집 교사 맞춤형 AI 보육 비서)
 
 어린이집/유치원 교사의 일상 업무를 혁신하는 2026 플래그십 AI 보육 보조 웹 서비스입니다.  
-거친 단편 메모나 활동 사진 1~2장만으로 평가제 기준에 맞춘 **키즈노트 알림장**과 **보육/관찰일지**를 교사 스타일에 맞게 즉시 생성하고 노션에 아카이빙합니다.
+거친 단편 메모나 활동 사진 1~6장만으로 평가제 기준에 맞춘 **키즈노트 알림장, 관찰일지, 보육일지, 상담일지, 놀이지원안 5대 표준 서식**을 교사 스타일에 맞게 즉시 생성하고 노션에 아카이빙합니다.
+
+- 🏰 **공식 배포 주소**: [https://daycare-helper.awslike6.workers.dev/](https://daycare-helper.awslike6.workers.dev/)
+- 📦 **공식 깃 저장소**: [https://github.com/awslike6-web/daycare-helper](https://github.com/awslike6-web/daycare-helper)
 
 ---
 
