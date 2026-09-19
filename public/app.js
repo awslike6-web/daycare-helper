@@ -76,6 +76,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const selectedChildAge = document.getElementById('selectedChildAge');
   const childTraitsText = document.getElementById('childTraitsText');
   const childAlertText = document.getElementById('childAlertText');
+  const addChildBtn = document.getElementById('addChildBtn');
+  const editChildBtn = document.getElementById('editChildBtn');
+  const childManageModal = document.getElementById('childManageModal');
+  const childModalTitle = document.getElementById('childModalTitle');
+  const closeChildModalBtn = document.getElementById('closeChildModalBtn');
+  const childManageForm = document.getElementById('childManageForm');
+  const manageChildId = document.getElementById('manageChildId');
+  const manageChildName = document.getElementById('manageChildName');
+  const manageChildAge = document.getElementById('manageChildAge');
+  const manageChildTraits = document.getElementById('manageChildTraits');
+  const manageChildAllergies = document.getElementById('manageChildAllergies');
+  const saveChildBtn = document.getElementById('saveChildBtn');
 
   const modeSwitcher = document.getElementById('modeSwitcher');
   const areaSection = document.getElementById('areaSection');
@@ -479,6 +491,28 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // 👶 원아 관리 (등록/수정) 모달 이벤트
+    if (addChildBtn) {
+      addChildBtn.addEventListener('click', () => openChildModal('add'));
+    }
+    if (editChildBtn) {
+      editChildBtn.addEventListener('click', () => {
+        if (state.selectedChild) {
+          openChildModal('edit', state.selectedChild);
+        } else {
+          showToast('수정할 원아를 먼저 선택해주세요.');
+        }
+      });
+    }
+    if (closeChildModalBtn) {
+      closeChildModalBtn.addEventListener('click', () => {
+        childManageModal.style.display = 'none';
+      });
+    }
+    if (childManageForm) {
+      childManageForm.addEventListener('submit', handleChildFormSubmit);
+    }
+
     // 프리셋 칩 클릭 시 해당 프리셋 데이터 폼에 자동 주입
     if (personaPresetGrid) {
       personaPresetGrid.querySelectorAll('.persona-preset-chip').forEach(chip => {
@@ -551,12 +585,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   // 7. 원아 목록 불러오기 (/api/children)
   // ============================================================================
-  async function loadChildren() {
+  async function loadChildren(selectedId = null) {
     try {
       const res = await fetch('/api/children');
       const data = await res.json();
       state.children = data.children || [];
-      renderChildrenChips();
+
+      // 노션 연동 여부 뱃지 업데이트
+      if (data.source === 'notion') {
+        notionStatusBadge.className = 'badge badge-connected';
+        notionStatusText.textContent = '노션 연동됨';
+      }
+
+      renderChildrenChips(selectedId);
     } catch (err) {
       console.warn('원아 목록 불러오기 실패, 기본 샘플 사용:', err);
       // 오프라인 폴백 샘플
@@ -564,15 +605,35 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'mock-child-1', name: '김민서', age: '만 4세', traits: '블록 및 조작 놀이 즐김, 소근육 발달 중', allergies: '우유 주의' },
         { id: 'mock-child-2', name: '이민수', age: '만 5세', traits: '또래 협동 놀이, 언어 표현력 우수', allergies: '' }
       ];
-      renderChildrenChips();
+      renderChildrenChips(selectedId);
     }
   }
 
-  function renderChildrenChips() {
+  function renderChildrenChips(selectedId = null) {
     childScrollContainer.innerHTML = '';
+
+    if (state.children.length === 0) {
+      const emptyChip = document.createElement('div');
+      emptyChip.className = 'child-chip child-chip-add';
+      emptyChip.innerHTML = '<span>➕ 첫 원아 등록하기</span>';
+      emptyChip.addEventListener('click', () => openChildModal('add'));
+      childScrollContainer.appendChild(emptyChip);
+      
+      state.selectedChild = null;
+      selectedChildAge.textContent = '-';
+      childTraitsText.textContent = '💡 아직 등록된 원아가 없습니다. [+ 원아 등록] 버튼을 눌러 아이를 추가해 주세요!';
+      childAlertText.style.display = 'none';
+      return;
+    }
+
+    let targetChild = null;
+
     state.children.forEach((child, index) => {
+      const isSelected = selectedId ? child.id === selectedId : index === 0;
+      if (isSelected) targetChild = child;
+
       const chip = document.createElement('div');
-      chip.className = `child-chip ${index === 0 ? 'active' : ''}`;
+      chip.className = `child-chip ${isSelected ? 'active' : ''}`;
       chip.innerHTML = `
         <span class="child-avatar">${getAvatarEmoji(child.name)}</span>
         <span>${child.name}</span>
@@ -585,7 +646,16 @@ document.addEventListener('DOMContentLoaded', () => {
       childScrollContainer.appendChild(chip);
     });
 
-    if (state.children.length > 0) {
+    // 맨 끝에 [+ 추가] 칩 항상 배치
+    const addChip = document.createElement('div');
+    addChip.className = 'child-chip child-chip-add';
+    addChip.innerHTML = '<span>➕ 추가</span>';
+    addChip.addEventListener('click', () => openChildModal('add'));
+    childScrollContainer.appendChild(addChip);
+
+    if (targetChild) {
+      selectChild(targetChild);
+    } else if (state.children.length > 0) {
       selectChild(state.children[0]);
     }
   }
@@ -606,6 +676,86 @@ document.addEventListener('DOMContentLoaded', () => {
       childAlertText.textContent = `⚠️ 주의: ${child.allergies}`;
     } else {
       childAlertText.style.display = 'none';
+    }
+  }
+
+  // ============================================================================
+  // 7-B. 원아 등록 및 수정 모달 제어
+  // ============================================================================
+  function openChildModal(mode, child = null) {
+    if (!childManageModal) return;
+
+    if (mode === 'edit' && child) {
+      childModalTitle.textContent = `👶 ${child.name} 정보 및 성향 수정`;
+      manageChildId.value = child.id || '';
+      manageChildName.value = child.name || '';
+      manageChildAge.value = child.age || '만 4세';
+      manageChildTraits.value = child.traits || '';
+      manageChildAllergies.value = child.allergies || '';
+      saveChildBtn.innerHTML = '<span>💾</span> <span>원아 정보 수정 저장</span>';
+    } else {
+      childModalTitle.textContent = '👶 새 원아 등록 (노션 자동 연동)';
+      manageChildId.value = '';
+      manageChildName.value = '';
+      manageChildAge.value = '만 4세';
+      manageChildTraits.value = '';
+      manageChildAllergies.value = '';
+      saveChildBtn.innerHTML = '<span>💾</span> <span>노션에 원아 등록하기</span>';
+    }
+
+    childManageModal.style.display = 'flex';
+    manageChildName.focus();
+  }
+
+  async function handleChildFormSubmit(e) {
+    e.preventDefault();
+    const name = manageChildName.value.trim();
+    if (!name) {
+      showToast('원아 이름을 입력해주세요.');
+      return;
+    }
+
+    const id = manageChildId.value;
+    const age = manageChildAge.value;
+    const traits = manageChildTraits.value.trim();
+    const allergies = manageChildAllergies.value.trim();
+
+    saveChildBtn.disabled = true;
+    saveChildBtn.innerHTML = '<span>⏳</span> <span>노션에 저장 중...</span>';
+
+    try {
+      let res;
+      if (id && !id.startsWith('mock-')) {
+        res = await fetch(`/api/children/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, age, traits, allergies })
+        });
+      } else {
+        res = await fetch('/api/children', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, age, traits, allergies })
+        });
+      }
+
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.error || '원아 저장에 실패했습니다.');
+      }
+
+      const result = await res.json();
+      childManageModal.style.display = 'none';
+      showToast(id ? `✅ ${name} 정보가 수정되었습니다.` : `🎉 ${name} 원아가 노션에 등록되었습니다!`);
+      
+      const newChildId = result.child?.id || id;
+      await loadChildren(newChildId);
+    } catch (err) {
+      console.error('Child save error:', err);
+      showToast(`저장 오류: ${err.message}`);
+    } finally {
+      saveChildBtn.disabled = false;
+      saveChildBtn.innerHTML = '<span>💾</span> <span>노션에 원아 저장하기</span>';
     }
   }
 

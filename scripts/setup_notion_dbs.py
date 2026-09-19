@@ -20,16 +20,20 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-NOTION_API_BASE = "https://api.notion.com/v1"
+NOTION_PROXY_URL = "https://minmin-notion.awslike6.workers.dev"
+NOTION_API_BASE = f"{NOTION_PROXY_URL}/v1"
 NOTION_VERSION = "2022-06-28"
 
 def create_notion_db(token: str, parent_page_id: str, title: str, properties: dict) -> dict:
     url = f"{NOTION_API_BASE}/databases"
     headers = {
-        "Authorization": f"Bearer {token}" if not token.startswith("Bearer ") else token,
         "Notion-Version": NOTION_VERSION,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0"
     }
+    if token:
+        headers["Authorization"] = f"Bearer {token}" if not token.startswith("Bearer ") else token
+
     payload = {
         "parent": {"type": "page_id", "page_id": parent_page_id},
         "title": [{"type": "text", "text": {"content": title}}],
@@ -44,16 +48,9 @@ def main():
     print("🧸 daycare-helper Notion 3대 DB 생성 도우미")
     print("=" * 60)
     
-    token = os.environ.get("NOTION_TOKEN")
-    parent_page_id = os.environ.get("NOTION_PARENT_PAGE_ID")
+    token = os.environ.get("NOTION_TOKEN", "")
+    parent_page_id = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("NOTION_PARENT_PAGE_ID", "")
     
-    if not token:
-        print("\n[안내] NOTION_TOKEN 환경 변수가 설정되지 않았습니다.")
-        token = input("👉 노션 통합 토큰(secret_...)을 입력하세요 (건너뛰려면 Enter): ").strip()
-        if not token:
-            print("❌ 토큰이 없어 종료합니다. .dev.vars에 수동으로 입력해주세요.")
-            return
-
     if not parent_page_id:
         parent_page_id = input("👉 DB들을 생성할 상위 페이지 ID(32자)를 입력하세요: ").strip()
         if not parent_page_id:

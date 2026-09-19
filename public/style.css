@@ -1011,3 +1011,57 @@ body {
   }
 }
 
+/* 👶 원아 관리 (등록/수정) 버튼 및 칩 스타일 */
+.add-child-header-btn {
+  background: #EEF2FF;
+  border: 1px solid #C7D2FE;
+  color: var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.add-child-header-btn:hover {
+  background: var(--primary);
+  color: #FFFFFF;
+}
+
+.edit-child-btn {
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.edit-child-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: #EEF2FF;
+}
+
+.child-chip-add {
+  border: 1px dashed var(--primary) !important;
+  background: #F8FAFC !important;
+  color: var(--primary) !important;
+  cursor: pointer;
+}
+
+.child-chip-add:hover {
+  background: #EEF2FF !important;
+}
+

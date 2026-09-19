@@ -8,7 +8,7 @@
  */
 
 import { generateDaycareLog } from './api/gemini.js';
-import { getChildrenList, getRecentChildLogs, saveDailyLogToNotion } from './api/notion.js';
+import { getChildrenList, getRecentChildLogs, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion } from './api/notion.js';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -124,6 +124,22 @@ export default {
         // [GET] /api/children - 원아 목록 조회
         if (url.pathname === '/api/children' && request.method === 'GET') {
           const result = await getChildrenList(env);
+          return jsonResponse(result);
+        }
+
+        // [POST] /api/children - 신규 원아 등록
+        if (url.pathname === '/api/children' && request.method === 'POST') {
+          const body = await request.json();
+          const result = await saveChildToNotion(body, env);
+          return jsonResponse(result);
+        }
+
+        // [PUT/PATCH] /api/children/:id - 원아 정보 수정
+        const childUpdateMatch = url.pathname.match(/^\/api\/children\/([^/]+)$/);
+        if (childUpdateMatch && (request.method === 'PUT' || request.method === 'PATCH')) {
+          const childId = decodeURIComponent(childUpdateMatch[1]);
+          const body = await request.json();
+          const result = await updateChildInNotion(childId, body, env);
           return jsonResponse(result);
         }
 

@@ -56,9 +56,14 @@
 
     <!-- 👶 원아 퀵 선택 가로 스크롤 섹션 -->
     <section class="child-selector-section">
-      <div class="section-label">
-        <span>원아 선택</span>
-        <span id="selectedChildAge" style="font-weight: 500;">만 4세</span>
+      <div class="section-label" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <span>원아 선택</span>
+          <span id="selectedChildAge" style="font-weight: 500; margin-left: 6px;">만 4세</span>
+        </div>
+        <button type="button" id="addChildBtn" class="add-child-header-btn" title="새 원아 등록">
+          <span>➕</span> <span>원아 등록</span>
+        </button>
       </div>
       <div class="child-scroll-container" id="childScrollContainer">
         <!-- 원아 칩들이 JS로 동적 렌더링됨 -->
@@ -68,8 +73,15 @@
         </div>
       </div>
       <div class="child-info-card" id="childInfoCard">
-        <div class="child-traits-text" id="childTraitsText">💡 성향: 손으로 만지는 조작 놀이를 즐김 (소근육 발달 중)</div>
-        <div class="child-alert-text" id="childAlertText" style="display: none;">⚠️ 주의: 우유 과다 섭취 주의</div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+          <div style="flex: 1;">
+            <div class="child-traits-text" id="childTraitsText">💡 성향: 손으로 만지는 조작 놀이를 즐김 (소근육 발달 중)</div>
+            <div class="child-alert-text" id="childAlertText" style="display: none;">⚠️ 주의: 우유 과다 섭취 주의</div>
+          </div>
+          <button type="button" id="editChildBtn" class="edit-child-btn" title="원아 정보 및 성향 수정">
+            <span>✏️</span> <span>수정</span>
+          </button>
+        </div>
       </div>
     </section>
 
@@ -414,6 +426,84 @@
             💾 페르소나 설정 저장하기
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- 👶 원아 등록/수정 모달 -->
+    <div class="modal-overlay" id="childManageModal" style="display: none;">
+      <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+          <div class="modal-title" id="childModalTitle">👶 원아 등록 / 정보 수정</div>
+          <button type="button" class="close-btn" id="closeChildModalBtn">&times;</button>
+        </div>
+        
+        <form id="childManageForm" style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+          <input type="hidden" id="manageChildId" value="">
+          
+          <div>
+            <label style="font-weight: 700; display: block; margin-bottom: 4px; color: var(--text-main);">
+              원아 이름 <span style="color: #EF4444;">*</span>
+            </label>
+            <input 
+              type="text" 
+              id="manageChildName" 
+              class="memo-textarea" 
+              style="min-height: 40px; padding: 8px 12px; font-size: 13px;" 
+              placeholder="예: 김민서" 
+              required
+            >
+          </div>
+
+          <div>
+            <label style="font-weight: 700; display: block; margin-bottom: 4px; color: var(--text-main);">
+              연령 / 담당반
+            </label>
+            <select id="manageChildAge" class="memo-textarea" style="min-height: 40px; padding: 8px; font-size: 13px;">
+              <option value="만 0세">만 0세 (씨앗반)</option>
+              <option value="만 1세">만 1세 (새싹반)</option>
+              <option value="만 2세">만 2세 (꽃잎반)</option>
+              <option value="만 3세">만 3세 (열매반)</option>
+              <option value="만 4세" selected>만 4세 (햇살반)</option>
+              <option value="만 5세">만 5세 (하늘반)</option>
+            </select>
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label style="font-weight: 700; color: var(--text-main);">
+                💡 성향 및 특이사항 (AI 맞춤 반영 핵심 ⭐)
+              </label>
+            </div>
+            <textarea 
+              id="manageChildTraits" 
+              class="memo-textarea" 
+              style="min-height: 90px; font-size: 13px; line-height: 1.5;" 
+              placeholder="아이가 몰입하는 놀이, 소근육/대근육 특성, 또래 관계 등을 적어주세요.&#10;예) 블록으로 성 쌓기 놀이를 즐기며 공간 감각이 좋음. 가위질 등 정밀 소근육 조절력 발달 중이며 친구에게 양보를 잘함."
+            ></textarea>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+              * 여기에 적힌 성향은 AI가 알림장이나 관찰일지를 쓸 때 아이의 고유한 개성으로 100% 반영됩니다.
+            </div>
+          </div>
+
+          <div>
+            <label style="font-weight: 700; display: block; margin-bottom: 4px; color: var(--text-main);">
+              ⚠️ 알레르기 및 주의사항 (선택)
+            </label>
+            <input 
+              type="text" 
+              id="manageChildAllergies" 
+              class="memo-textarea" 
+              style="min-height: 40px; padding: 8px 12px; font-size: 13px;" 
+              placeholder="예: 복숭아 알레르기, 우유 과다 섭취 주의 (없으면 빈칸)"
+            >
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 6px;">
+            <button type="submit" id="saveChildBtn" class="submit-btn" style="flex: 1; padding: 12px;">
+              💾 노션에 원아 저장하기
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 

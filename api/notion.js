@@ -84,7 +84,8 @@ async function callNotionApi({ endpoint, method = 'GET', body = null, token, pro
 
   const headers = {
     'Content-Type': 'application/json',
-    'Notion-Version': NOTION_VERSION
+    'Notion-Version': NOTION_VERSION,
+    'User-Agent': 'Mozilla/5.0'
   };
 
   if (token) {
@@ -118,7 +119,7 @@ export async function getChildrenList(env) {
   const proxyUrl = env.NOTION_PROXY_URL;
 
   // 노션 DB가 연결되지 않은 경우 모크 목록 반환
-  if (!dbId || !token) {
+  if (!dbId || (!token && !proxyUrl)) {
     return {
       source: 'mock_fallback',
       children: MOCK_CHILDREN
@@ -270,7 +271,7 @@ export async function saveDailyLogToNotion({
   const pageTitle = `[${today}] ${childName} - ${activityArea || '자유놀이'}`;
 
   // 노션 환경 미구축 시 시뮬레이션 성공 반환
-  if (!dbId || !token) {
+  if (!dbId || (!token && !proxyUrl)) {
     return {
       success: true,
       mode: 'mock_saved',
@@ -370,3 +371,145 @@ export async function saveDailyLogToNotion({
     url: response.url
   };
 }
+
+/**
+ * 4️⃣ 신규 원아 등록 (/api/children - POST)
+ */
+export async function saveChildToNotion({ name, age, traits, allergies }, env) {
+  const dbId = env.NOTION_CHILD_DB_ID;
+  const token = env.NOTION_TOKEN;
+  const proxyUrl = env.NOTION_PROXY_URL;
+
+  if (!name) {
+    throw new Error('원아 이름이 필요합니다.');
+  }
+
+  // 노션 DB가 연결되지 않은 경우 로컬 모크 생성
+  if (!dbId || (!token && !proxyUrl)) {
+    const mockId = `mock-child-${Date.now()}`;
+    return {
+      success: true,
+      mode: 'mock_created',
+      child: {
+        id: mockId,
+        name,
+        age: age || '만 4세',
+        traits: traits || '',
+        allergies: allergies || ''
+      }
+    };
+  }
+
+  const properties = {
+    '아동명': {
+      title: [{ text: { content: name } }]
+    },
+    '생년월일/연령': {
+      rich_text: [{ text: { content: age || '만 4세' } }]
+    },
+    '성향 및 특이사항': {
+      rich_text: [{ text: { content: traits || '' } }]
+    },
+    '알레르기/주의사항': {
+      rich_text: [{ text: { content: allergies || '' } }]
+    }
+  };
+
+  const createPayload = {
+    parent: { database_id: dbId },
+    properties
+  };
+
+  const response = await callNotionApi({
+    endpoint: '/pages',
+    method: 'POST',
+    body: createPayload,
+    token,
+    proxyUrl
+  });
+
+  return {
+    success: true,
+    mode: 'notion_created',
+    child: {
+      id: response.id,
+      name,
+      age: age || '만 4세',
+      traits: traits || '',
+      allergies: allergies || '',
+      url: response.url
+    }
+  };
+}
+
+/**
+ * 5️⃣ 원아 정보 수정 (/api/children/:id - PUT)
+ */
+export async function updateChildInNotion(childId, { name, age, traits, allergies }, env) {
+  const token = env.NOTION_TOKEN;
+  const proxyUrl = env.NOTION_PROXY_URL;
+
+  if (!childId) {
+    throw new Error('원아 ID가 필요합니다.');
+  }
+
+  // 모크 원아인 경우
+  if (childId.startsWith('mock-')) {
+    return {
+      success: true,
+      mode: 'mock_updated',
+      child: {
+        id: childId,
+        name,
+        age: age || '만 4세',
+        traits: traits || '',
+        allergies: allergies || ''
+      }
+    };
+  }
+
+  const properties = {};
+  if (name) {
+    properties['아동명'] = {
+      title: [{ text: { content: name } }]
+    };
+  }
+  if (age !== undefined) {
+    properties['생년월일/연령'] = {
+      rich_text: [{ text: { content: age } }]
+    };
+  }
+  if (traits !== undefined) {
+    properties['성향 및 특이사항'] = {
+      rich_text: [{ text: { content: traits } }]
+    };
+  }
+  if (allergies !== undefined) {
+    properties['알레르기/주의사항'] = {
+      rich_text: [{ text: { content: allergies } }]
+    };
+  }
+
+  const updatePayload = { properties };
+
+  const response = await callNotionApi({
+    endpoint: `/pages/${childId}`,
+    method: 'PATCH',
+    body: updatePayload,
+    token,
+    proxyUrl
+  });
+
+  return {
+    success: true,
+    mode: 'notion_updated',
+    child: {
+      id: response.id,
+      name,
+      age,
+      traits,
+      allergies
+    }
+  };
+}
+

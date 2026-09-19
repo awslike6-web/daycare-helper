@@ -105,6 +105,28 @@ class DaycareHandler(SimpleHTTPRequestHandler):
             return
 
         if self.path == "/api/children":
+            child_db_id = os.environ.get("NOTION_CHILD_DB_ID")
+            proxy_url = os.environ.get("NOTION_PROXY_URL", "https://minmin-notion.awslike6.workers.dev")
+            if child_db_id:
+                try:
+                    req_url = f"{proxy_url}/v1/databases/{child_db_id}/query"
+                    payload = {"page_size": 100, "sorts": [{"property": "아동명", "direction": "ascending"}]}
+                    req = urllib.request.Request(req_url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}, method="POST")
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        children = []
+                        for page in data.get("results", []):
+                            props = page.get("properties", {})
+                            name = props.get("아동명", {}).get("title", [{}])[0].get("plain_text", "이름 없음")
+                            age = props.get("생년월일/연령", {}).get("rich_text", [{}])[0].get("plain_text", "만 4세")
+                            traits = props.get("성향 및 특이사항", {}).get("rich_text", [{}])[0].get("plain_text", "")
+                            allergies = props.get("알레르기/주의사항", {}).get("rich_text", [{}])[0].get("plain_text", "")
+                            children.append({"id": page["id"], "name": name, "age": age, "traits": traits, "allergies": allergies})
+                        if children:
+                            self._send_json({"source": "notion", "children": children})
+                            return
+                except Exception as e:
+                    print(f"[WARN] Local notion query failed: {e}")
             self._send_json({"source": "local_dev", "children": CHILDREN})
             return
 
@@ -277,17 +299,139 @@ class DaycareHandler(SimpleHTTPRequestHandler):
             self._send_json({"success": True, "data": mock_res})
             return
 
+        if self.path == "/api/children":
+            name = body.get("name", "신규 원아")
+            age = body.get("age", "만 4세")
+            traits = body.get("traits", "")
+            allergies = body.get("allergies", "")
+
+            child_db_id = os.environ.get("NOTION_CHILD_DB_ID")
+            proxy_url = os.environ.get("NOTION_PROXY_URL", "https://minmin-notion.awslike6.workers.dev")
+
+            if child_db_id:
+                try:
+                    req_url = f"{proxy_url}/v1/pages"
+                    create_payload = {
+                        "parent": {"database_id": child_db_id},
+                        "properties": {
+                            "아동명": {"title": [{"text": {"content": name}}]},
+                            "생년월일/연령": {"rich_text": [{"text": {"content": age}}]},
+                            "성향 및 특이사항": {"rich_text": [{"text": {"content": traits}}]},
+                            "알레르기/주의사항": {"rich_text": [{"text": {"content": allergies}}]}
+                        }
+                    }
+                    req = urllib.request.Request(req_url, data=json.dumps(create_payload).encode("utf-8"), headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}, method="POST")
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        res_data = json.loads(resp.read().decode("utf-8"))
+                        self._send_json({"success": True, "mode": "notion_created", "child": {"id": res_data["id"], "name": name, "age": age, "traits": traits, "allergies": allergies}})
+                        return
+                except Exception as e:
+                    print(f"[WARN] Local notion child create failed: {e}")
+
+            new_child = {"id": f"mock-child-{len(CHILDREN)+1}", "name": name, "age": age, "traits": traits, "allergies": allergies}
+            CHILDREN.append(new_child)
+            self._send_json({"success": True, "mode": "local_created", "child": new_child})
+            return
+
         if self.path == "/api/logs/save":
-            title = f"[{body.get('date')}] {body.get('childName')} - {body.get('activityArea')}"
+            daily_db_id = os.environ.get("NOTION_DAILY_LOG_DB_ID")
+            proxy_url = os.environ.get("NOTION_PROXY_URL", "https://minmin-notion.awslike6.workers.dev")
+            today = body.get("date") or "2026-09-19"
+            child_name = body.get("childName") or "원아"
+            activity_area = body.get("activityArea") or "자유놀이"
+            page_title = f"[{today}] {child_name} - {activity_area}"
+
+            if daily_db_id:
+                try:
+                    req_url = f"{proxy_url}/v1/pages"
+                    props = {
+                        "기록명/식별자": {"title": [{"text": {"content": page_title}}]},
+                        "작성일자": {"date": {"start": today}},
+                        "활동 구분": {"select": {"name": activity_area}},
+                        "표준보육 영역": {"multi_select": [{"name": body.get("standardArea") or "의사소통"}]},
+                        "원시 메모/키워드": {"rich_text": [{"text": {"content": body.get("rawMemo") or ""}}]},
+                        "알림장 최종본": {"rich_text": [{"text": {"content": body.get("kidsnoteText") or ""}}]},
+                        "관찰일지 최종본": {"rich_text": [{"text": {"content": body.get("observationText") or ""}}]},
+                        "참조 출처 요약": {"rich_text": [{"text": {"content": body.get("citationSummary") or ""}}]}
+                    }
+                    if body.get("childId") and not str(body.get("childId")).startswith("mock-"):
+                        props["원아"] = {"relation": [{"id": body.get("childId")}]}
+
+                    create_payload = {"parent": {"database_id": daily_db_id}, "properties": props}
+                    req = urllib.request.Request(req_url, data=json.dumps(create_payload).encode("utf-8"), headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}, method="POST")
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        res_data = json.loads(resp.read().decode("utf-8"))
+                        self._send_json({"success": True, "mode": "notion_saved", "title": page_title, "url": res_data.get("url")})
+                        return
+                except Exception as e:
+                    print(f"[WARN] Local notion log save failed: {e}")
+
             self._send_json({
                 "success": True,
                 "mode": "local_mock_saved",
-                "title": title,
+                "title": page_title,
                 "message": "로컬 개발 서버에 성공적으로 저장되었습니다."
             })
             return
 
         self._send_json({"error": "Not Found"}, 404)
+
+    def do_PUT(self):
+        self._handle_update()
+
+    def do_PATCH(self):
+        self._handle_update()
+
+    def _handle_update(self):
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            body_bytes = self.rfile.read(content_length)
+            body = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+
+            if self.path.startswith("/api/children/"):
+                child_id = self.path.split("/api/children/")[1].split("?")[0]
+                name = body.get("name")
+                age = body.get("age")
+                traits = body.get("traits")
+                allergies = body.get("allergies")
+
+                proxy_url = os.environ.get("NOTION_PROXY_URL", "https://minmin-notion.awslike6.workers.dev")
+                if child_id and not child_id.startswith("mock-"):
+                    try:
+                        req_url = f"{proxy_url}/v1/pages/{child_id}"
+                        props = {}
+                        if name:
+                            props["아동명"] = {"title": [{"text": {"content": name}}]}
+                        if age is not None:
+                            props["생년월일/연령"] = {"rich_text": [{"text": {"content": age}}]}
+                        if traits is not None:
+                            props["성향 및 특이사항"] = {"rich_text": [{"text": {"content": traits}}]}
+                        if allergies is not None:
+                            props["알레르기/주의사항"] = {"rich_text": [{"text": {"content": allergies}}]}
+
+                        update_payload = {"properties": props}
+                        req = urllib.request.Request(req_url, data=json.dumps(update_payload).encode("utf-8"), headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}, method="PATCH")
+                        with urllib.request.urlopen(req, timeout=5) as resp:
+                            res_data = json.loads(resp.read().decode("utf-8"))
+                            self._send_json({"success": True, "mode": "notion_updated", "child": {"id": child_id, "name": name, "age": age, "traits": traits, "allergies": allergies}})
+                            return
+                    except Exception as e:
+                        print(f"[WARN] Local notion child update failed: {e}")
+
+                for c in CHILDREN:
+                    if c["id"] == child_id:
+                        if name: c["name"] = name
+                        if age: c["age"] = age
+                        if traits is not None: c["traits"] = traits
+                        if allergies is not None: c["allergies"] = allergies
+                        break
+                self._send_json({"success": True, "mode": "local_updated", "child": {"id": child_id, "name": name, "age": age, "traits": traits, "allergies": allergies}})
+                return
+
+            self._send_json({"error": "Not Found"}, 404)
+        except Exception as err:
+            print(f"[ERROR in _handle_update]: {err}")
+            self._send_json({"error": str(err)}, 500)
 
 def run():
     server_address = ("", PORT)
