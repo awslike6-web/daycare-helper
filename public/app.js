@@ -2299,27 +2299,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function openHistoryModal() {
-    if (!historyModal) return;
-
-    // 현재 활성화된 교사 프로필에 맞춰 기본 반 선택
-    if (historyClassSelect) {
-      if (state.className === '소망반' || state.className.includes('소망')) {
-        historyClassSelect.value = '소망반';
-      } else if (state.className === '사랑반' || state.className.includes('사랑')) {
-        historyClassSelect.value = '사랑반';
-      } else {
-        historyClassSelect.value = 'all';
-      }
+  async function openHistoryModal(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!historyModal) {
+      console.error('#historyModal element not found');
+      return;
     }
 
-    populateHistoryChildOptions();
+    // 모달을 즉시 표시 (0초 시각 피드백)
     historyModal.style.display = 'flex';
 
-    if (!state.isHistoryLoaded || state.historyLogs.length === 0) {
-      await fetchHistoryLogs();
-    } else {
-      renderHistoryList();
+    try {
+      // 현재 활성화된 교사 프로필에 맞춰 기본 반 선택
+      if (historyClassSelect) {
+        if (state.className && (state.className === '소망반' || state.className.includes('소망'))) {
+          historyClassSelect.value = '소망반';
+        } else if (state.className && (state.className === '사랑반' || state.className.includes('사랑'))) {
+          historyClassSelect.value = '사랑반';
+        } else {
+          historyClassSelect.value = 'all';
+        }
+      }
+
+      populateHistoryChildOptions();
+
+      if (!state.isHistoryLoaded || (state.historyLogs || []).length === 0) {
+        await fetchHistoryLogs();
+      } else {
+        renderHistoryList();
+      }
+    } catch (err) {
+      console.error('Error in openHistoryModal:', err);
     }
   }
 
@@ -2624,9 +2634,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 기록 보관함 이벤트 리스너 등록
-  if (headerHistoryBtn) headerHistoryBtn.onclick = openHistoryModal;
-  if (btnCloseHistoryModal) btnCloseHistoryModal.onclick = closeHistoryModal;
-  if (btnRefreshHistory) btnRefreshHistory.onclick = () => fetchHistoryLogs(true);
+  if (headerHistoryBtn) {
+    headerHistoryBtn.addEventListener('click', openHistoryModal);
+    headerHistoryBtn.onclick = openHistoryModal;
+  }
+  if (btnCloseHistoryModal) {
+    btnCloseHistoryModal.addEventListener('click', closeHistoryModal);
+    btnCloseHistoryModal.onclick = closeHistoryModal;
+  }
+  if (btnRefreshHistory) {
+    btnRefreshHistory.addEventListener('click', () => fetchHistoryLogs(true));
+    btnRefreshHistory.onclick = () => fetchHistoryLogs(true);
+  }
 
   if (historyClassSelect) {
     historyClassSelect.onchange = () => {

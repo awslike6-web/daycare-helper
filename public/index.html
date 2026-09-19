@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧸</text></svg>">
   <link rel="manifest" href="./manifest.json" crossorigin="use-credentials">
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=20260919_v3">
 </head>
 <body>
   <div class="app-container">
@@ -854,7 +854,7 @@
     </div>
 
     <!-- 📂 지난 보육 기록 보관함 모달 -->
-    <div class="modal" id="historyModal" style="display: none;">
+    <div class="modal-overlay" id="historyModal" style="display: none; z-index: 600;">
       <div class="modal-content history-modal-content">
         <div class="modal-header">
           <div style="display: flex; align-items: center; gap: 8px;">
@@ -868,7 +868,7 @@
             <button type="button" class="history-refresh-btn" id="btnRefreshHistory" title="노션에서 최신 기록 새로고침">
               <span>↻</span> <span>새로고침</span>
             </button>
-            <button type="button" class="modal-close" id="btnCloseHistoryModal">&times;</button>
+            <button type="button" class="close-btn" id="btnCloseHistoryModal">&times;</button>
           </div>
         </div>
 
@@ -913,14 +913,14 @@
     </div>
 
     <!-- 📖 기록 상세 보기 모달 -->
-    <div class="modal" id="historyDetailModal" style="display: none; z-index: 1100;">
+    <div class="modal-overlay" id="historyDetailModal" style="display: none; z-index: 700;">
       <div class="modal-content history-detail-modal-content">
         <div class="modal-header">
           <div>
             <div class="modal-title" id="historyDetailTitle">기록 상세 보기</div>
             <div style="font-size: 11px; color: var(--text-muted);" id="historyDetailMeta">작성일자 | 대상 아동</div>
           </div>
-          <button type="button" class="modal-close" id="btnCloseHistoryDetailModal">&times;</button>
+          <button type="button" class="close-btn" id="btnCloseHistoryDetailModal">&times;</button>
         </div>
 
         <!-- 본문 뷰어 -->
@@ -947,7 +947,7 @@
     <div class="toast" id="toastMessage">클립보드에 복사되었습니다.</div>
   </div>
 
-  <script src="./gemini-client.js"></script>
-  <script src="./app.js"></script>
+  <script src="./gemini-client.js?v=20260919_v3"></script>
+  <script src="./app.js?v=20260919_v3"></script>
 </body>
 </html>
