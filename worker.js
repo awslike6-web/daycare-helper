@@ -169,7 +169,8 @@ export default {
             teacherStyle = '다정친절체',
             className = env.DEFAULT_CLASS_NAME || '햇살반',
             teacherName = env.DEFAULT_TEACHER_NAME || '김선생님',
-            persona = {}
+            persona = {},
+            monthlyObsOptions = null
           } = body;
 
           if (!childName) {
@@ -210,7 +211,8 @@ export default {
             teacherStyle,
             className,
             teacherName,
-            persona
+            persona,
+            monthlyObsOptions
           });
 
           return jsonResponse(generated);

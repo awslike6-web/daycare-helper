@@ -1612,15 +1612,15 @@ body {
   margin-right: 2px;
 }
 
-/* 🖨️ A4 보육일지 인쇄 미디어 쿼리 */
+/* 🖨️ A4 보육일지 & 관찰일지 인쇄 미디어 쿼리 */
 @media print {
   body * {
     visibility: hidden;
   }
-  #officialReportSheet, #officialReportSheet * {
+  #officialReportSheet, #officialReportSheet *, #officialObsSheet, #officialObsSheet * {
     visibility: visible;
   }
-  #officialReportSheet {
+  #officialReportSheet, #officialObsSheet {
     position: absolute;
     left: 0;
     top: 0;
@@ -1637,6 +1637,67 @@ body {
     background-color: #EEEEEE !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+}
+
+/* ==========================================================================
+   🧸 월간 연속 관찰일지 설정 패널 (Monthly Observation)
+   ========================================================================== */
+.monthly-obs-panel {
+  background: #F0FDF4;
+  border: 1.5px solid #86EFAC;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-top: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.monthly-obs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.monthly-obs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1.5fr;
+  gap: 10px;
+}
+
+.monthly-obs-subcard {
+  background: #FFFFFF;
+  border: 1px solid #BBF7D0;
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+.monthly-obs-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: #047857;
+}
+
+.monthly-obs-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #065F46;
+  margin-bottom: 4px;
+}
+
+.official-obs-sheet {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-top: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+@media (max-width: 600px) {
+  .monthly-obs-grid {
+    grid-template-columns: 1fr;
   }
 }
 

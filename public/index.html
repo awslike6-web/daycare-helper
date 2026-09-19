@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧸</text></svg>">
   <link rel="manifest" href="./manifest.json" crossorigin="use-credentials">
-  <link rel="stylesheet" href="./style.css?v=20260919_v3">
+  <link rel="stylesheet" href="./style.css?v=20260919_v4">
 </head>
 <body>
   <div class="app-container">
@@ -131,7 +131,7 @@
         </button>
         <button type="button" class="mode-btn" data-mode="observation">
           <span>🧸 관찰일지</span>
-          <span class="mode-subtext">평가제 객관 관찰</span>
+          <span class="mode-subtext">월 2회 연속 관찰·총평</span>
         </button>
         <button type="button" class="mode-btn" data-mode="all_suite">
           <span>📋 5대 서식 종합</span>
@@ -149,6 +149,62 @@
           <div class="area-chip" data-area="실외활동">🌳 실외활동</div>
           <div class="area-chip" data-area="미술/감각">🎨 미술/감각</div>
           <div class="area-chip" data-area="신체/음악">🎵 신체/음악</div>
+        </div>
+      </div>
+
+      <!-- 🧸 월간 연속 관찰일지 설정 패널 (평가제 맞춤 월 2회 분산 & 연속 발달 연계) -->
+      <div class="monthly-obs-panel" id="monthlyObsPanel" style="display: none;">
+        <div class="monthly-obs-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 18px;">🧸</span>
+            <div>
+              <div style="font-size: 13px; font-weight: 700; color: #047857;">평가제 맞춤 월간 연속 관찰 세팅</div>
+              <div style="font-size: 11px; color: #065F46;">월 2회 랜덤 평일 분산 + 1차 지도 후 발전적 변화 연계</div>
+            </div>
+          </div>
+          <button type="button" class="history-refresh-btn" id="btnAutoDistributeDates" style="background: #ECFDF5; border-color: #A7F3D0; color: #065F46;" title="평일 중 1차/2차 날짜 자동 분산">
+            <span>🎲</span> <span>날짜 자동 분산</span>
+          </button>
+        </div>
+
+        <div class="monthly-obs-grid">
+          <!-- 대상 월 -->
+          <div class="monthly-obs-field">
+            <label class="monthly-obs-label">📅 대상 월</label>
+            <input type="month" id="monthlyObsTargetMonth" class="history-select" style="width: 100%;">
+          </div>
+
+          <!-- 1차 관찰 세팅 (상순) -->
+          <div class="monthly-obs-subcard">
+            <div class="monthly-obs-subtitle">🌱 1차 관찰 (상순 평일)</div>
+            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 6px; margin-top: 4px;">
+              <input type="date" id="monthlyObsDate1" class="history-select" style="width: 100%;">
+              <select id="monthlyObsArea1" class="history-select" style="width: 100%;">
+                <option value="의사소통" selected>의사소통</option>
+                <option value="신체운동">신체운동</option>
+                <option value="기본생활">기본생활</option>
+                <option value="사회관계">사회관계</option>
+                <option value="자연탐구">자연탐구</option>
+                <option value="예술경험">예술경험</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 2차 관찰 세팅 (하순 · 연속성) -->
+          <div class="monthly-obs-subcard" style="border-color: #93C5FD; background: #F0F9FF;">
+            <div class="monthly-obs-subtitle" style="color: #1D4ED8;">✨ 2차 관찰 (하순 · 발전적 변화 연계 ⭐)</div>
+            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 6px; margin-top: 4px;">
+              <input type="date" id="monthlyObsDate2" class="history-select" style="width: 100%;">
+              <select id="monthlyObsArea2" class="history-select" style="width: 100%;">
+                <option value="사회관계" selected>사회관계</option>
+                <option value="의사소통">의사소통</option>
+                <option value="신체운동">신체운동</option>
+                <option value="자연탐구">자연탐구</option>
+                <option value="예술경험">예술경험</option>
+                <option value="기본생활">기본생활</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -355,33 +411,125 @@
           </div>
         </div>
 
-        <!-- 탭 2: 평가제 관찰일지 카드 -->
+        <!-- 탭 2: 평가제 월간 연속 관찰기록부 카드 (월 2회 평일 분산 & 발전적 변화 연계) -->
         <div class="result-card" id="observationCard" style="display: none;">
-          <div class="result-card-header">
-            <div class="result-title" id="obsStandardArea">표준보육 영역: 신체운동·건강</div>
-            <span class="tag-badge" id="obsActivityName">활동: 자유놀이</span>
+          <div class="result-card-header" style="margin-bottom: 12px;">
+            <div>
+              <div class="result-title" style="display: flex; align-items: center; gap: 6px;">
+                <span>🧸 영유아 월간 발달 관찰기록부</span>
+                <span class="tag-badge" style="background: #DEF7EC; color: #03543F;">보건복지부 평가제 정규 양식</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;" id="monthlyObsCardSub">
+                월 2회 연속 관찰 및 월말 발달 종합 총평 리포트입니다.
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" id="copyMonthlyObsHwpBtn" class="action-btn action-btn-copy" style="padding: 6px 10px; font-size: 12px;">
+                <span>📋</span> <span>한글(HWP) 표 복사</span>
+              </button>
+              <button type="button" id="printMonthlyObsBtn" class="action-btn action-btn-share" style="padding: 6px 10px; font-size: 12px; background: #059669;">
+                <span>🖨️</span> <span>A4 인쇄/PDF</span>
+              </button>
+            </div>
           </div>
 
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted);">[객관적 행동 관찰]</div>
-            <textarea id="obsBehaviorContent" class="result-body-text" rows="4"></textarea>
+          <!-- 📄 실제 출력 및 복사용 월간 관찰기록 시트 -->
+          <div class="official-obs-sheet" id="officialObsSheet">
+            <h2 class="report-doc-title" id="monthlyObsDocTitle">[2026년 9월] 영유아 발달 관찰기록부</h2>
             
-            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted);">[교사의 지원 및 발달 평가]</div>
-            <textarea id="obsEvaluationContent" class="result-body-text" rows="3"></textarea>
+            <table class="report-header-table">
+              <colgroup>
+                <col style="width: 15%;">
+                <col style="width: 35%;">
+                <col style="width: 15%;">
+                <col style="width: 35%;">
+              </colgroup>
+              <tbody>
+                <tr>
+                  <th class="rep-th">원아명</th>
+                  <td class="rep-td" id="monthlyObsChildName">김건하 (만 2세)</td>
+                  <th class="rep-th">소속 반 / 담임</th>
+                  <td class="rep-td" id="monthlyObsTeacherName">소망반 / 공가희 주임교사</td>
+                </tr>
+                <tr>
+                  <th class="rep-th">관찰 주기</th>
+                  <td class="rep-td" colspan="3" id="monthlyObsPeriod">2026년 9월 (상순 1회 + 하순 1회 연속 관찰)</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- 1차 & 2차 연속 관찰 2열 테이블 -->
+            <table class="report-curriculum-table" style="margin-top: 10px;">
+              <colgroup>
+                <col style="width: 24%;">
+                <col style="width: 76%;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th class="rep-th" style="text-align: center; background: #F1F5F9;">관찰 구분 / 일시</th>
+                  <th class="rep-th" style="text-align: center; background: #F1F5F9;">객관적 행동 관찰 및 교사의 상호작용 지원</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- 1차 관찰 행 -->
+                <tr>
+                  <td class="rep-td" style="vertical-align: top; background: #FAFAFA;">
+                    <div style="font-weight: 700; color: #047857;">🌱 1차 관찰</div>
+                    <div style="font-size: 11px; color: #475569; margin-top: 4px;" id="obs1DateMeta">2026-09-08 (화)</div>
+                    <div class="history-badge history-badge-obs" style="margin-top: 6px; display: inline-block;" id="obs1AreaBadge">의사소통</div>
+                  </td>
+                  <td class="rep-td" style="vertical-align: top;">
+                    <div style="font-weight: 600; color: #1E293B; margin-bottom: 4px;" id="obs1ActivityTitle">[놀이 활동] 블록 동물원 울타리 만들기</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 2px;">[객관적 행동 관찰]</div>
+                    <div style="white-space: pre-wrap; line-height: 1.5; color: #334155; margin-bottom: 8px;" id="obs1BehaviorText">객관적 행동 사실...</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #047857; margin-bottom: 2px;">[교사의 비계설정 및 지원]</div>
+                    <div style="white-space: pre-wrap; line-height: 1.5; color: #065F46;" id="obs1SupportText">교사의 언어 모델링 및 지원 내용...</div>
+                  </td>
+                </tr>
+
+                <!-- 2차 관찰 행 (발전적 변화 연계 ⭐) -->
+                <tr>
+                  <td class="rep-td" style="vertical-align: top; background: #F0F9FF;">
+                    <div style="font-weight: 700; color: #1D4ED8;">✨ 2차 관찰</div>
+                    <div style="font-size: 11px; color: #1E40AF; margin-top: 4px;" id="obs2DateMeta">2026-09-22 (화)</div>
+                    <div class="history-badge history-badge-report" style="margin-top: 6px; display: inline-block;" id="obs2AreaBadge">사회관계</div>
+                    <div style="font-size: 10px; color: #2563EB; margin-top: 6px; font-weight: 600;">⭐ 연속성 연계</div>
+                  </td>
+                  <td class="rep-td" style="vertical-align: top; background: #F8FAFC;">
+                    <div style="font-weight: 600; color: #1E293B; margin-bottom: 4px;" id="obs2ActivityTitle">[놀이 활동] 기차 블록 협동 놀이</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 2px;">[1차 지도 이후 발전된 행동 관찰]</div>
+                    <div style="white-space: pre-wrap; line-height: 1.5; color: #334155; margin-bottom: 8px;" id="obs2BehaviorText">1차 관찰 지도 이후 나타난 긍정적 변화 사실...</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #1D4ED8; margin-bottom: 2px;">[교사의 지속 지원 및 상호작용]</div>
+                    <div style="white-space: pre-wrap; line-height: 1.5; color: #1E40AF; margin-bottom: 8px;" id="obs2SupportText">긍정적 상호작용 강화 및 지원...</div>
+                    <div style="background: #EFF6FF; padding: 6px 8px; border-radius: 4px; font-size: 11px; color: #1D4ED8; border-left: 3px solid #3B82F6;" id="obs2GrowthBox">
+                      <b>📈 1차 대비 성장점:</b> <span id="obs2GrowthText">신체적 행동 대신 단어 표현 시도</span>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- 월말 종합 발달 평가 행 -->
+                <tr>
+                  <td class="rep-td" style="vertical-align: middle; text-align: center; background: #FEF3C7; font-weight: 700; color: #92400E;">
+                    🏆 월말 발달 종합 총평
+                  </td>
+                  <td class="rep-td" style="vertical-align: top;">
+                    <div style="font-size: 11px; font-weight: 700; color: #92400E; margin-bottom: 2px;">[표준보육과정 영역별 종합 발달 평가]</div>
+                    <div style="white-space: pre-wrap; line-height: 1.55; color: #334155; margin-bottom: 8px;" id="monthlySummaryDevText">1차와 2차 관찰을 종합한 발달 총평...</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #B45309; margin-bottom: 2px;">[다음 달 맞춤 지원 및 가정 연계 계획]</div>
+                    <div style="white-space: pre-wrap; line-height: 1.55; color: #78350F;" id="monthlySummaryPlanText">다음 달 원내 지도 및 가정 연계 방향...</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          <!-- 📌 과거 기록 출처 (Citation) 배지 -->
-          <div class="citation-box" id="citationBox" style="display: none;">
-            <span class="citation-icon">📌</span>
-            <span id="citationSummaryText">과거 기록 연계 내용</span>
-          </div>
-
-          <div class="action-btn-row">
+          <!-- 하단 액션 버튼 바 -->
+          <div class="action-btn-row" style="margin-top: 14px;">
             <button type="button" id="copyObservationBtn" class="action-btn action-btn-copy">
-              <span>📋</span> <span>관찰일지 복사</span>
+              <span>📋</span> <span>관찰일지 전문 텍스트 복사</span>
             </button>
-            <button type="button" id="saveNotionBtn" class="action-btn action-btn-save" style="grid-column: span 1;">
-              <span>💾</span> <span>노션 3대 DB 저장</span>
+            <button type="button" id="saveNotionBtn" class="action-btn action-btn-save">
+              <span>💾</span> <span>노션 DAILY_LOG_DB 안전 저장</span>
             </button>
           </div>
         </div>
@@ -947,7 +1095,7 @@
     <div class="toast" id="toastMessage">클립보드에 복사되었습니다.</div>
   </div>
 
-  <script src="./gemini-client.js?v=20260919_v3"></script>
-  <script src="./app.js?v=20260919_v3"></script>
+  <script src="./gemini-client.js?v=20260919_v4"></script>
+  <script src="./app.js?v=20260919_v4"></script>
 </body>
 </html>

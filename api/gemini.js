@@ -134,6 +134,12 @@ ${isPlayStory ? `
    - 이전 기록이 제공된 경우, 이전 기록 대비 아동의 발달적 성장점/변화점(예: 소근육 조절력 향상, 또래 관심 증가 등)을 서술에 반영할 것.
    - citation 요약: 반드시 "📌 참고한 과거 기록: [YYYY-MM-DD] ..." 형식으로 한 줄 요약 작성. 이전 기록이 없으면 빈 문자열.
 
+7. monthly_observation (보건복지부 평가제 맞춤 월 2회 연속 발달 관찰기록부 ⭐):
+   - 평가제 인증의 핵심 공식인 '연속적 발달 변화(Continuous Growth)'를 엄격히 적용할 것.
+   - obs_1 (1차 관찰): 아동의 고유 성향/특이사항(언어 지연, 또래 관계, 신체 특성 등)과 관련된 실제 상황에서의 객관적 행동 사실(~함 체) 및 교사의 즉각적 비계설정/지원 내용 서술.
+   - obs_2 (2차 관찰 - 발전적 연속성 필수 반영 ⭐): **1차 관찰에서의 교사 지도 이후, 아동이 보인 긍정적 행동 변화나 발전된 반응(예: 신체적 행동 대신 단어/손짓 시도, 또래 협동 확장 등)을 필수적으로 연계 서술**.
+   - monthly_summary (월말 발달 총평): 1·2차 관찰을 유기적으로 종합하여 아동의 한 달 성장 총평 및 다음 달 맞춤 지원 방향 도출.
+
 [반환 형식]: 반드시 아래 JSON 스키마를 엄격히 준수하여 응답하라 (추가 텍스트나 마크다운 코드블록 없이 순수 JSON만 반환).
 {
   "class_daily_report": {
@@ -166,6 +172,32 @@ ${isPlayStory ? `
     "activity_name": "활동명",
     "behavior": "객관적 행동 관찰문 (~함 체)",
     "evaluation": "교사의 상호작용 지원 및 발달 평가"
+  },
+  "monthly_observation": {
+    "title": "2026년 9월 영유아 발달 관찰기록부",
+    "target_month": "2026년 9월",
+    "child_name": "[아동A]",
+    "age_group": "만 2세",
+    "class_name": "${className}",
+    "obs_1": {
+      "date": "2026-09-08",
+      "area": "의사소통",
+      "activity_title": "블록 동물원 울타리 만들기",
+      "behavior": "객관적 행동 관찰문 (~함 체)",
+      "teacher_support": "교사의 언어 모델링 및 상호작용 지원 내용"
+    },
+    "obs_2": {
+      "date": "2026-09-22",
+      "area": "사회관계",
+      "activity_title": "기차 블록 협동 놀이",
+      "behavior": "1차 지도 이후 아이가 보인 발전된 행동양식 관찰문 (~함 체)",
+      "teacher_support": "긍정적 상호작용 지지 및 후속 지원 계획",
+      "growth_continuity": "1차 관찰 대비 변화된 성장점 요약"
+    },
+    "monthly_summary": {
+      "development_summary": "1·2차 관찰을 종합한 월간 발달 총평 (표준보육과정 관점)",
+      "next_month_plan": "다음 달 교사의 개별 맞춤 지원 및 가정 연계 방향"
+    }
   },
   "daily_care_log": {
     "play_summary": "오늘 우리 반 유아들의 전반적인 놀이 흐름 요약",
@@ -235,6 +267,17 @@ ${maskedMemo || '오늘 즐겁게 활동함'}
     prompt += `위 이전 기록과 비교하여 성장하거나 달라진 점이 있다면 관찰일지와 알림장에 자연스럽게 반영하고 citation을 작성해줘.\n`;
   }
 
+  if (monthlyObsOptions) {
+    prompt += `\n[⭐ 보건복지부 평가제 맞춤 '월간 연속 관찰기록부' 생성 요청]\n`;
+    prompt += `- 대상 월: ${monthlyObsOptions.targetMonth || '해당 월'}\n`;
+    prompt += `- 1차 관찰일: ${monthlyObsOptions.date1 || '상순'} | 1차 영역: ${monthlyObsOptions.area1 || '의사소통'}\n`;
+    prompt += `- 2차 관찰일: ${monthlyObsOptions.date2 || '하순'} | 2차 영역: ${monthlyObsOptions.area2 || '사회관계'}\n`;
+    prompt += `[핵심 작성 원칙]\n`;
+    prompt += `1. obs_1(1차)에는 아동의 고유 성향/특이사항과 연계된 실제 놀이/일상 상황과 교사의 초기 비계설정 및 지원을 서술하세요.\n`;
+    prompt += `2. obs_2(2차)에는 **1차 관찰에서의 교사 지도 이후, 아이가 보인 발전된 행동양식과 긍정적 변화(growth_continuity)**를 반드시 연속성 있게 연결하여 서술하세요.\n`;
+    prompt += `3. monthly_summary에는 한 달간의 발달 변화 총평과 다음 달 지원 계획을 종합하여 표준보육과정 서식으로 완성하세요.\n`;
+  }
+
   return prompt;
 }
 
@@ -280,7 +323,8 @@ export async function generateDaycareLog({
   teacherStyle = '다정친절체',
   persona = {},
   className = '햇살반',
-  teacherName = '김선생님'
+  teacherName = '김선생님',
+  monthlyObsOptions = null
 }) {
   if (!apiKey) {
     throw new Error('Gemini API 키가 제공되지 않았습니다.');
@@ -311,7 +355,8 @@ export async function generateDaycareLog({
     allergies,
     pastLogs: maskedPastLogs,
     activityArea,
-    mode
+    mode,
+    monthlyObsOptions
   });
 
   // 3. 파트 구성 (텍스트 + 멀티모달 이미지들)

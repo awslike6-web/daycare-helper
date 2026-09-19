@@ -148,6 +148,35 @@ document.addEventListener('DOMContentLoaded', () => {
   const customRefineInput = document.getElementById('customRefineInput');
   const customRefineBtn = document.getElementById('customRefineBtn');
 
+  // 🧸 평가제 월간 연속 관찰일지 DOM 요소들
+  const monthlyObsPanel = document.getElementById('monthlyObsPanel');
+  const btnAutoDistributeDates = document.getElementById('btnAutoDistributeDates');
+  const monthlyObsTargetMonth = document.getElementById('monthlyObsTargetMonth');
+  const monthlyObsDate1 = document.getElementById('monthlyObsDate1');
+  const monthlyObsArea1 = document.getElementById('monthlyObsArea1');
+  const monthlyObsDate2 = document.getElementById('monthlyObsDate2');
+  const monthlyObsArea2 = document.getElementById('monthlyObsArea2');
+
+  const copyMonthlyObsHwpBtn = document.getElementById('copyMonthlyObsHwpBtn');
+  const printMonthlyObsBtn = document.getElementById('printMonthlyObsBtn');
+  const monthlyObsDocTitle = document.getElementById('monthlyObsDocTitle');
+  const monthlyObsChildName = document.getElementById('monthlyObsChildName');
+  const monthlyObsTeacherName = document.getElementById('monthlyObsTeacherName');
+  const monthlyObsPeriod = document.getElementById('monthlyObsPeriod');
+  const obs1DateMeta = document.getElementById('obs1DateMeta');
+  const obs1AreaBadge = document.getElementById('obs1AreaBadge');
+  const obs1ActivityTitle = document.getElementById('obs1ActivityTitle');
+  const obs1BehaviorText = document.getElementById('obs1BehaviorText');
+  const obs1SupportText = document.getElementById('obs1SupportText');
+  const obs2DateMeta = document.getElementById('obs2DateMeta');
+  const obs2AreaBadge = document.getElementById('obs2AreaBadge');
+  const obs2ActivityTitle = document.getElementById('obs2ActivityTitle');
+  const obs2BehaviorText = document.getElementById('obs2BehaviorText');
+  const obs2SupportText = document.getElementById('obs2SupportText');
+  const obs2GrowthText = document.getElementById('obs2GrowthText');
+  const monthlySummaryDevText = document.getElementById('monthlySummaryDevText');
+  const monthlySummaryPlanText = document.getElementById('monthlySummaryPlanText');
+
   const obsStandardArea = document.getElementById('obsStandardArea');
   const obsActivityName = document.getElementById('obsActivityName');
   const obsBehaviorContent = document.getElementById('obsBehaviorContent');
@@ -715,6 +744,92 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================================
+  // 3-F. 🧸 평가제 월간 연속 관찰일지 날짜 자동 분산 및 초기화 헬퍼
+  // ============================================================================
+  function getWeekdaysInRange(year, month, startDay, endDay) {
+    const weekdays = [];
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const maxDay = Math.min(endDay, daysInMonth);
+    for (let d = startDay; d <= maxDay; d++) {
+      const dt = new Date(year, month - 1, d);
+      const dayOfWeek = dt.getDay();
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) { // 월~금 평일만 필터링
+        const padMonth = String(month).padStart(2, '0');
+        const padDay = String(d).padStart(2, '0');
+        weekdays.push(`${year}-${padMonth}-${padDay}`);
+      }
+    }
+    return weekdays;
+  }
+
+  function getDayOfWeekName(dateStr) {
+    if (!dateStr) return '';
+    try {
+      const dt = new Date(dateStr + 'T00:00:00');
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+      return dayNames[dt.getDay()] || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function autoDistributeObsDates() {
+    let ym = monthlyObsTargetMonth ? monthlyObsTargetMonth.value : '';
+    if (!ym) {
+      const now = new Date();
+      ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      if (monthlyObsTargetMonth) monthlyObsTargetMonth.value = ym;
+    }
+    const [yearStr, monthStr] = ym.split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+
+    const phase1List = getWeekdaysInRange(year, month, 2, 10); // 상순 평일 (2일~10일)
+    const phase2List = getWeekdaysInRange(year, month, 16, 25); // 하순 평일 (16일~25일)
+
+    const date1 = phase1List.length > 0 ? phase1List[Math.floor(Math.random() * phase1List.length)] : `${ym}-08`;
+    const date2 = phase2List.length > 0 ? phase2List[Math.floor(Math.random() * phase2List.length)] : `${ym}-22`;
+
+    if (monthlyObsDate1) monthlyObsDate1.value = date1;
+    if (monthlyObsDate2) monthlyObsDate2.value = date2;
+
+    // 원아 성향/연령 맞춤 추천 영역 자동 매핑
+    let defArea1 = '의사소통';
+    let defArea2 = '사회관계';
+
+    if (state.selectedChild) {
+      const age = state.selectedChild.age || '';
+      const traits = state.selectedChild.traits || '';
+      if (age.includes('0세')) {
+        defArea1 = '기본생활';
+        defArea2 = '신체운동';
+      } else if (traits.includes('발화') || traits.includes('말') || traits.includes('소통')) {
+        defArea1 = '의사소통';
+        defArea2 = '사회관계';
+      } else if (traits.includes('신체') || traits.includes('대근육') || traits.includes('춤')) {
+        defArea1 = '신체운동';
+        defArea2 = '사회관계';
+      }
+    }
+
+    if (monthlyObsArea1) monthlyObsArea1.value = defArea1;
+    if (monthlyObsArea2) monthlyObsArea2.value = defArea2;
+
+    showToast(`🎲 ${month}월 평일 관찰일(1차: ${date1.slice(5)}, 2차: ${date2.slice(5)})이 자동 분산되었습니다.`);
+  }
+
+  function initMonthlyObsPanel() {
+    if (!monthlyObsTargetMonth) return;
+    if (!monthlyObsTargetMonth.value) {
+      const now = new Date();
+      monthlyObsTargetMonth.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    if (!monthlyObsDate1 || !monthlyObsDate1.value || !monthlyObsDate2 || !monthlyObsDate2.value) {
+      autoDistributeObsDates();
+    }
+  }
+
+  // ============================================================================
   // 4. 이벤트 리스너 등록
   // ============================================================================
   function setupEventListeners() {
@@ -740,14 +855,34 @@ document.addEventListener('DOMContentLoaded', () => {
           areaSection.style.display = 'none';
         }
 
-        // 🌟 놀이 보육일지(공문서) 모드일 때 플레이스홀더 변경
+        // 🧸 월간 연속 관찰일지 패널 표출 및 초기화
+        if (state.mode === 'observation') {
+          if (monthlyObsPanel) {
+            monthlyObsPanel.style.display = 'block';
+            initMonthlyObsPanel();
+          }
+        } else {
+          if (monthlyObsPanel) monthlyObsPanel.style.display = 'none';
+        }
+
+        // 🌟 모드별 플레이스홀더 변경
         if (state.mode === 'class_report') {
           if (rawMemoInput) rawMemoInput.placeholder = "오늘 우리 반 유아들의 실내/바깥 놀이 장면과 키워드를 편하게 적어주세요.\n예) 블록 기차놀이로 레일 연결 및 역할놀이, 바깥 산책 후 앞마당 비눗방울 쫓기와 술래잡기, 체육 대형 무지개 낙하산 펄럭이기";
+        } else if (state.mode === 'observation') {
+          if (rawMemoInput) rawMemoInput.placeholder = "오늘 아이의 행동과 놀이 관찰 메모를 남겨주세요.\n예) 블록을 쌓다가 무너지자 울거나 떼쓰지 않고 교사를 쳐다보며 도움을 요청함. 친구에게 블록을 건네며 협동하여 큰 동물 우리를 완성함.";
         } else {
           if (rawMemoInput) rawMemoInput.placeholder = "오늘 아이가 몰입했던 놀이 장면이나 키워드를 편하게 남겨주세요.\n예) 블록으로 큰 동물원 우리를 만들며 기린 인형에게 풀을 주는 흉내를 냄. 친구와 웃으며 울타리를 넓혀감.";
         }
       });
     });
+
+    // 🧸 월간 관찰일지 평일 자동 분산 버튼
+    if (btnAutoDistributeDates) {
+      btnAutoDistributeDates.addEventListener('click', () => autoDistributeObsDates());
+    }
+    if (monthlyObsTargetMonth) {
+      monthlyObsTargetMonth.addEventListener('change', () => autoDistributeObsDates());
+    }
 
     // 활동 영역 칩 클릭
     areaGrid.querySelectorAll('.area-chip').forEach(chip => {
@@ -781,7 +916,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (tab === 'class_daily_report' && classDailyReportCard) classDailyReportCard.style.display = 'block';
         else if (tab === 'kidsnote') kidsnoteCard.style.display = 'flex';
-        else if (tab === 'observation') observationCard.style.display = 'flex';
+        else if (tab === 'observation') observationCard.style.display = 'block';
         else if (tab === 'daily_care' && dailyCareCard) dailyCareCard.style.display = 'flex';
         else if (tab === 'counseling' && counselingCard) counselingCard.style.display = 'flex';
         else if (tab === 'play_support' && playSupportCard) playSupportCard.style.display = 'flex';
@@ -793,6 +928,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (printReportBtn) printReportBtn.addEventListener('click', () => window.print());
     if (copyFullReportTextBtn) copyFullReportTextBtn.addEventListener('click', handleCopyFullReportText);
     if (saveClassReportNotionBtn) saveClassReportNotionBtn.addEventListener('click', handleSaveClassReportNotion);
+
+    // 0-B. 🧸 평가제 월간 연속 관찰기록부 버튼 (한글 표 복사, A4 인쇄)
+    if (copyMonthlyObsHwpBtn) copyMonthlyObsHwpBtn.addEventListener('click', handleCopyMonthlyObsHwp);
+    if (printMonthlyObsBtn) printMonthlyObsBtn.addEventListener('click', () => window.print());
 
     // 1. 키즈노트 알림장 복사 및 공유
     copyKidsnoteBtn.addEventListener('click', handleCopyKidsnote);
@@ -1359,6 +1498,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       childAlertText.style.display = 'none';
     }
+
+    // 만약 현재 관찰일지 모드라면 원아 연령/성향에 맞춰 관찰 영역 자동 동기화
+    if (state.mode === 'observation') {
+      autoDistributeObsDates();
+    }
   }
 
   // ============================================================================
@@ -1772,6 +1916,16 @@ document.addEventListener('DOMContentLoaded', () => {
         persona: state.persona
       };
 
+      if (state.mode === 'observation' && monthlyObsTargetMonth) {
+        payload.monthlyObsOptions = {
+          targetMonth: monthlyObsTargetMonth.value || '2026-09',
+          date1: monthlyObsDate1 ? monthlyObsDate1.value : '',
+          area1: monthlyObsArea1 ? monthlyObsArea1.value : '의사소통',
+          date2: monthlyObsDate2 ? monthlyObsDate2.value : '',
+          area2: monthlyObsArea2 ? monthlyObsArea2.value : '사회관계'
+        };
+      }
+
       let resultData = null;
 
       // 1. 한국 브라우저 IP 직통 호출 시도 (Cloudflare 유럽 노드 지역 제한 400 원천 회피)
@@ -1944,11 +2098,49 @@ document.addEventListener('DOMContentLoaded', () => {
       kidsnoteTags.appendChild(span);
     });
 
-    // 2. 평가제 관찰일지 채우기
-    obsStandardArea.textContent = `표준보육 영역: ${obs.standard_area || '의사소통'}`;
-    obsActivityName.textContent = `활동: ${obs.activity_name || state.activityArea}`;
-    obsBehaviorContent.value = obs.behavior || '';
-    obsEvaluationContent.value = obs.evaluation || '';
+    // 2. 🧸 평가제 영유아 월간 발달 관찰기록부 (A4 정규 양식) 채우기
+    const mob = data.monthly_observation;
+    const targetMonthStr = mob?.target_month || (monthlyObsTargetMonth?.value ? `${monthlyObsTargetMonth.value.split('-')[0]}년 ${parseInt(monthlyObsTargetMonth.value.split('-')[1])}월` : '2026년 9월');
+    const childDisplayName = state.selectedChild ? `${state.selectedChild.name} (${state.selectedChild.age || '만 2세'})` : '원아 (만 2세)';
+    const teacherDisplayName = `${state.className || '소망반'} / ${state.teacherName || '공가희 주임교사'}`;
+
+    if (monthlyObsDocTitle) monthlyObsDocTitle.textContent = mob?.title || `[${targetMonthStr}] 영유아 발달 관찰기록부`;
+    if (monthlyObsChildName) monthlyObsChildName.textContent = childDisplayName;
+    if (monthlyObsTeacherName) monthlyObsTeacherName.textContent = teacherDisplayName;
+    if (monthlyObsPeriod) monthlyObsPeriod.textContent = `${targetMonthStr} (상순 1회 + 하순 1회 연속 관찰)`;
+
+    // 1차 관찰 바인딩
+    const obs1Date = mob?.obs_1?.date || (monthlyObsDate1?.value || '2026-09-08');
+    const obs1Area = mob?.obs_1?.area || (monthlyObsArea1?.value || obs.standard_area || '의사소통');
+    if (obs1DateMeta) obs1DateMeta.textContent = `${obs1Date} (${getDayOfWeekName(obs1Date)})`;
+    if (obs1AreaBadge) obs1AreaBadge.textContent = obs1Area;
+    if (obs1ActivityTitle) obs1ActivityTitle.textContent = mob?.obs_1?.activity_title || obs.activity_name || state.activityArea;
+    if (obs1BehaviorText) obs1BehaviorText.textContent = mob?.obs_1?.behavior || obs.behavior || '';
+    if (obs1SupportText) obs1SupportText.textContent = mob?.obs_1?.teacher_support || obs.evaluation || '';
+
+    // 2차 관찰 바인딩 (연속성)
+    const obs2Date = mob?.obs_2?.date || (monthlyObsDate2?.value || '2026-09-22');
+    const obs2Area = mob?.obs_2?.area || (monthlyObsArea2?.value || '사회관계');
+    if (obs2DateMeta) obs2DateMeta.textContent = `${obs2Date} (${getDayOfWeekName(obs2Date)})`;
+    if (obs2AreaBadge) obs2AreaBadge.textContent = obs2Area;
+    if (obs2ActivityTitle) obs2ActivityTitle.textContent = mob?.obs_2?.activity_title || state.activityArea;
+    if (obs2BehaviorText) obs2BehaviorText.textContent = mob?.obs_2?.behavior || (obs.behavior ? `1차 지도 이후 ${obs.behavior}` : '');
+    if (obs2SupportText) obs2SupportText.textContent = mob?.obs_2?.teacher_support || (obs.evaluation || '');
+    if (obs2GrowthText) obs2GrowthText.textContent = mob?.obs_2?.growth_continuity || '1차 상호작용 지원 이후 상황을 수용하고 긍정적으로 반응하는 발전적 행동 변화를 보임.';
+
+    // 월말 종합 총평 바인딩
+    if (monthlySummaryDevText) {
+      monthlySummaryDevText.textContent = mob?.monthly_summary?.development_summary || `${obs1Area} 및 ${obs2Area} 영역에서 또래 및 교사와의 상호작용에 적극적으로 참여하며 전반적인 발달 과업을 원활히 수행함.`;
+    }
+    if (monthlySummaryPlanText) {
+      monthlySummaryPlanText.textContent = mob?.monthly_summary?.next_month_plan || '다음 달에는 유아의 자율적 탐색을 격려하고 성공 경험을 누적할 수 있도록 칭찬과 비계를 지속 지원할 계획임.';
+    }
+
+    // 기존 단일 폼 필드 채우기 (하위 호환)
+    if (obsStandardArea) obsStandardArea.textContent = `표준보육 영역: ${obs1Area}`;
+    if (obsActivityName) obsActivityName.textContent = `활동: ${mob?.obs_1?.activity_title || obs.activity_name || state.activityArea}`;
+    if (obsBehaviorContent) obsBehaviorContent.value = mob?.obs_1?.behavior || obs.behavior || '';
+    if (obsEvaluationContent) obsEvaluationContent.value = mob?.obs_1?.teacher_support || obs.evaluation || '';
 
     // 3. 일일 보육일지 (놀이 평가 및 내일 지원) 채우기
     if (dailyPlaySummary) dailyPlaySummary.value = dc.play_summary || '';
@@ -1990,7 +2182,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (classDailyReportCard) classDailyReportCard.style.display = targetTab === 'class_daily_report' ? 'block' : 'none';
     kidsnoteCard.style.display = targetTab === 'kidsnote' ? 'flex' : 'none';
-    observationCard.style.display = targetTab === 'observation' ? 'flex' : 'none';
+    observationCard.style.display = targetTab === 'observation' ? 'block' : 'none';
     if (dailyCareCard) dailyCareCard.style.display = 'none';
     if (counselingCard) counselingCard.style.display = 'none';
     if (playSupportCard) playSupportCard.style.display = 'none';
@@ -2030,6 +2222,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const sheetEl = document.getElementById('officialReportSheet');
     if (!sheetEl) return;
     copyTextToClipboard(sheetEl.innerText, '📋 보육일지 전체 텍스트가 복사되었습니다.');
+  }
+
+  // 🧸 평가제 월간 발달 관찰기록부 한글(HWP) 표 복사
+  async function handleCopyMonthlyObsHwp() {
+    const sheetEl = document.getElementById('officialObsSheet');
+    if (!sheetEl) {
+      showToast('복사할 관찰기록부 내용이 없습니다.');
+      return;
+    }
+    try {
+      const htmlContent = sheetEl.outerHTML;
+      const textContent = sheetEl.innerText;
+      if (navigator.clipboard && window.ClipboardItem) {
+        const blobHtml = new Blob([htmlContent], { type: 'text/html' });
+        const blobText = new Blob([textContent], { type: 'text/plain' });
+        await navigator.clipboard.write([new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })]);
+        showToast('🎉 한글(HWP) 표 복사 완료! 한글 문서에 Ctrl+V 하시면 관찰기록부 표 그대로 붙여넣기됩니다.');
+      } else {
+        await copyTextToClipboard(textContent, '📋 텍스트가 복사되었습니다.');
+      }
+    } catch (err) {
+      console.warn('ClipboardItem HTML 복사 실패, 텍스트 폴백:', err);
+      await copyTextToClipboard(sheetEl.innerText, '📋 텍스트가 복사되었습니다.');
+    }
   }
 
   async function handleSaveClassReportNotion() {
@@ -2192,8 +2408,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const today = new Date().toISOString().split('T')[0];
     const childName = state.selectedChild?.name || '원아';
     const activityArea = state.activityArea || '자유놀이';
-    const pageTitle = `[${today}] ${childName} - ${activityArea}`;
-    const obsFullText = `${obsBehaviorContent.value}\n\n[지원 및 평가]\n${obsEvaluationContent.value}`;
+
+    const isObsMode = state.mode === 'observation' || !!state.lastResult.monthly_observation;
+    const mob = state.lastResult.monthly_observation;
+    const targetMonthStr = mob?.target_month || (monthlyObsTargetMonth?.value ? `${monthlyObsTargetMonth.value.split('-')[0]}년 ${parseInt(monthlyObsTargetMonth.value.split('-')[1])}월` : '2026년 9월');
+
+    let pageTitle = `[${today}] ${childName} - ${activityArea}`;
+    let obsFullText = `${obsBehaviorContent.value}\n\n[지원 및 평가]\n${obsEvaluationContent.value}`;
+    let standardAreaName = state.lastResult.observation_log?.standard_area || '의사소통';
+
+    if (isObsMode && mob) {
+      pageTitle = `[관찰일지] ${targetMonthStr} ${childName} 발달 관찰기록부 (월 2회)`;
+      standardAreaName = mob.obs_1?.area || '의사소통';
+      obsFullText = `[${targetMonthStr} 영유아 발달 관찰기록부 - ${childName}]\n반명: ${state.className} / 담임: ${state.teacherName}\n\n` +
+        `■ 1차 관찰 (${mob.obs_1?.date || ''} / ${mob.obs_1?.area || ''})\n` +
+        `- 활동명: ${mob.obs_1?.activity_title || ''}\n` +
+        `- 행동 관찰: ${mob.obs_1?.behavior || ''}\n` +
+        `- 교사 지원: ${mob.obs_1?.teacher_support || ''}\n\n` +
+        `■ 2차 관찰 (${mob.obs_2?.date || ''} / ${mob.obs_2?.area || ''} - 발전적 변화 연계)\n` +
+        `- 활동명: ${mob.obs_2?.activity_title || ''}\n` +
+        `- 행동 관찰: ${mob.obs_2?.behavior || ''}\n` +
+        `- 교사 지원: ${mob.obs_2?.teacher_support || ''}\n` +
+        `- 발달 성장점: ${mob.obs_2?.growth_continuity || ''}\n\n` +
+        `■ 월말 발달 종합 총평\n` +
+        `- 종합 발달: ${mob.monthly_summary?.development_summary || ''}\n` +
+        `- 다음 달 지원 계획: ${mob.monthly_summary?.next_month_plan || ''}`;
+    }
 
     try {
       // 1. 브라우저에서 minmin-notion 직접 일지 저장 (Error 1042 회피 1순위)
@@ -2201,12 +2441,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const props = {
           '기록명/식별자': { title: [{ text: { content: pageTitle } }] },
           '작성일자': { date: { start: today } },
-          '활동 구분': { select: { name: activityArea } },
-          '표준보육 영역': { multi_select: [{ name: state.lastResult.observation_log?.standard_area || '의사소통' }] },
-          '원시 메모/키워드': { rich_text: [{ text: { content: rawMemoInput.value.trim() || '' } }] },
+          '활동 구분': { select: { name: isObsMode ? '관찰일지' : activityArea } },
+          '표준보육 영역': { multi_select: [{ name: standardAreaName }] },
+          '원시 메모/키워드': { rich_text: [{ text: { content: rawMemoInput.value.trim() || (isObsMode ? `${childName} 월간 관찰일지` : '') } }] },
           '알림장 최종본': { rich_text: [{ text: { content: kidsnoteContent.value || '' } }] },
           '관찰일지 최종본': { rich_text: [{ text: { content: obsFullText } }] },
-          '참조 출처 요약': { rich_text: [{ text: { content: citationSummaryText.textContent || '' } }] }
+          '참조 출처 요약': { rich_text: [{ text: { content: isObsMode ? `월 2회 연속 관찰기록부 (${targetMonthStr})` : (citationSummaryText.textContent || '') } }] }
         };
 
         if (state.selectedChild?.id && !state.selectedChild.id.startsWith('mock-')) {
@@ -2231,12 +2471,12 @@ document.addEventListener('DOMContentLoaded', () => {
         date: today,
         childId: state.selectedChild?.id,
         childName,
-        activityArea,
-        standardArea: state.lastResult.observation_log?.standard_area,
+        activityArea: isObsMode ? '관찰일지' : activityArea,
+        standardArea: standardAreaName,
         rawMemo: rawMemoInput.value.trim(),
         kidsnoteText: kidsnoteContent.value,
         observationText: obsFullText,
-        citationSummary: citationSummaryText.textContent || '',
+        citationSummary: isObsMode ? `월 2회 연속 관찰기록부 (${targetMonthStr})` : (citationSummaryText.textContent || ''),
         referencedLogId: null
       };
 

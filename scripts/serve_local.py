@@ -176,6 +176,9 @@ class DaycareHandler(SimpleHTTPRequestHandler):
             raw_memo = body.get("rawMemo", "")
             mode = body.get("mode", "partial")
             activity_area = body.get("activityArea", "자유놀이")
+            child_age = body.get("childAge", "만 2세")
+            class_name = body.get("className", "소망반")
+            monthly_obs_opts = body.get("monthlyObsOptions") or {}
             persona = body.get("persona") or {}
             api_key = body.get("apiKey") or GEMINI_API_KEY
 
@@ -308,6 +311,32 @@ class DaycareHandler(SimpleHTTPRequestHandler):
                     "activity_name": activity_area,
                     "behavior": f"{child_name}는 {activity_area}에서 {raw_memo or '블록을 양손으로 조작하여 성 모양으로 구성함'}. 놀이 중 블록이 흔들리자 조심스럽게 균형을 잡는 모습을 보임.",
                     "evaluation": f"눈과 손의 협응력 및 소근육 조절력이 향상되고 있으며, 문제 상황 시 스스로 해결하려는 끈기를 격려함."
+                },
+                "monthly_observation": {
+                    "title": f"[{monthly_obs_opts.get('targetMonth', '2026-09')}] {child_name} 발달 관찰기록부",
+                    "target_month": monthly_obs_opts.get('targetMonth', '2026년 9월'),
+                    "child_name": child_name,
+                    "age_group": child_age,
+                    "class_name": class_name,
+                    "obs_1": {
+                        "date": monthly_obs_opts.get('date1', '2026-09-08'),
+                        "area": monthly_obs_opts.get('area1', '의사소통'),
+                        "activity_title": f"{activity_area} 및 조작 놀이",
+                        "behavior": f"{child_name}는 블록을 높이 쌓다가 무너지자 즉시 교사를 바라보며 손을 뻗어 도움을 요청함. 교사가 '도와줄까?' 묻자 고개를 끄덕이며 교사의 단어를 모방하여 발화를 시도함.",
+                        "teacher_support": "유아의 요구를 즉각 수용하여 긍정적 언어 모델링을 제공하고, 무너진 블록을 함께 받쳐주며 심리적 안정감을 지원함."
+                    },
+                    "obs_2": {
+                        "date": monthly_obs_opts.get('date2', '2026-09-22'),
+                        "area": monthly_obs_opts.get('area2', '사회관계'),
+                        "activity_title": "기차 레일 협동 구성놀이",
+                        "behavior": f"1차 관찰 지도 이후 {child_name}는 놀이 중 어려움이 발생했을 때 울거나 떼쓰지 않고, 친구에게 먼저 블록 레일을 건네며 미소를 짓는 등 발전된 친사회적 상호작용을 보임.",
+                        "teacher_support": "친구와의 성공적인 나눔 및 협동 장면을 포착하여 '건하가 친구를 배려해 주었구나!' 하고 언어로 따뜻하게 격려함.",
+                        "growth_continuity": "1차 관찰 대비 교사 및 또래와의 상호작용 상황을 긍정적으로 수용하고 자발적인 나눔을 실천하는 발달적 성장을 나타냄."
+                    },
+                    "monthly_summary": {
+                        "development_summary": f"한 달 동안 {child_name}는 {monthly_obs_opts.get('area1', '의사소통')} 및 {monthly_obs_opts.get('area2', '사회관계')} 영역에서 괄목할 만한 긍정적 변화를 보임. 부정적 정서 표출 대신 교사와의 눈맞춤과 모방 발화, 또래와의 교구 나눔을 통해 원만한 보육실 적응을 이루어 냄.",
+                        "next_month_plan": f"다음 달에는 {child_name}의 신체 에너지와 조작 욕구를 살려 다양한 대소근육 복합 놀이와 소그룹 협동 놀이를 점진적으로 확대 지원할 계획임."
+                    }
                 },
                 "daily_care_log": {
                     "play_summary": f"유아들이 {activity_area} 영역에 자발적으로 모여 다양한 크기의 교구를 탐색하고 자신만의 구조물을 만드는 놀이가 활발히 전개됨.",

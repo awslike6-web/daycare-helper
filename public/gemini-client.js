@@ -72,12 +72,19 @@
       className = '햇살반',
       teacherName = '김선생님',
       persona = {},
-      pastLogs = []
+      pastLogs = [],
+      monthlyObsOptions = null
     } = payload;
 
     const isPlayStory = mode === 'play_story' || mode === 'partial';
     const isObservation = mode === 'observation';
     const isClassReport = mode === 'class_report' || (childName && (childName.includes('우리 반') || childName.includes('학급') || childName === '소망반'));
+
+    const targetMonthStr = monthlyObsOptions?.targetMonth || '2026-09';
+    const obsDate1 = monthlyObsOptions?.date1 || '2026-09-08';
+    const obsArea1 = monthlyObsOptions?.area1 || '의사소통';
+    const obsDate2 = monthlyObsOptions?.date2 || '2026-09-22';
+    const obsArea2 = monthlyObsOptions?.area2 || '사회관계';
 
     const maskedMemo = maskText(rawMemo, childName);
     const sampleNote = maskText(persona.sampleNote || '', childName);
@@ -162,8 +169,11 @@ ${pastLogs.map(p => `- [${p.date}] [${p.activityArea || '놀이'}] ${maskText(p.
 `;
     } else if (isObservation) {
       modeInstruction = `
-[⭐ 현재 모드: 🧸 평가제 관찰일지 집중]
-- 보육 평가제(평가인증) 표준보육과정 기준의 철저히 객관적인 행동 사실(~함, ~하는 모습을 보임 체)과 교사의 배움 지원 및 성장을 전문적으로 서술하라.
+[⭐ 현재 모드: 🧸 영유아 월간 발달 관찰기록부 (보건복지부 평가제 맞춤 월 2회 연속 관찰 + 월말 총평)]
+- 보육 평가제(평가인증) 표준보육과정 기준의 철저히 객관적인 사실 서술(~함, ~하는 모습을 보임 체)과 교사의 배움 지원을 전문적으로 서술하라.
+- 1차 관찰(상순 평일: ${obsDate1}, 영역: ${obsArea1}): 원아의 현재 상태 및 도전 과제, 교사의 개별 상호작용 지원 서술.
+- 2차 관찰(하순 평일: ${obsDate2}, 영역: ${obsArea2}): ⭐ 1차 지도 이후 아이가 보인 긍정적 행동양식 변화 및 발전적 성장점을 필수로 연계하여 서술.
+- 월말 발달 종합 총평: 한 달간의 발달 변화를 유기적으로 종합하고 다음 달 교사의 맞춤 지원 계획을 도출.
 `;
     } else {
       modeInstruction = `
@@ -233,6 +243,32 @@ ${maskedMemo}
     "activity_name": "${activityArea}",
     "behavior": "객관적 행동 관찰문 (~함 체)",
     "evaluation": "교사의 상호작용 지원 및 발달 평가 (~를 지원함)"
+  },
+  "monthly_observation": {
+    "title": "${targetMonthStr} 영유아 발달 관찰기록부",
+    "target_month": "${targetMonthStr}",
+    "child_name": "[아동A]",
+    "age_group": "${childAge}",
+    "class_name": "${className}",
+    "obs_1": {
+      "date": "${obsDate1}",
+      "area": "${obsArea1}",
+      "activity_title": "활동명",
+      "behavior": "객관적 행동 관찰문 (~함 체)",
+      "teacher_support": "교사의 언어 모델링 및 상호작용 지원 내용"
+    },
+    "obs_2": {
+      "date": "${obsDate2}",
+      "area": "${obsArea2}",
+      "activity_title": "활동명",
+      "behavior": "1차 지도 이후 아이가 보인 발전된 행동양식 관찰문 (~함 체)",
+      "teacher_support": "긍정적 상호작용 지지 및 후속 지원 계획",
+      "growth_continuity": "1차 관찰 대비 변화된 성장점 요약"
+    },
+    "monthly_summary": {
+      "development_summary": "1·2차 관찰을 종합한 월간 발달 총평 (표준보육과정 관점)",
+      "next_month_plan": "다음 달 교사의 개별 맞춤 지원 및 가정 연계 방향"
+    }
   },
   "daily_care_log": {
     "play_summary": "오늘 우리 반 유아들의 전반적인 놀이 흐름 요약",
