@@ -98,11 +98,15 @@
 
     <!-- 📝 입력 폼 메인 영역 -->
     <main class="content-area">
-      <!-- 🎛️ 3대 목적별 집중 모드 스위처 -->
+      <!-- 🎛️ 목적별 집중 모드 스위처 (처형분 정규 보육일지 + 아내분 개별 알림장/관찰일지) -->
       <div class="mode-switcher" id="modeSwitcher">
         <button type="button" class="mode-btn active" data-mode="play_story">
           <span>📸 놀이 알림장</span>
-          <span class="mode-subtext">놀이·사진 집중 서술형</span>
+          <span class="mode-subtext">놀이·사진 집중 서술</span>
+        </button>
+        <button type="button" class="mode-btn" data-mode="class_report">
+          <span>📄 놀이 보육일지</span>
+          <span class="mode-subtext">A4 공문서·표준과정</span>
         </button>
         <button type="button" class="mode-btn" data-mode="observation">
           <span>🧸 관찰일지</span>
@@ -168,11 +172,128 @@
         <!-- 5대 서식 가로 스크롤 탭 스위처 -->
         <div class="result-tabs-scroll">
           <div class="result-tabs" id="resultTabs">
+            <button type="button" class="result-tab-btn" data-tab="class_daily_report" id="tabClassDailyReport" style="background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8; font-weight: 700;">📄 놀이 보육일지 (공문서)</button>
             <button type="button" class="result-tab-btn active" data-tab="kidsnote">💌 키즈노트 알림장</button>
             <button type="button" class="result-tab-btn" data-tab="observation">🧸 평가제 관찰일지</button>
             <button type="button" class="result-tab-btn" data-tab="daily_care">📋 일일 보육일지</button>
             <button type="button" class="result-tab-btn" data-tab="counseling">🗣️ 학부모 상담일지</button>
             <button type="button" class="result-tab-btn" data-tab="play_support">🎯 놀이 지원안</button>
+          </div>
+        </div>
+
+        <!-- 탭 0: 처형분 전용 놀이중심 보육일지 공문서 카드 (A4 인쇄 & HWP 복사) -->
+        <div class="result-card" id="classDailyReportCard" style="display: none;">
+          <div class="result-card-header" style="margin-bottom: 12px;">
+            <div>
+              <div class="result-title" style="display: flex; align-items: center; gap: 6px;">
+                <span>📄 놀이중심 보육일지</span>
+                <span class="tag-badge" style="background: #DBEAFE; color: #1E40AF;">표준보육과정 연계 · 결재 서식</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                어린이집 정식 공문서 규격입니다. [한글(HWP) 표 복사]를 누르면 표 그대로 붙여넣기됩니다.
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" id="copyHwpTableBtn" class="action-btn action-btn-copy" style="padding: 6px 10px; font-size: 12px;">
+                <span>📋</span> <span>한글(HWP) 표 복사</span>
+              </button>
+              <button type="button" id="printReportBtn" class="action-btn action-btn-share" style="padding: 6px 10px; font-size: 12px; background: #059669;">
+                <span>🖨️</span> <span>A4 인쇄/PDF</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 📄 실제 출력 및 복사용 정규 A4 공문서 시트 -->
+          <div class="official-report-sheet" id="officialReportSheet">
+            <h2 class="report-doc-title" id="repDocTitle">1. 만 2세 놀이중심 보육일지</h2>
+            
+            <!-- 결재란 및 헤더 메타 테이블 -->
+            <table class="report-header-table">
+              <colgroup>
+                <col style="width: 14%;">
+                <col style="width: 26%;">
+                <col style="width: 12%;">
+                <col style="width: 24%;">
+                <col style="width: 8%;">
+                <col style="width: 8%;">
+                <col style="width: 8%;">
+              </colgroup>
+              <tbody>
+                <tr>
+                  <th class="rep-th">반명</th>
+                  <td class="rep-td" id="repHdrClass">소망반 (만 2세)</td>
+                  <th class="rep-th">일시</th>
+                  <td class="rep-td" id="repHdrDate">2026년 9월 17일 (목)</td>
+                  <th class="rep-th" rowspan="2" style="background: #F8FAFC; text-align: center; vertical-align: middle;">결<br>재</th>
+                  <th class="rep-th sign-th">담임</th>
+                  <th class="rep-th sign-th">원장</th>
+                </tr>
+                <tr>
+                  <th class="rep-th">놀이 주제</th>
+                  <td class="rep-td" colspan="3" id="repHdrTheme">칙칙폭폭 기차놀이 & 바깥놀이 신체활동</td>
+                  <td class="rep-td sign-td" id="repHdrSignTeacher">(인)</td>
+                  <td class="rep-td sign-td" id="repHdrSignDirector">(인)</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- 2열 놀이 실행 및 배움 읽기 테이블 -->
+            <div class="report-section-title">[놀이 실행 및 배움 읽기]</div>
+            <table class="report-curriculum-table" id="reportCurriculumTable">
+              <colgroup>
+                <col style="width: 50%;">
+                <col style="width: 50%;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th class="rep-th" style="text-align: center; background: #F1F5F9;">놀이 사진 (관찰)</th>
+                  <th class="rep-th" style="text-align: center; background: #F1F5F9;">놀이 내용 및 배움 읽기 (표준보육과정 연계)</th>
+                </tr>
+              </thead>
+              <tbody id="reportCurriculumTbody">
+                <!-- 동적으로 JS가 2열 행들을 채움 -->
+                <tr>
+                  <td class="rep-td">
+                    <div style="font-weight: 700; color: #1E293B;">[사진 1, 2 참조] 기차놀이</div>
+                    <div style="font-size: 12px; margin-top: 4px; line-height: 1.5;">영아들은 길게 이어진 기차 레일 위에 기차를 올리고 밀며 "칙칙폭폭 기차가 출발합니다!" 하고 외친다. 맞은편 친구가 굴려오는 기차와 부딪히지 않도록 속도를 늦추거나 레일을 양보하며 몰입한다.</div>
+                  </td>
+                  <td class="rep-td">
+                    <div style="font-weight: 700; color: #2563EB;">[배움 읽기: 자연탐구, 예술경험]</div>
+                    <div style="font-size: 12px; margin-top: 4px; line-height: 1.5;">- 곡선과 직선 레일을 따라 기차를 조작하며 공간과 도형의 연속성을 탐색한다. 이는 [자연탐구 > 수학적 탐구하기 > 공간과 도형에 관심 가지기]와 연계된다.<br>- 기차 소리를 내며 역할을 모방하는 가상놀이를 즐긴다. 이는 [예술경험 > 모방과 극놀이 즐기기]와 연계된다.</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- 교사의 성찰 및 지원 내용 -->
+            <div class="report-section-title">[교사의 성찰 및 지원 내용]</div>
+            <div class="report-reflection-box" id="reportReflectionBox">
+              <div class="report-bullet-item">
+                <span class="bullet-dot">●</span> <strong>성찰:</strong> 
+                <span id="repReflectionText">영아들이 블록으로 길게 만들던 기차 형태에 착안해 실제 조립형 레일과 다양한 기차 놀잇감을 연계해 주었더니 궤도 운동에 높은 집중력을 보였다. 야외에서는 대근육 신체놀이를 진행해 아이들의 신체 발산 욕구를 시원하게 충족시켜 주었다.</span>
+              </div>
+              <div class="report-bullet-item" style="margin-top: 8px;">
+                <span class="bullet-dot">●</span> <strong>지원 내용:</strong>
+                <div class="report-sub-bullet">
+                  <span class="sub-bullet-dash">○</span> <strong>환경 지원:</strong> 
+                  <span id="repSupportEnvText">기차 레일이 바닥에서 분리되지 않도록 넓은 공간에 안전하게 배치하고, 영아 수에 맞춰 기차 교구를 넉넉하게 꺼내주어 자리 다툼 없이 함께 굴릴 수 있도록 도움.</span>
+                </div>
+                <div class="report-sub-bullet" style="margin-top: 4px;">
+                  <span class="sub-bullet-dash">○</span> <strong>바깥놀이 안전 관리:</strong> 
+                  <span id="repSupportSafetyText">짧은 산책 시 보행 안전선을 지키도록 손잡고 이동을 지도하였으며, 광장 술래잡기 시 친구들과 부딪히거나 넘어지지 않도록 충분한 안전거리를 유지시킴.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 하단 통합 버튼 행 -->
+          <div class="action-btn-row" style="margin-top: 14px;">
+            <button type="button" id="copyFullReportTextBtn" class="action-btn action-btn-copy">
+              <span>📋</span> <span>텍스트 전체 복사</span>
+            </button>
+            <button type="button" id="saveClassReportNotionBtn" class="action-btn action-btn-save">
+              <span>💾</span> <span>노션 보육일지 DB 저장</span>
+            </button>
           </div>
         </div>
 

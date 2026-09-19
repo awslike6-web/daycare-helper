@@ -1393,3 +1393,148 @@ body {
   animation: pinShake 0.4s ease-in-out !important;
 }
 
+/* ==========================================================================
+   📄 처형분 실무 정규 놀이중심 보육일지 (A4 공문서 서식 & HWP 표 스타일)
+   ========================================================================== */
+.official-report-sheet {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: var(--radius-md);
+  padding: 24px;
+  margin-top: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  color: #1E293B;
+  line-height: 1.5;
+}
+
+.report-doc-title {
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
+  margin: 0 0 16px 0;
+  color: #0F172A;
+  letter-spacing: -0.5px;
+}
+
+.report-header-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  border: 1.5px solid #334155;
+}
+
+.report-header-table .rep-th,
+.report-header-table .rep-td {
+  border: 1px solid #64748B;
+  padding: 6px 8px;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.report-header-table .rep-th {
+  background: #F1F5F9;
+  font-weight: 700;
+  text-align: center;
+  color: #1E293B;
+}
+
+.report-header-table .rep-td {
+  background: #FFFFFF;
+}
+
+.sign-th {
+  font-size: 11px !important;
+  padding: 4px !important;
+  height: 22px;
+}
+
+.sign-td {
+  text-align: center;
+  height: 44px;
+  color: #94A3B8;
+  font-size: 11px;
+}
+
+.report-section-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 14px 0 6px 0;
+  letter-spacing: -0.3px;
+}
+
+.report-curriculum-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  border: 1.5px solid #334155;
+}
+
+.report-curriculum-table .rep-th,
+.report-curriculum-table .rep-td {
+  border: 1px solid #64748B;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  vertical-align: top;
+}
+
+.report-reflection-box {
+  border: 1.5px solid #334155;
+  padding: 12px 14px;
+  background: #FFFFFF;
+  border-radius: 2px;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.report-bullet-item {
+  margin-bottom: 6px;
+}
+
+.report-sub-bullet {
+  padding-left: 14px;
+  margin-top: 4px;
+}
+
+.bullet-dot {
+  font-size: 10px;
+  vertical-align: middle;
+  margin-right: 2px;
+}
+
+.sub-bullet-dash {
+  font-size: 10px;
+  margin-right: 2px;
+}
+
+/* 🖨️ A4 보육일지 인쇄 미디어 쿼리 */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #officialReportSheet, #officialReportSheet * {
+    visibility: visible;
+  }
+  #officialReportSheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+  }
+  .report-header-table, .report-curriculum-table, .report-reflection-box {
+    border-color: #000000 !important;
+  }
+  .report-header-table .rep-th, .report-curriculum-table .rep-th {
+    background-color: #EEEEEE !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+

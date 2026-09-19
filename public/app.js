@@ -149,6 +149,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const copyObservationBtn = document.getElementById('copyObservationBtn');
   const saveNotionBtn = document.getElementById('saveNotionBtn');
 
+  // 📄 처형분 실무 정규 보육일지 공문서 요소들
+  const tabClassDailyReport = document.getElementById('tabClassDailyReport');
+  const classDailyReportCard = document.getElementById('classDailyReportCard');
+  const repDocTitle = document.getElementById('repDocTitle');
+  const repHdrClass = document.getElementById('repHdrClass');
+  const repHdrDate = document.getElementById('repHdrDate');
+  const repHdrTheme = document.getElementById('repHdrTheme');
+  const repHdrSignTeacher = document.getElementById('repHdrSignTeacher');
+  const repHdrSignDirector = document.getElementById('repHdrSignDirector');
+  const reportCurriculumTbody = document.getElementById('reportCurriculumTbody');
+  const repReflectionText = document.getElementById('repReflectionText');
+  const repSupportEnvText = document.getElementById('repSupportEnvText');
+  const repSupportSafetyText = document.getElementById('repSupportSafetyText');
+  const copyHwpTableBtn = document.getElementById('copyHwpTableBtn');
+  const printReportBtn = document.getElementById('printReportBtn');
+  const copyFullReportTextBtn = document.getElementById('copyFullReportTextBtn');
+  const saveClassReportNotionBtn = document.getElementById('saveClassReportNotionBtn');
+
   // 3대 추가 서식 필드 및 복사 버튼
   const dailyPlaySummary = document.getElementById('dailyPlaySummary');
   const dailyPlayEval = document.getElementById('dailyPlayEval');
@@ -612,11 +630,18 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.add('active');
         state.mode = btn.dataset.mode;
         
-        // 놀이 알림장 또는 관찰일지 모드일 때 활동 영역 선택 표시
-        if (state.mode === 'play_story' || state.mode === 'partial' || state.mode === 'observation') {
+        // 놀이 알림장, 공문서 보육일지, 관찰일지 모드일 때 활동 영역 선택 표시
+        if (state.mode === 'play_story' || state.mode === 'partial' || state.mode === 'class_report' || state.mode === 'observation') {
           areaSection.style.display = 'flex';
         } else {
           areaSection.style.display = 'none';
+        }
+
+        // 🌟 놀이 보육일지(공문서) 모드일 때 플레이스홀더 변경
+        if (state.mode === 'class_report') {
+          if (rawMemoInput) rawMemoInput.placeholder = "오늘 우리 반 유아들의 실내/바깥 놀이 장면과 키워드를 편하게 적어주세요.\n예) 블록 기차놀이로 레일 연결 및 역할놀이, 바깥 산책 후 앞마당 비눗방울 쫓기와 술래잡기, 체육 대형 무지개 낙하산 펄럭이기";
+        } else {
+          if (rawMemoInput) rawMemoInput.placeholder = "오늘 아이가 몰입했던 놀이 장면이나 키워드를 편하게 남겨주세요.\n예) 블록으로 큰 동물원 우리를 만들며 기린 인형에게 풀을 주는 흉내를 냄. 친구와 웃으며 울타리를 넓혀감.";
         }
       });
     });
@@ -643,20 +668,28 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.add('active');
         const tab = btn.dataset.tab;
         
-        // 5대 서식 카드 전체 숨김 후 선택된 탭만 노출
+        // 5대 서식 + 공문서 카드 전체 숨김 후 선택된 탭만 노출
+        if (classDailyReportCard) classDailyReportCard.style.display = 'none';
         kidsnoteCard.style.display = 'none';
         observationCard.style.display = 'none';
         if (dailyCareCard) dailyCareCard.style.display = 'none';
         if (counselingCard) counselingCard.style.display = 'none';
         if (playSupportCard) playSupportCard.style.display = 'none';
 
-        if (tab === 'kidsnote') kidsnoteCard.style.display = 'flex';
+        if (tab === 'class_daily_report' && classDailyReportCard) classDailyReportCard.style.display = 'block';
+        else if (tab === 'kidsnote') kidsnoteCard.style.display = 'flex';
         else if (tab === 'observation') observationCard.style.display = 'flex';
         else if (tab === 'daily_care' && dailyCareCard) dailyCareCard.style.display = 'flex';
         else if (tab === 'counseling' && counselingCard) counselingCard.style.display = 'flex';
         else if (tab === 'play_support' && playSupportCard) playSupportCard.style.display = 'flex';
       });
     });
+
+    // 0. 처형분 실무 공문서 버튼 (한글 표 복사, A4 인쇄, 노션 저장)
+    if (copyHwpTableBtn) copyHwpTableBtn.addEventListener('click', handleCopyHwpTable);
+    if (printReportBtn) printReportBtn.addEventListener('click', () => window.print());
+    if (copyFullReportTextBtn) copyFullReportTextBtn.addEventListener('click', handleCopyFullReportText);
+    if (saveClassReportNotionBtn) saveClassReportNotionBtn.addEventListener('click', handleSaveClassReportNotion);
 
     // 1. 키즈노트 알림장 복사 및 공유
     copyKidsnoteBtn.addEventListener('click', handleCopyKidsnote);
@@ -1091,9 +1124,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let targetChild = null;
 
+    // 🌟 [처형분 모드] 맨 앞에 '우리 반 놀이 (학급 전체)' 칩 상시 배치
+    const isClassAllSelected = selectedId === 'class-all' || state.mode === 'class_report';
+    const classAllChip = document.createElement('div');
+    classAllChip.className = `child-chip ${isClassAllSelected ? 'active' : ''}`;
+    classAllChip.style.borderColor = '#3B82F6';
+    if (isClassAllSelected) {
+      classAllChip.style.background = '#2563EB';
+      classAllChip.style.color = '#FFFFFF';
+    } else {
+      classAllChip.style.background = '#EFF6FF';
+      classAllChip.style.color = '#1D4ED8';
+    }
+    classAllChip.innerHTML = `
+      <span class="child-avatar">🌟</span>
+      <span style="font-weight: 700;">우리 반 놀이</span>
+    `;
+    classAllChip.addEventListener('click', () => {
+      childScrollContainer.querySelectorAll('.child-chip').forEach(c => c.classList.remove('active'));
+      classAllChip.classList.add('active');
+      selectClassAllMode();
+    });
+    childScrollContainer.appendChild(classAllChip);
+
     displayList.forEach((child, index) => {
-      const isSelected = selectedId ? child.id === selectedId : index === 0;
-      if (isSelected) targetChild = child;
+      const isSelected = selectedId ? child.id === selectedId : (!isClassAllSelected && index === 0);
+      if (isSelected && !targetChild) targetChild = child;
 
       const chip = document.createElement('div');
       chip.className = `child-chip ${isSelected ? 'active' : ''}`;
@@ -1117,10 +1173,42 @@ document.addEventListener('DOMContentLoaded', () => {
     addChip.addEventListener('click', () => openChildModal('add'));
     childScrollContainer.appendChild(addChip);
 
-    if (targetChild) {
+    if (isClassAllSelected) {
+      selectClassAllMode();
+    } else if (targetChild) {
       selectChild(targetChild);
     } else if (displayList.length > 0) {
       selectChild(displayList[0]);
+    }
+  }
+
+  function selectClassAllMode() {
+    const defaultAge = (state.className && state.className.includes('사랑')) ? '만 0세' : '만 2세';
+    state.selectedChild = {
+      id: 'class-all',
+      name: `${state.className} 우리 반`,
+      age: defaultAge,
+      traits: `${state.className} 유아들의 협동 놀이, 신체활동 및 놀이 몰입`,
+      parentStyle: '학급 전체 학부모 대상 다정체 서술 및 귀가 후 칭찬 질문 안내',
+      allergies: ''
+    };
+    selectedChildAge.textContent = defaultAge;
+    childTraitsText.innerHTML = `🌟 <strong>${state.className} 놀이중심 보육일지 모드</strong>: 사진(최대 6장)과 활동 키워드를 넣으시면 정규 공문서(표준보육과정 연계)와 학급 전체 알림장이 완성됩니다.`;
+    if (childParentText) {
+      childParentText.style.display = 'block';
+      childParentText.textContent = `💌 학부모 소통: 학급 전체 공지용 알림장 (귀가 칭찬 가이드 포함)`;
+    }
+    childAlertText.style.display = 'none';
+
+    // 모드 스위처도 'class_report'로 자동 전환
+    if (modeSwitcher && state.mode !== 'class_report') {
+      const reportBtn = modeSwitcher.querySelector('.mode-btn[data-mode="class_report"]');
+      if (reportBtn) {
+        modeSwitcher.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        reportBtn.classList.add('active');
+        state.mode = 'class_report';
+        if (rawMemoInput) rawMemoInput.placeholder = "오늘 우리 반 유아들의 실내/바깥 놀이 장면과 키워드를 편하게 적어주세요.\n예) 블록 기차놀이로 레일 연결 및 역할놀이, 바깥 산책 후 앞마당 비눗방울 쫓기와 술래잡기, 체육 대형 무지개 낙하산 펄럭이기";
+      }
     }
   }
 
@@ -1131,6 +1219,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function selectChild(child) {
+    if (!child) return;
+    if (child.id === 'class-all') {
+      selectClassAllMode();
+      return;
+    }
+
+    // 만약 이전 모드가 class_report였다면 개별 원아용 play_story로 복귀
+    if (state.mode === 'class_report' && modeSwitcher) {
+      const playBtn = modeSwitcher.querySelector('.mode-btn[data-mode="play_story"]');
+      if (playBtn) {
+        modeSwitcher.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        playBtn.classList.add('active');
+        state.mode = 'play_story';
+        if (rawMemoInput) rawMemoInput.placeholder = "오늘 아이가 몰입했던 놀이 장면이나 키워드를 편하게 남겨주세요.\n예) 블록으로 큰 동물원 우리를 만들며 기린 인형에게 풀을 주는 흉내를 냄. 친구와 웃으며 울타리를 넓혀감.";
+      }
+    }
+
     state.selectedChild = child;
     selectedChildAge.textContent = child.age || '만 4세';
     childTraitsText.textContent = `💡 성향: ${child.traits || '특이사항 없음'}`;
@@ -1668,8 +1773,63 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderResults(data) {
     if (!data) return;
 
-    // 1. 키즈노트 알림장 채우기
+    // 0. 처형분 정규 놀이중심 보육일지 공문서 채우기
+    const rep = data.class_daily_report;
     const kn = data.kidsnote || {};
+    const obs = data.observation_log || {};
+    const dc = data.daily_care_log || {};
+
+    if (rep || state.mode === 'class_report') {
+      if (tabClassDailyReport) tabClassDailyReport.style.display = 'inline-flex';
+
+      const ageText = state.selectedChild?.age || (state.className && state.className.includes('사랑') ? '만 0세' : '만 2세');
+      const todayFormatted = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+
+      if (repDocTitle) repDocTitle.textContent = rep?.title || `1. ${ageText} 놀이중심 보육일지`;
+      if (repHdrClass) repHdrClass.textContent = `${state.className} (${ageText})`;
+      if (repHdrDate) repHdrDate.textContent = rep?.date || todayFormatted;
+      if (repHdrTheme) repHdrTheme.textContent = rep?.play_theme || `${state.activityArea} & 놀이 활동`;
+
+      if (reportCurriculumTbody) {
+        reportCurriculumTbody.innerHTML = '';
+        const activities = (rep && Array.isArray(rep.activities) && rep.activities.length > 0)
+          ? rep.activities
+          : [
+              {
+                photo_ref: '[사진 1, 2 참조]',
+                activity_title: state.activityArea || '놀이 활동',
+                observation: `[관찰 내용] ${kn.content ? kn.content.slice(0, 180) + '...' : '유아들은 놀잇감을 탐색하며 즐겁게 몰입한다.'}`,
+                learning_content: `[배움 읽기: ${obs.standard_area || '신체운동'}] - ${obs.evaluation || '놀이를 통해 기본 운동 능력을 기른다.'}`
+              }
+            ];
+
+        activities.forEach(act => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="rep-td">
+              <div style="font-weight: 700; color: #1E293B; margin-bottom: 4px;">${act.photo_ref || '[사진 참조]'} ${act.activity_title || ''}</div>
+              <div style="font-size: 12px; line-height: 1.5; color: #334155;">${act.observation || ''}</div>
+            </td>
+            <td class="rep-td">
+              <div style="font-size: 12px; line-height: 1.5; color: #1E293B;">${act.learning_content || ''}</div>
+            </td>
+          `;
+          reportCurriculumTbody.appendChild(tr);
+        });
+      }
+
+      if (repReflectionText) {
+        repReflectionText.textContent = rep?.reflection ? rep.reflection.replace(/^●\s*성찰:\s*/, '') : (dc.play_evaluation || '유아들의 흥미를 반영한 놀이 연계로 높은 몰입도를 보였다.');
+      }
+      if (repSupportEnvText) {
+        repSupportEnvText.textContent = rep?.support?.environment ? rep.support.environment.replace(/^○\s*환경\s*지원:\s*/, '') : (dc.next_support_plan || '안전한 공간 확보 및 충분한 놀이 교구 배치 지원.');
+      }
+      if (repSupportSafetyText) {
+        repSupportSafetyText.textContent = rep?.support?.safety ? rep.support.safety.replace(/^○\s*바깥놀이\s*안전\s*관리:\s*/, '').replace(/^○\s*상호작용\s*지원:\s*/, '') : '짧은 산책 시 보행 안전선을 지키고 상호작용 간 안전거리를 유지하도록 지도함.';
+      }
+    }
+
+    // 1. 키즈노트 알림장 채우기
     kidsnoteTitle.textContent = kn.title || '오늘의 알림장';
     kidsnoteContent.value = kn.content || '';
 
@@ -1682,14 +1842,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 2. 평가제 관찰일지 채우기
-    const obs = data.observation_log || {};
     obsStandardArea.textContent = `표준보육 영역: ${obs.standard_area || '의사소통'}`;
     obsActivityName.textContent = `활동: ${obs.activity_name || state.activityArea}`;
     obsBehaviorContent.value = obs.behavior || '';
     obsEvaluationContent.value = obs.evaluation || '';
 
     // 3. 일일 보육일지 (놀이 평가 및 내일 지원) 채우기
-    const dc = data.daily_care_log || {};
     if (dailyPlaySummary) dailyPlaySummary.value = dc.play_summary || '';
     if (dailyPlayEval) dailyPlayEval.value = dc.play_evaluation || '';
     if (dailyNextPlan) dailyNextPlan.value = dc.next_support_plan || '';
@@ -1717,10 +1875,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 선택된 모드에 맞추어 메인 탭 전환
-    const targetTab = state.mode === 'observation' ? 'observation' : 'kidsnote';
+    let targetTab = 'kidsnote';
+    if (state.mode === 'class_report' || rep) {
+      targetTab = 'class_daily_report';
+    } else if (state.mode === 'observation') {
+      targetTab = 'observation';
+    }
+
     resultTabBtns.forEach(b => {
       b.classList.toggle('active', b.dataset.tab === targetTab);
     });
+    if (classDailyReportCard) classDailyReportCard.style.display = targetTab === 'class_daily_report' ? 'block' : 'none';
     kidsnoteCard.style.display = targetTab === 'kidsnote' ? 'flex' : 'none';
     observationCard.style.display = targetTab === 'observation' ? 'flex' : 'none';
     if (dailyCareCard) dailyCareCard.style.display = 'none';
@@ -1730,6 +1895,107 @@ document.addEventListener('DOMContentLoaded', () => {
     // 결과 섹션 노출 및 스크롤
     resultsSection.style.display = 'flex';
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ============================================================================
+  // 11-B. 처형분 실무 공문서 버튼 핸들러 (한글 HWP 표 복사, 텍스트 복사, 노션 저장)
+  // ============================================================================
+  async function handleCopyHwpTable() {
+    const sheetEl = document.getElementById('officialReportSheet');
+    if (!sheetEl) {
+      showToast('복사할 보육일지 내용이 없습니다.');
+      return;
+    }
+    try {
+      const htmlContent = sheetEl.outerHTML;
+      const textContent = sheetEl.innerText;
+      if (navigator.clipboard && window.ClipboardItem) {
+        const blobHtml = new Blob([htmlContent], { type: 'text/html' });
+        const blobText = new Blob([textContent], { type: 'text/plain' });
+        await navigator.clipboard.write([new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })]);
+        showToast('🎉 한글(HWP) 표 복사 완료! 한글 문서에 Ctrl+V 하시면 표 그대로 붙여넣기됩니다.');
+      } else {
+        await copyTextToClipboard(textContent, '📋 텍스트가 복사되었습니다.');
+      }
+    } catch (err) {
+      console.warn('ClipboardItem HTML 복사 실패, 텍스트 폴백:', err);
+      await copyTextToClipboard(sheetEl.innerText, '📋 텍스트가 복사되었습니다.');
+    }
+  }
+
+  function handleCopyFullReportText() {
+    const sheetEl = document.getElementById('officialReportSheet');
+    if (!sheetEl) return;
+    copyTextToClipboard(sheetEl.innerText, '📋 보육일지 전체 텍스트가 복사되었습니다.');
+  }
+
+  async function handleSaveClassReportNotion() {
+    if (!state.lastResult) {
+      showToast('저장할 보육일지가 없습니다. 먼저 생성해주세요.');
+      return;
+    }
+    if (saveClassReportNotionBtn) {
+      saveClassReportNotionBtn.disabled = true;
+      saveClassReportNotionBtn.innerHTML = '<span>⏳</span> <span>노션에 저장 중...</span>';
+    }
+
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const rep = state.lastResult.class_daily_report || {};
+      const activitiesSummary = (rep.activities || []).map(a => `${a.photo_ref || ''} ${a.activity_title || ''}\n- 관찰: ${a.observation || ''}\n- 배움: ${a.learning_content || ''}`).join('\n\n');
+      const fullDailyLog = `[${rep.title || '놀이중심 보육일지'}]\n주제: ${rep.play_theme || ''}\n\n[놀이 실행 및 배움 읽기]\n${activitiesSummary}\n\n[교사의 성찰 및 지원 내용]\n${rep.reflection || ''}\n- ${rep.support?.environment || ''}\n- ${rep.support?.safety || ''}`;
+
+      // 1. 노션 직결 브릿지 시도
+      try {
+        const pageTitle = `[${todayStr}] ${state.className} 놀이중심 보육일지`;
+        const createPayload = {
+          parent: { database_id: NOTION_CONFIG.DAILY_LOG_DB_ID },
+          properties: {
+            '기록명/식별자': { title: [{ text: { content: pageTitle } }] },
+            '작성일자': { date: { start: todayStr } },
+            '활동 구분': { select: { name: state.activityArea || '자유놀이' } },
+            '표준보육 영역': { multi_select: [{ name: '신체운동' }, { name: '자연탐구' }, { name: '예술경험' }] },
+            '원시 메모/키워드': { rich_text: [{ text: { content: rawMemoInput.value.trim() || '학급 놀이 활동' } }] },
+            '알림장 최종본': { rich_text: [{ text: { content: (state.lastResult.kidsnote?.content || '').slice(0, 1900) } }] },
+            '관찰일지 최종본': { rich_text: [{ text: { content: fullDailyLog.slice(0, 1900) } }] },
+            '참조 출처 요약': { rich_text: [{ text: { content: `학급 전체 놀이 보육일지 (${state.className})` } }] }
+          }
+        };
+        await directNotionCall('/pages', 'POST', createPayload);
+        showToast('🎉 노션 DAILY_LOG_DB에 정규 보육일지가 안전하게 저장되었습니다!');
+        return;
+      } catch (directErr) {
+        console.warn('Direct notion save failed, trying worker endpoint:', directErr);
+      }
+
+      // 2. 워커 엔드포인트 폴백
+      const res = await fetch('/api/logs/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: todayStr,
+          childId: null,
+          childName: `${state.className} 우리 반`,
+          activityArea: state.activityArea || '자유놀이',
+          standardArea: '신체운동',
+          rawMemo: rawMemoInput.value.trim(),
+          kidsnoteText: state.lastResult.kidsnote?.content || '',
+          observationText: fullDailyLog,
+          citationSummary: '학급 전체 놀이 보육일지'
+        })
+      });
+
+      if (!res.ok) throw new Error('노션 저장에 실패했습니다.');
+      showToast('🎉 노션에 보육일지가 성공적으로 저장되었습니다!');
+    } catch (err) {
+      console.error('Save Class Report Error:', err);
+      showToast(`저장 오류: ${err.message}`);
+    } finally {
+      if (saveClassReportNotionBtn) {
+        saveClassReportNotionBtn.disabled = false;
+        saveClassReportNotionBtn.innerHTML = '<span>💾</span> <span>노션 보육일지 DB 저장</span>';
+      }
+    }
   }
 
   // ============================================================================

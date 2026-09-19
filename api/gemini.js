@@ -136,6 +136,26 @@ ${isPlayStory ? `
 
 [반환 형식]: 반드시 아래 JSON 스키마를 엄격히 준수하여 응답하라 (추가 텍스트나 마크다운 코드블록 없이 순수 JSON만 반환).
 {
+  "class_daily_report": {
+    "title": "1. 만 2세 놀이중심 보육일지",
+    "date": "2026년 9월 17일 (목)",
+    "weather": "맑음",
+    "play_theme": "놀이 주제 요약",
+    "activities": [
+      {
+        "photo_ref": "[사진 1, 2 참조]",
+        "activity_title": "기차놀이",
+        "observation": "[관찰 내용] 영아들의 생생한 발화와 행동 조작 관찰문",
+        "curriculum_areas": ["자연탐구", "예술경험"],
+        "learning_content": "[배움 읽기: 자연탐구, 예술경험] - 구체적 배움 분석. 이는 [자연탐구 > 수학적 탐구하기 > 공간과 도형에 관심 가지기]와 연계된다."
+      }
+    ],
+    "reflection": "● 성찰: 오늘 놀이에 대한 교사의 교육적 배움 성찰",
+    "support": {
+      "environment": "○ 환경 지원: 교구 및 공간 배치 환경 지원",
+      "safety": "○ 바깥놀이 안전 관리: 보행 안전선 또는 상호작용 지도"
+    }
+  },
   "kidsnote": {
     "title": "알림장 제목",
     "content": "학부모용 다정체 서술문",
