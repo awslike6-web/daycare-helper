@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json?v=20260920_v1">
-  <link rel="stylesheet" href="./style.css?v=20260920_v1">
+  <link rel="manifest" href="./manifest.json?v=20260920_v3">
+  <link rel="stylesheet" href="./style.css?v=20260920_v3">
 </head>
 <body>
   <div class="app-container">
@@ -223,10 +223,15 @@
       <div class="memo-card">
         <div class="memo-header">
           <span class="memo-title">📝 놀이 관찰 메모 / 키워드</span>
-          <button type="button" id="voiceMicBtn" class="mic-btn">
-            <span id="micIcon">🎙️</span>
-            <span id="micStatusText">음성 메모</span>
-          </button>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <button type="button" id="btnClearMemoBtn" class="action-btn" style="padding: 6px 10px; font-size: 11px; background: #F1F5F9; color: #64748B; border: 1px solid #CBD5E1; border-radius: 6px;" title="작성 중인 메모 비우기">
+              <span>🗑️</span> <span>비우기</span>
+            </button>
+            <button type="button" id="voiceMicBtn" class="mic-btn">
+              <span id="micIcon">🎙️</span>
+              <span id="micStatusText">음성 메모</span>
+            </button>
+          </div>
         </div>
         <textarea 
           id="rawMemoInput" 
@@ -1185,7 +1190,7 @@
     <div class="toast" id="toastMessage">클립보드에 복사되었습니다.</div>
   </div>
 
-  <script src="./gemini-client.js?v=20260920_v2"></script>
-  <script src="./app.js?v=20260920_v2"></script>
+  <script src="./gemini-client.js?v=20260920_v3"></script>
+  <script src="./app.js?v=20260920_v3"></script>
 </body>
 </html>

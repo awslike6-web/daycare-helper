@@ -131,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const micIcon = document.getElementById('micIcon');
   const micStatusText = document.getElementById('micStatusText');
   const rawMemoInput = document.getElementById('rawMemoInput');
+  const btnClearMemoBtn = document.getElementById('btnClearMemoBtn');
   const photoFileInput = document.getElementById('photoFileInput');
   const photoPreviews = document.getElementById('photoPreviews');
   const generateBtn = document.getElementById('generateBtn');
@@ -142,6 +143,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const resultTabs = document.getElementById('resultTabs');
   const resultTabBtns = document.querySelectorAll('.result-tab-btn');
   const kidsnoteCard = document.getElementById('kidsnoteCard');
+  const observationCard = document.getElementById('observationCard');
+  const dailyCareCard = document.getElementById('dailyCareCard');
+  const counselingCard = document.getElementById('counselingCard');
+  const playSupportCard = document.getElementById('playSupportCard');
   const kidsnoteTitle = document.getElementById('kidsnoteTitle');
   const kidsnoteContent = document.getElementById('kidsnoteContent');
   const kidsnoteTags = document.getElementById('kidsnoteTags');
@@ -563,6 +568,14 @@ document.addEventListener('DOMContentLoaded', () => {
     checkHealth();
     loadChildren();
 
+    // 📝 이전에 작성 중이던 메모 자동 복원 (Autosave Restore)
+    try {
+      const savedDraft = localStorage.getItem('daycare_draft_memo');
+      if (savedDraft && rawMemoInput) {
+        rawMemoInput.value = savedDraft;
+      }
+    } catch (e) {}
+
     // 이벤트 리스너 등록
     setupEventListeners();
   }
@@ -894,31 +907,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // 🚀 PWA 홈 화면 위젯 및 바로가기 URL 파라미터 체크 (?action=mic, ?mode=observation, ?teacher=sandbox 등)
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const actionParam = urlParams.get('action');
-      const modeParam = urlParams.get('mode');
-      const teacherParam = urlParams.get('teacher');
-
-      if (teacherParam && ['wife', 'sister_in_law', 'sandbox'].includes(teacherParam)) {
-        switchTeacherProfile(teacherParam);
-      }
-
-      if (modeParam && modeSwitcher) {
-        const targetModeBtn = modeSwitcher.querySelector(`.mode-btn[data-mode="${modeParam}"]`);
-        if (targetModeBtn) targetModeBtn.click();
-      }
-
-      if (actionParam === 'mic' && voiceMicBtn) {
-        setTimeout(() => {
-          voiceMicBtn.click();
-        }, 800);
-      }
-    } catch (err) {
-      console.warn('URL params check error:', err);
-    }
-
     // 모드 스위처 클릭
     modeSwitcher.querySelectorAll('.mode-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1247,6 +1235,62 @@ document.addEventListener('DOMContentLoaded', () => {
       settingsModal.style.display = 'none';
       showToast(`🌱 '${newClassName}' (${newTeacherName}) 설정이 성공적으로 저장되었습니다!`);
     });
+
+    // 📝 관찰 메모 실시간 자동 저장 (Autosave on typing)
+    if (rawMemoInput) {
+      rawMemoInput.addEventListener('input', () => {
+        try {
+          localStorage.setItem('daycare_draft_memo', rawMemoInput.value);
+        } catch (e) {}
+      });
+    }
+
+    // 🗑️ 작성 중인 메모 1초 비우기
+    if (btnClearMemoBtn && rawMemoInput) {
+      btnClearMemoBtn.addEventListener('click', () => {
+        if (!rawMemoInput.value.trim()) {
+          showToast('비울 메모 내용이 없습니다.');
+          return;
+        }
+        if (confirm('작성 중인 메모를 모두 지우시겠습니까?')) {
+          rawMemoInput.value = '';
+          try {
+            localStorage.removeItem('daycare_draft_memo');
+          } catch (e) {}
+          showToast('🗑️ 메모가 깨끗하게 비워졌습니다.');
+        }
+      });
+    }
+
+    // 🚀 PWA 홈 화면 위젯 및 바로가기 URL 파라미터 체크 (?action=mic, ?mode=observation, ?teacher=sandbox 등)
+    setTimeout(() => {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const actionParam = urlParams.get('action');
+        const modeParam = urlParams.get('mode');
+        const teacherParam = urlParams.get('teacher');
+
+        if (teacherParam && ['wife', 'sister_in_law', 'sandbox'].includes(teacherParam)) {
+          switchTeacherProfile(teacherParam);
+        }
+
+        if (modeParam && modeSwitcher) {
+          const targetModeBtn = modeSwitcher.querySelector(`.mode-btn[data-mode="${modeParam}"]`);
+          if (targetModeBtn) {
+            targetModeBtn.click();
+            showToast(`🧸 [${targetModeBtn.textContent.trim()}] 모드로 전환되었습니다.`);
+          }
+        }
+
+        if (actionParam === 'mic' && voiceMicBtn) {
+          setTimeout(() => {
+            if (!state.isRecording) voiceMicBtn.click();
+          }, 500);
+        }
+      } catch (err) {
+        console.warn('URL params check error:', err);
+      }
+    }, 200);
   }
 
   // ============================================================================
@@ -1875,10 +1919,12 @@ document.addEventListener('DOMContentLoaded', () => {
           transcript += event.results[i][0].transcript + ' ';
         }
       }
-      if (transcript) {
+      if (transcript.trim()) {
         const currentVal = rawMemoInput.value.trim();
-        rawMemoInput.value = currentVal ? `${currentVal} ${transcript}` : transcript;
+        rawMemoInput.value = currentVal ? `${currentVal}\n${transcript.trim()}` : transcript.trim();
+        localStorage.setItem('daycare_draft_memo', rawMemoInput.value);
         rawMemoInput.focus();
+        showToast('🎙️ 음성 메모가 텍스트에 누적 저장되었습니다.');
       }
     };
 
@@ -2283,11 +2329,11 @@ document.addEventListener('DOMContentLoaded', () => {
       b.classList.toggle('active', b.dataset.tab === targetTab);
     });
     if (classDailyReportCard) classDailyReportCard.style.display = targetTab === 'class_daily_report' ? 'block' : 'none';
-    kidsnoteCard.style.display = targetTab === 'kidsnote' ? 'flex' : 'none';
-    observationCard.style.display = targetTab === 'observation' ? 'block' : 'none';
-    if (dailyCareCard) dailyCareCard.style.display = 'none';
-    if (counselingCard) counselingCard.style.display = 'none';
-    if (playSupportCard) playSupportCard.style.display = 'none';
+    if (kidsnoteCard) kidsnoteCard.style.display = targetTab === 'kidsnote' ? 'flex' : 'none';
+    if (observationCard) observationCard.style.display = targetTab === 'observation' ? 'block' : 'none';
+    if (dailyCareCard) dailyCareCard.style.display = targetTab === 'daily_care' ? 'flex' : 'none';
+    if (counselingCard) counselingCard.style.display = targetTab === 'counseling' ? 'flex' : 'none';
+    if (playSupportCard) playSupportCard.style.display = targetTab === 'play_support' ? 'flex' : 'none';
 
     // 결과 섹션 노출 및 스크롤
     resultsSection.style.display = 'flex';
