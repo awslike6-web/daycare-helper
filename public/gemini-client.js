@@ -136,6 +136,28 @@ ${pastLogs.map(p => `- [${p.date}] [${p.activityArea || '놀이'}] ${maskText(p.
       }
     }
 
+    const hasPastLogs = Array.isArray(pastLogs) && pastLogs.length > 0;
+
+    let observationGuideline = '';
+    if (!hasPastLogs) {
+      observationGuideline = `
+- 3. 월간 발달 관찰기록부 (monthly_observation) [🚨 무결성 가드 - 가짜 행동 지어내기(할루시네이션) 원천 차단]:
+  * 현재 이 원아는 노션에 누적된 과거 관찰 데이터가 없습니다 (첫 1회차 관찰).
+  * obs_1 (1차 관찰, 상순: ${obsDate1}, 영역: ${obsArea1}): 오늘 입력된 실제 메모 팩트만을 바탕으로 사실적이고 객관적인 행동과 교사의 즉각적 비계설정/지원을 서술하세요.
+  * obs_2 (2차 관찰): 🚨 절대 가상의 사건이나 없는 놀이 행동을 소설 쓰듯 지어내지 마세요(할루시네이션 엄격 금지)!
+    - "activity_title": "(2차 관찰 데이터 누적 대기)"
+    - "behavior": "아직 누적된 2차 관찰 기록이 없습니다. 다음 관찰일에 메모를 1회 더 누적해 주시면 실제 기록을 바탕으로 발전적 변화가 연계됩니다."
+    - "teacher_support": "유아의 고유 흥미와 발달 수준을 지속 관찰하며 맞춤 상호작용 지원 예정."
+    - "growth_continuity": "(관찰 데이터 누적 대기 중)"
+  * monthly_summary (월말 총평): 지어낸 발전상이 아니라, 오늘 관찰된 1차 사실을 바탕으로 유아의 현재 발달 특성과 교사의 다음 지도 방향만 간결하고 진솔하게 기술하세요.`;
+    } else {
+      observationGuideline = `
+- 3. 월간 발달 관찰기록부 (monthly_observation) [⭐ 실제 팩트 기반 시계열 연속 관찰 모드]:
+  * 노션에 누적된 실제 이전 관찰 기록이 제공되었습니다.
+  * 제공된 이전 기록 중 적절한 사건을 obs_1(1차, ${obsDate1})에 매핑하고, 오늘의 최신 사건을 obs_2(2차, ${obsDate2})에 매핑하여, 1차 대비 2차에서의 실제 발전적 변화(growth_continuity)를 완벽하게 도출하세요.
+  * 월말 총평(monthly_summary)에는 두 실제 사건의 연속적 발달 변화를 유기적으로 종합하여 서술하세요.`;
+    }
+
     let modeInstruction = '';
     if (isClassReport) {
       modeInstruction = `
@@ -169,18 +191,15 @@ ${pastLogs.map(p => `- [${p.date}] [${p.activityArea || '놀이'}] ${maskText(p.
 `;
     } else if (isObservation) {
       modeInstruction = `
-[⭐ 현재 모드: 🧸 영유아 월간 발달 관찰기록부 (보건복지부 평가제 맞춤 월 2회 연속 관찰 + 월말 총평)]
-- 보육 평가제(평가인증) 표준보육과정 기준의 철저히 객관적인 사실 서술(~함, ~하는 모습을 보임 체)과 교사의 배움 지원을 전문적으로 서술하라.
-- 1차 관찰(상순 평일: ${obsDate1}, 영역: ${obsArea1}): 원아의 현재 상태 및 도전 과제, 교사의 개별 상호작용 지원 서술.
-- 2차 관찰(하순 평일: ${obsDate2}, 영역: ${obsArea2}): ⭐ 1차 지도 이후 아이가 보인 긍정적 행동양식 변화 및 발전적 성장점을 필수로 연계하여 서술.
-- 월말 발달 종합 총평: 한 달간의 발달 변화를 유기적으로 종합하고 다음 달 교사의 맞춤 지원 계획을 도출.
+[⭐ 현재 모드: 🧸 영유아 월간 발달 관찰기록부 (보건복지부 평가제 맞춤 관찰)]
+${observationGuideline}
 `;
     } else {
       modeInstruction = `
 [⭐ 현재 모드: 📋 원터치 올인원 마스터 (알림장 + 보육일지 + 관찰일지 동시 완성)]
 - 1. 알림장 (kidsnote): 선생님의 평소 어미와 감성을 100% 모방한 다정하고 생생한 놀이 서술문 (250~400자). 놀이 시작부터 친구와의 웃음, 기특한 성취, 가정 연계 칭찬까지 완결성 있게 서술.
 - 2. 놀이 보육일지 (class_daily_report): 대한민국 표준보육과정 연계 정식 공문서 양식 ([놀이 실행 및 배움 읽기] 2열 테이블 + 교사 성찰 + 환경/안전 지원).
-- 3. 월간 발달 관찰기록부 (monthly_observation): 1차 관찰(상순: ${obsDate1}, 영역: ${obsArea1}) ➔ 2차 관찰(하순: ${obsDate2}, 영역: ${obsArea2}, ⭐1차 지도 후 발전적 변화 필수 연계) ➔ 월말 발달 종합 총평.
+${observationGuideline}
 - 세 가지 대표 서식을 최고의 품격과 완성도로 빠짐없이 완벽하게 동시 출력하라.
 `;
     }

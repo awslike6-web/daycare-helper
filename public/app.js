@@ -59,6 +59,13 @@ document.addEventListener('DOMContentLoaded', () => {
     growth_praise: '성장 성취형 (조작력과 문제해결력, 발달 성취 칭찬 중심 선호)'
   };
 
+  // 👩‍🏫 노션 TEACHER_DB 교사 페이지 매핑 (작성교사 relation 안전 연결)
+  const TEACHER_PAGE_MAP = {
+    wife: '3e0a2711-5b68-8102-9fbb-c635637c5b33',          // 공가영 선생님 (사랑반)
+    sister_in_law: '3e0a2711-5b68-81a1-ba8e-d05d1f5e9631', // 공가희 주임님 (소망반)
+    sandbox: '3e0a2711-5b68-81ea-be6e-ed72a8a12f42'        // 연구 선생님 (연구반)
+  };
+
   const state = {
     className: localStorage.getItem('daycare_class_name') || '사랑반',
     teacherName: localStorage.getItem('daycare_teacher_name') || '공가영 선생님',
@@ -1440,12 +1447,12 @@ document.addEventListener('DOMContentLoaded', () => {
       displayList = state.children.filter(c => !c.childClass || c.childClass === currentClass);
     }
 
-    // 👨‍💻 체험·연구반일 때 등록된 아이가 없으면 편리한 테스트를 위해 가상 샘플 2명(민수, 민서) 자동 제공
+    // 👨‍💻 체험·연구반일 때 등록된 아이가 없으면 노션에 등록된 실제 연구반 아이들(김민수, 김민서) 자동 매핑
     if (currentClass === '연구반' && displayList.length === 0) {
       displayList = [
         {
-          id: 'sandbox_minsu',
-          name: '이민수',
+          id: '3e0a2711-5b68-81ec-b2a1-f1d6ac1e0184',
+          name: '김민수',
           childClass: '연구반',
           age: '만 5세',
           birthDate: '2021-05-15',
@@ -1455,7 +1462,7 @@ document.addEventListener('DOMContentLoaded', () => {
           allergies: '없음'
         },
         {
-          id: 'sandbox_minseo',
+          id: '3e0a2711-5b68-81a1-95e2-dfda7a74750f',
           name: '김민서',
           childClass: '연구반',
           age: '만 1세',
@@ -1994,6 +2001,58 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================================
+  // 9-B. 원아의 노션 실제 과거 관찰 기록 스캔 (시계열 팩트 기반 검증)
+  // ============================================================================
+  async function fetchChildPastLogs(childId, childName) {
+    if (!childId && !childName) return [];
+
+    let targetChildId = childId;
+    if (!targetChildId || targetChildId.startsWith('mock-') || targetChildId.startsWith('sandbox_')) {
+      const matched = state.children.find(c => c.name === childName && !c.id.startsWith('mock-') && !c.id.startsWith('sandbox_'));
+      if (matched) targetChildId = matched.id;
+    }
+
+    try {
+      let filter = null;
+      if (targetChildId && !targetChildId.startsWith('mock-') && !targetChildId.startsWith('sandbox_')) {
+        filter = {
+          property: '원아',
+          relation: { contains: targetChildId }
+        };
+      } else if (childName) {
+        filter = {
+          property: '기록명/식별자',
+          title: { contains: childName }
+        };
+      }
+
+      if (!filter) return [];
+
+      const queryRes = await directNotionCall(`/databases/${NOTION_CONFIG.DAILY_LOG_DB_ID}/query`, 'POST', {
+        filter,
+        page_size: 10,
+        sorts: [{ property: '작성일자', direction: 'descending' }]
+      });
+
+      const pages = queryRes.results || [];
+      const pastLogs = pages.map(p => {
+        const props = p.properties || {};
+        const date = props['작성일자']?.date?.start || (p.created_time ? p.created_time.split('T')[0] : '');
+        const area = props['활동 구분']?.select?.name || (props['표준보육 영역']?.multi_select?.[0]?.name || '자유놀이');
+        const summary = props['관찰 요약']?.rich_text?.[0]?.plain_text ||
+                        props['원시 메모/키워드']?.rich_text?.[0]?.plain_text ||
+                        props['알림장 최종본']?.rich_text?.[0]?.plain_text?.slice(0, 120) || '';
+        return { date, activity: area, behavior: summary };
+      }).filter(log => log.date && log.behavior);
+
+      return pastLogs;
+    } catch (err) {
+      console.warn('원아 과거 관찰 기록 조회 실패:', err);
+      return [];
+    }
+  }
+
+  // ============================================================================
   // 10. AI 생성 핸들러 (Gemini 3.8 Flash)
   // ============================================================================
   async function handleGenerate() {
@@ -2029,6 +2088,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1200);
 
     try {
+      // 원아의 과거 실제 관찰 기록 스캔 (노션 DAILY_LOG_DB)
+      let pastLogs = [];
+      try {
+        pastLogs = await fetchChildPastLogs(state.selectedChild.id, state.selectedChild.name);
+      } catch (pastErr) {
+        console.warn('과거 기록 스캔 실패:', pastErr);
+      }
+
       const payload = {
         childId: state.selectedChild.id,
         childName: state.selectedChild.name,
@@ -2043,7 +2110,8 @@ document.addEventListener('DOMContentLoaded', () => {
         teacherStyle: state.teacherStyle,
         className: state.className || '햇살반',
         teacherName: state.teacherName || '김선생님',
-        persona: state.persona
+        persona: state.persona,
+        pastLogs: pastLogs
       };
 
       if (monthlyObsTargetMonth) {
@@ -2606,8 +2674,21 @@ document.addEventListener('DOMContentLoaded', () => {
           '관찰 요약': { rich_text: [{ text: { content: obsSummaryText || '일일 관찰 활동' } }] }
         };
 
-        if (state.selectedChild?.id && !state.selectedChild.id.startsWith('mock-')) {
-          props['원아'] = { relation: [{ id: state.selectedChild.id }] };
+        // 원아 relation 안전 연결 (노션 실제 UUID 자동 치유)
+        let targetChildId = state.selectedChild?.id;
+        if (!targetChildId || targetChildId.startsWith('mock-') || targetChildId.startsWith('sandbox_')) {
+          const matched = state.children.find(c => c.name === childName && !c.id.startsWith('mock-') && !c.id.startsWith('sandbox_'));
+          if (matched) targetChildId = matched.id;
+        }
+        if (targetChildId && !targetChildId.startsWith('mock-') && !targetChildId.startsWith('sandbox_')) {
+          props['원아'] = { relation: [{ id: targetChildId }] };
+        }
+
+        // 작성교사 relation 연결 (TEACHER_PAGE_MAP)
+        const currentTeacherKey = localStorage.getItem('daycare_active_teacher') || (state.className === '소망반' ? 'sister_in_law' : (state.className === '연구반' ? 'sandbox' : 'wife'));
+        const teacherPageId = TEACHER_PAGE_MAP[currentTeacherKey];
+        if (teacherPageId) {
+          props['작성교사'] = { relation: [{ id: teacherPageId }] };
         }
 
         const createPayload = {
@@ -2624,9 +2705,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // 2. 워커 /api/logs/save 폴백
+      let fallbackChildId = state.selectedChild?.id;
+      if (!fallbackChildId || fallbackChildId.startsWith('mock-') || fallbackChildId.startsWith('sandbox_')) {
+        const matched = state.children.find(c => c.name === childName && !c.id.startsWith('mock-') && !c.id.startsWith('sandbox_'));
+        if (matched) fallbackChildId = matched.id;
+      }
+
       const payload = {
         date: today,
-        childId: state.selectedChild?.id,
+        childId: fallbackChildId,
         childName,
         activityArea: isObsMode ? '관찰일지' : activityArea,
         standardArea: standardAreaName,

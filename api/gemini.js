@@ -262,7 +262,9 @@ ${maskedMemo || '오늘 즐겁게 활동함'}
     prompt += `만 2세는 또래와의 상호작용, 모방 및 언어/감정 표현 시도, 규칙을 익혀가는 기특한 노력을 칭찬 위주로 따뜻하게 서술해줘.\n`;
   }
 
-  if (pastLogs && pastLogs.length > 0) {
+  const hasPastLogs = Array.isArray(pastLogs) && pastLogs.length > 0;
+
+  if (hasPastLogs) {
     prompt += `\n[해당 원아의 최근 이전 관찰 기록 (참조용)]\n`;
     pastLogs.slice(0, 3).forEach((log, idx) => {
       prompt += `${idx + 1}. 날짜: ${log.date || '이전'} | 활동: ${log.activity || '놀이'} | 관찰: ${log.behavior || log.raw_memo || ''}\n`;
@@ -275,10 +277,22 @@ ${maskedMemo || '오늘 즐겁게 활동함'}
     prompt += `- 대상 월: ${monthlyObsOptions.targetMonth || '해당 월'}\n`;
     prompt += `- 1차 관찰일: ${monthlyObsOptions.date1 || '상순'} | 1차 영역: ${monthlyObsOptions.area1 || '의사소통'}\n`;
     prompt += `- 2차 관찰일: ${monthlyObsOptions.date2 || '하순'} | 2차 영역: ${monthlyObsOptions.area2 || '사회관계'}\n`;
-    prompt += `[핵심 작성 원칙]\n`;
-    prompt += `1. obs_1(1차)에는 아동의 고유 성향/특이사항과 연계된 실제 놀이/일상 상황과 교사의 초기 비계설정 및 지원을 서술하세요.\n`;
-    prompt += `2. obs_2(2차)에는 **1차 관찰에서의 교사 지도 이후, 아이가 보인 발전된 행동양식과 긍정적 변화(growth_continuity)**를 반드시 연속성 있게 연결하여 서술하세요.\n`;
-    prompt += `3. monthly_summary에는 한 달간의 발달 변화 총평과 다음 달 지원 계획을 종합하여 표준보육과정 서식으로 완성하세요.\n`;
+
+    if (!hasPastLogs) {
+      prompt += `[🚨 무결성 가드 - 가짜 행동 지어내기(할루시네이션) 원천 차단]\n`;
+      prompt += `- 현재 이 원아는 노션에 누적된 과거 관찰 데이터가 없습니다 (첫 1회차 일일 관찰).\n`;
+      prompt += `- obs_1(1차)에는 오늘 입력된 관찰 메모 팩트만을 정직하고 객관적으로 서술하세요.\n`;
+      prompt += `- obs_2(2차)에는 🚨 절대 가상의 사건이나 없는 행동을 지어내지 마세요(할루시네이션 엄격 금지)! 아래와 같이 사실대로 응답하세요:\n`;
+      prompt += `  * "activity_title": "(2차 관찰 데이터 누적 대기)"\n`;
+      prompt += `  * "behavior": "아직 누적된 2차 관찰 기록이 없습니다. 다음 관찰일에 메모를 1회 더 누적해 주시면 실제 기록을 바탕으로 발전적 변화가 연계됩니다."\n`;
+      prompt += `  * "teacher_support": "유아의 고유 흥미와 발달 수준을 지속 관찰하며 맞춤 상호작용 지원 예정."\n`;
+      prompt += `  * "growth_continuity": "(관찰 데이터 누적 대기 중)"\n`;
+      prompt += `- monthly_summary: 오늘 관찰된 1차 사실을 바탕으로 유아의 현재 발달 특성과 다음 지도 방향만 간결히 기술하세요.\n`;
+    } else {
+      prompt += `[⭐ 실제 팩트 기반 시계열 연속 관찰 모드]\n`;
+      prompt += `- 제공된 실제 과거 기록을 obs_1에 매핑하고, 오늘의 최신 사건을 obs_2에 매핑하여, 1차 대비 2차에서의 실제 발전적 변화(growth_continuity)를 도출하세요.\n`;
+      prompt += `- monthly_summary에는 두 실제 사건의 연속적 발달 변화를 종합하여 완성하세요.\n`;
+    }
   }
 
   return prompt;
