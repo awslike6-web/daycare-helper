@@ -179,12 +179,37 @@ ${maskedMemo}
   }
 }`;
 
+    // 3. 파트 구성 (텍스트 프롬프트 + 놀이 사진 멀티모달 파트)
+    const parts = [{ text: prompt }];
+
+    if (Array.isArray(payload.images) && payload.images.length > 0) {
+      for (const img of payload.images.slice(0, 6)) {
+        if (!img) continue;
+        const match = img.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+        if (match) {
+          parts.push({
+            inlineData: {
+              mimeType: match[1],
+              data: match[2]
+            }
+          });
+        } else {
+          parts.push({
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: img
+            }
+          });
+        }
+      }
+    }
+
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [{ parts: parts }],
         generationConfig: {
           temperature: 0.6,
           responseMimeType: 'application/json'
