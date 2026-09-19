@@ -583,9 +583,63 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================================
+  // 6-B. 노션 클라이언트 직결 브릿지 (Cloudflare Error 1042 차단 100% 회피 SSOT)
+  // ============================================================================
+  const NOTION_CONFIG = {
+    PROXY_URL: 'https://minmin-notion.awslike6.workers.dev',
+    CHILD_DB_ID: '3e0a2711-5b68-8182-955e-f116e4174e3a',
+    DAILY_LOG_DB_ID: '3e0a2711-5b68-8122-9eea-dd49bf8a625c',
+    VERSION: '2022-06-28'
+  };
+
+  async function directNotionCall(endpoint, method = 'GET', body = null) {
+    const url = `${NOTION_CONFIG.PROXY_URL}/v1${endpoint}`;
+    const headers = {
+      'Content-Type': 'application/json',
+      'Notion-Version': NOTION_CONFIG.VERSION
+    };
+    const options = { method, headers };
+    if (body) {
+      options.body = typeof body === 'string' ? body : JSON.stringify(body);
+    }
+    const resp = await fetch(url, options);
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      throw new Error(`Notion Direct Error (${resp.status}): ${errorText}`);
+    }
+    return await resp.json();
+  }
+
+  // ============================================================================
   // 7. 원아 목록 불러오기 (/api/children)
   // ============================================================================
   async function loadChildren(selectedId = null) {
+    // 1. 브라우저에서 minmin-notion 직접 쿼리 (Cloudflare 1042 회피 1순위)
+    try {
+      const data = await directNotionCall(`/databases/${NOTION_CONFIG.CHILD_DB_ID}/query`, 'POST', {
+        page_size: 100,
+        sorts: [{ property: '아동명', direction: 'ascending' }]
+      });
+
+      const children = (data.results || []).map(page => {
+        const props = page.properties;
+        const name = props['아동명']?.title?.[0]?.plain_text || '이름 없음';
+        const age = props['생년월일/연령']?.rich_text?.[0]?.plain_text || '만 3세';
+        const traits = props['성향 및 특이사항']?.rich_text?.[0]?.plain_text || '';
+        const allergies = props['알레르기/주의사항']?.rich_text?.[0]?.plain_text || '';
+        return { id: page.id, name, age, traits, allergies };
+      });
+
+      state.children = children;
+      notionStatusBadge.className = 'badge badge-connected';
+      notionStatusText.textContent = '노션 연동됨';
+      renderChildrenChips(selectedId);
+      return;
+    } catch (directErr) {
+      console.warn('Direct notion query failed, trying worker endpoint:', directErr);
+    }
+
+    // 2. 워커 /api/children 폴백
     try {
       const res = await fetch('/api/children');
       const data = await res.json();
@@ -724,6 +778,67 @@ document.addEventListener('DOMContentLoaded', () => {
     saveChildBtn.innerHTML = '<span>⏳</span> <span>노션에 저장 중...</span>';
 
     try {
+      let savedChildId = id;
+      let isCreated = false;
+
+      // 1. 브라우저에서 minmin-notion 직접 저장/수정 (Error 1042 원천 회피 1순위)
+      try {
+        if (id && !id.startsWith('mock-')) {
+          // 수정 시도
+          try {
+            const updateProps = {
+              '아동명': { title: [{ text: { content: name } }] },
+              '생년월일/연령': { rich_text: [{ text: { content: age } }] },
+              '성향 및 특이사항': { rich_text: [{ text: { content: traits } }] },
+              '알레르기/주의사항': { rich_text: [{ text: { content: allergies } }] }
+            };
+            const updateRes = await directNotionCall(`/pages/${id}`, 'PATCH', { properties: updateProps });
+            savedChildId = updateRes.id;
+          } catch (patchErr) {
+            // 404 발생 시 자가 치유(신규 생성으로 자동 전환)
+            if (patchErr.message && patchErr.message.includes('404')) {
+              console.warn('[Self-Healing] 기존 페이지 404 -> 신규 원아로 자동 생성 전환');
+              const createPayload = {
+                parent: { database_id: NOTION_CONFIG.CHILD_DB_ID },
+                properties: {
+                  '아동명': { title: [{ text: { content: name } }] },
+                  '생년월일/연령': { rich_text: [{ text: { content: age } }] },
+                  '성향 및 특이사항': { rich_text: [{ text: { content: traits } }] },
+                  '알레르기/주의사항': { rich_text: [{ text: { content: allergies } }] }
+                }
+              };
+              const createRes = await directNotionCall('/pages', 'POST', createPayload);
+              savedChildId = createRes.id;
+              isCreated = true;
+            } else {
+              throw patchErr;
+            }
+          }
+        } else {
+          // 신규 등록
+          const createPayload = {
+            parent: { database_id: NOTION_CONFIG.CHILD_DB_ID },
+            properties: {
+              '아동명': { title: [{ text: { content: name } }] },
+              '생년월일/연령': { rich_text: [{ text: { content: age } }] },
+              '성향 및 특이사항': { rich_text: [{ text: { content: traits } }] },
+              '알레르기/주의사항': { rich_text: [{ text: { content: allergies } }] }
+            }
+          };
+          const createRes = await directNotionCall('/pages', 'POST', createPayload);
+          savedChildId = createRes.id;
+          isCreated = true;
+        }
+
+        childManageModal.style.display = 'none';
+        showToast(isCreated ? `🎉 ${name} 원아가 노션 마스터 DB에 안전하게 등록되었습니다!` : `✅ ${name} 정보가 수정되었습니다.`);
+        await loadChildren(savedChildId);
+        return;
+      } catch (directFailErr) {
+        console.warn('Direct notion save failed, trying worker endpoint:', directFailErr);
+      }
+
+      // 2. 워커 /api/children 폴백
       let res;
       if (id && !id.startsWith('mock-')) {
         res = await fetch(`/api/children/${encodeURIComponent(id)}`, {
@@ -1193,16 +1308,52 @@ document.addEventListener('DOMContentLoaded', () => {
     saveNotionBtn.disabled = true;
     saveNotionBtn.innerHTML = '<span>⏳</span> <span>노션에 저장 중...</span>';
 
+    const today = new Date().toISOString().split('T')[0];
+    const childName = state.selectedChild?.name || '원아';
+    const activityArea = state.activityArea || '자유놀이';
+    const pageTitle = `[${today}] ${childName} - ${activityArea}`;
+    const obsFullText = `${obsBehaviorContent.value}\n\n[지원 및 평가]\n${obsEvaluationContent.value}`;
+
     try {
+      // 1. 브라우저에서 minmin-notion 직접 일지 저장 (Error 1042 회피 1순위)
+      try {
+        const props = {
+          '기록명/식별자': { title: [{ text: { content: pageTitle } }] },
+          '작성일자': { date: { start: today } },
+          '활동 구분': { select: { name: activityArea } },
+          '표준보육 영역': { multi_select: [{ name: state.lastResult.observation_log?.standard_area || '의사소통' }] },
+          '원시 메모/키워드': { rich_text: [{ text: { content: rawMemoInput.value.trim() || '' } }] },
+          '알림장 최종본': { rich_text: [{ text: { content: kidsnoteContent.value || '' } }] },
+          '관찰일지 최종본': { rich_text: [{ text: { content: obsFullText } }] },
+          '참조 출처 요약': { rich_text: [{ text: { content: citationSummaryText.textContent || '' } }] }
+        };
+
+        if (state.selectedChild?.id && !state.selectedChild.id.startsWith('mock-')) {
+          props['원아'] = { relation: [{ id: state.selectedChild.id }] };
+        }
+
+        const createPayload = {
+          parent: { database_id: NOTION_CONFIG.DAILY_LOG_DB_ID },
+          properties: props
+        };
+
+        await directNotionCall('/pages', 'POST', createPayload);
+        showToast(`💾 노션 저장 완료: ${pageTitle}`);
+        return;
+      } catch (directSaveErr) {
+        console.warn('Direct notion log save failed, trying worker endpoint:', directSaveErr);
+      }
+
+      // 2. 워커 /api/logs/save 폴백
       const payload = {
-        date: new Date().toISOString().split('T')[0],
+        date: today,
         childId: state.selectedChild?.id,
-        childName: state.selectedChild?.name,
-        activityArea: state.activityArea,
+        childName,
+        activityArea,
         standardArea: state.lastResult.observation_log?.standard_area,
         rawMemo: rawMemoInput.value.trim(),
         kidsnoteText: kidsnoteContent.value,
-        observationText: `${obsBehaviorContent.value}\n\n[지원 및 평가]\n${obsEvaluationContent.value}`,
+        observationText: obsFullText,
         citationSummary: citationSummaryText.textContent || '',
         referencedLogId: null
       };
