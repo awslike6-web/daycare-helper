@@ -270,6 +270,7 @@ export async function saveDailyLogToNotion({
   kidsnoteText,
   observationText,
   citationSummary,
+  obsSummary,
   referencedLogId
 }, env) {
   const dbId = env.NOTION_DAILY_LOG_DB_ID;
@@ -333,6 +334,13 @@ export async function saveDailyLogToNotion({
       rich_text: [
         {
           text: { content: citationSummary || '' }
+        }
+      ]
+    },
+    '관찰 요약': {
+      rich_text: [
+        {
+          text: { content: obsSummary || rawMemo || '' }
         }
       ]
     }

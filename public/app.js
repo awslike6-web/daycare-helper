@@ -1679,10 +1679,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       let savedChildId = id;
       let isCreated = false;
+      const isRealNotionId = Boolean(id && !id.startsWith('mock-') && !id.startsWith('sandbox_') && id.length > 20);
 
       // 1. 브라우저에서 minmin-notion 직접 저장/수정 (Error 1042 원천 회피 1순위)
       try {
-        if (id && !id.startsWith('mock-')) {
+        if (isRealNotionId) {
           // 수정 시도
           try {
             const updateProps = {
@@ -1696,29 +1697,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const updateRes = await directNotionCall(`/pages/${id}`, 'PATCH', { properties: updateProps });
             savedChildId = updateRes.id;
           } catch (patchErr) {
-            // 404 발생 시 자가 치유(신규 생성으로 자동 전환)
-            if (patchErr.message && patchErr.message.includes('404')) {
-              console.warn('[Self-Healing] 기존 페이지 404 -> 신규 원아로 자동 생성 전환');
-              const createPayload = {
-                parent: { database_id: NOTION_CONFIG.CHILD_DB_ID },
-                properties: {
-                  '아동명': { title: [{ text: { content: name } }] },
-                  '생년월일/연령': { rich_text: [{ text: { content: age } }] },
-                  '소속 반': { select: { name: childClass } },
-                  '성향 및 특이사항': { rich_text: [{ text: { content: traits } }] },
-                  '학부모 성향 & 알림장 스타일': { rich_text: [{ text: { content: parentStyle } }] },
-                  '알레르기/주의사항': { rich_text: [{ text: { content: allergies } }] }
-                }
-              };
-              const createRes = await directNotionCall('/pages', 'POST', createPayload);
-              savedChildId = createRes.id;
-              isCreated = true;
-            } else {
-              throw patchErr;
-            }
+            console.warn('[Self-Healing] 기존 페이지 수정 실패 -> 신규 원아로 자동 생성 전환:', patchErr);
+            const createPayload = {
+              parent: { database_id: NOTION_CONFIG.CHILD_DB_ID },
+              properties: {
+                '아동명': { title: [{ text: { content: name } }] },
+                '생년월일/연령': { rich_text: [{ text: { content: age } }] },
+                '소속 반': { select: { name: childClass } },
+                '성향 및 특이사항': { rich_text: [{ text: { content: traits } }] },
+                '학부모 성향 & 알림장 스타일': { rich_text: [{ text: { content: parentStyle } }] },
+                '알레르기/주의사항': { rich_text: [{ text: { content: allergies } }] }
+              }
+            };
+            const createRes = await directNotionCall('/pages', 'POST', createPayload);
+            savedChildId = createRes.id;
+            isCreated = true;
           }
         } else {
-          // 신규 등록
+          // 신규 등록 (가상 원아 수정 포함)
           const createPayload = {
             parent: { database_id: NOTION_CONFIG.CHILD_DB_ID },
             properties: {
@@ -1745,7 +1741,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 2. 워커 /api/children 폴백
       let res;
-      if (id && !id.startsWith('mock-')) {
+      if (isRealNotionId) {
         res = await fetch(`/api/children/${encodeURIComponent(id)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -2383,7 +2379,8 @@ document.addEventListener('DOMContentLoaded', () => {
             '원시 메모/키워드': { rich_text: [{ text: { content: rawMemoInput.value.trim() || '학급 놀이 활동' } }] },
             '알림장 최종본': { rich_text: [{ text: { content: (state.lastResult.kidsnote?.content || '').slice(0, 1900) } }] },
             '관찰일지 최종본': { rich_text: [{ text: { content: fullDailyLog.slice(0, 1900) } }] },
-            '참조 출처 요약': { rich_text: [{ text: { content: `학급 전체 놀이 보육일지 (${state.className})` } }] }
+            '참조 출처 요약': { rich_text: [{ text: { content: `학급 전체 놀이 보육일지 (${state.className})` } }] },
+            '관찰 요약': { rich_text: [{ text: { content: (rep.play_theme || rawMemoInput.value.trim() || '학급 전체 놀이 보육활동').slice(0, 80) } }] }
           }
         };
         await directNotionCall('/pages', 'POST', createPayload);
@@ -2406,7 +2403,8 @@ document.addEventListener('DOMContentLoaded', () => {
           rawMemo: rawMemoInput.value.trim(),
           kidsnoteText: state.lastResult.kidsnote?.content || '',
           observationText: fullDailyLog,
-          citationSummary: '학급 전체 놀이 보육일지'
+          citationSummary: '학급 전체 놀이 보육일지',
+          obsSummary: (rep.play_theme || rawMemoInput.value.trim() || '학급 전체 놀이 보육활동').slice(0, 80)
         })
       });
 
@@ -2542,6 +2540,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
+      // 1줄 관찰 핵심 요약 추출 (노션 DAILY_LOG_DB '관찰 요약' 속성 자동 적재)
+      let obsSummaryText = '';
+      if (isObsMode && mob) {
+        obsSummaryText = `${mob.obs_1?.area || '관찰'}: ${mob.obs_2?.growth_continuity || mob.obs_2?.behavior || ''}`.trim().substring(0, 100);
+      } else if (state.lastResult?.observation_summary) {
+        obsSummaryText = state.lastResult.observation_summary.trim().substring(0, 100);
+      } else if (obsBehaviorContent && obsBehaviorContent.value) {
+        const firstSentence = obsBehaviorContent.value.split('.')[0].trim();
+        obsSummaryText = firstSentence.substring(0, 80);
+      } else if (rawMemoInput && rawMemoInput.value) {
+        obsSummaryText = rawMemoInput.value.trim().substring(0, 80);
+      }
+
       // 1. 브라우저에서 minmin-notion 직접 일지 저장 (Error 1042 회피 1순위)
       try {
         const props = {
@@ -2552,7 +2563,8 @@ document.addEventListener('DOMContentLoaded', () => {
           '원시 메모/키워드': { rich_text: [{ text: { content: rawMemoInput.value.trim() || (isObsMode ? `${childName} 월간 관찰일지` : '') } }] },
           '알림장 최종본': { rich_text: [{ text: { content: kidsnoteContent.value || '' } }] },
           '관찰일지 최종본': { rich_text: [{ text: { content: obsFullText } }] },
-          '참조 출처 요약': { rich_text: [{ text: { content: isObsMode ? `월 2회 연속 관찰기록부 (${targetMonthStr})` : (citationSummaryText.textContent || '') } }] }
+          '참조 출처 요약': { rich_text: [{ text: { content: isObsMode ? `월 2회 연속 관찰기록부 (${targetMonthStr})` : (citationSummaryText.textContent || '') } }] },
+          '관찰 요약': { rich_text: [{ text: { content: obsSummaryText || '일일 관찰 활동' } }] }
         };
 
         if (state.selectedChild?.id && !state.selectedChild.id.startsWith('mock-')) {
@@ -2583,6 +2595,7 @@ document.addEventListener('DOMContentLoaded', () => {
         kidsnoteText: kidsnoteContent.value,
         observationText: obsFullText,
         citationSummary: isObsMode ? `월 2회 연속 관찰기록부 (${targetMonthStr})` : (citationSummaryText.textContent || ''),
+        obsSummary: obsSummaryText,
         referencedLogId: null
       };
 

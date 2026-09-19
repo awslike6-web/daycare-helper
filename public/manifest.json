@@ -2,14 +2,22 @@
   "name": "어린이집 AI 보육 비서 - daycare-helper",
   "short_name": "보육비서",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#F8FAFC",
   "theme_color": "#6366F1",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧸</text></svg>",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml"
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
   "shortcuts": [
@@ -17,13 +25,27 @@
       "name": "🎙️ 음성 메모 즉시 시작",
       "short_name": "음성 메모",
       "description": "접속 즉시 마이크를 켜고 놀이 관찰 메모를 음성으로 기록합니다.",
-      "url": "./?action=mic"
+      "url": "./?action=mic",
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "🧸 월간 관찰일지 작성",
       "short_name": "관찰일지",
       "description": "보건복지부 평가제 맞춤 월 2회 연속 관찰기록부 작성 모드로 진입합니다.",
-      "url": "./?mode=observation"
+      "url": "./?mode=observation",
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

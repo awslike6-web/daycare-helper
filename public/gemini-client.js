@@ -286,6 +286,7 @@ ${maskedMemo}
     "recommended_materials": "추가 배치할 놀이 교구 및 환경구성 자료",
     "interaction_tips": "아이의 사고 확장을 돕는 교사의 추천 발문 팁"
   },
+  "observation_summary": "오늘 아이의 행동양식과 놀이 몰입을 30자 내외로 압축한 핵심 1줄 요약 (노션 관찰 요약 속성 연동용)",
   "citation": {
     "has_citation": true,
     "summary": "📌 참고한 과거 기록: 이전 관찰 대비 성장점 한 줄 요약"
