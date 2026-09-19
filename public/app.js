@@ -171,12 +171,272 @@ document.addEventListener('DOMContentLoaded', () => {
   const sessionDaysLeftText = document.getElementById('sessionDaysLeftText');
   const testBannerToggleBtn = document.getElementById('testBannerToggleBtn');
 
+  // 🧸 2-Way 보안 잠금 게이트 (Auth Gate) 요소
+  const authGateModal = document.getElementById('authGateModal');
+  const tabPinBtn = document.getElementById('tabPinBtn');
+  const tabEmailBtn = document.getElementById('tabEmailBtn');
+  const pinPanel = document.getElementById('pinPanel');
+  const emailPanel = document.getElementById('emailPanel');
+  const pinDotsContainer = document.getElementById('pinDotsContainer');
+  const pinDots = pinDotsContainer ? pinDotsContainer.querySelectorAll('.pin-dot') : [];
+  const pinErrorMsg = document.getElementById('pinErrorMsg');
+  const keypadButtons = document.querySelectorAll('.keypad-btn');
+  const keypadClearBtn = document.getElementById('keypadClearBtn');
+  const keypadBackspaceBtn = document.getElementById('keypadBackspaceBtn');
+  const emailLoginForm = document.getElementById('emailLoginForm');
+  const authEmailInput = document.getElementById('authEmailInput');
+  const emailErrorMsg = document.getElementById('emailErrorMsg');
+  const rememberAuthCheck = document.getElementById('rememberAuthCheck');
+  const headerLogoutBtn = document.getElementById('headerLogoutBtn');
+  const modalLogoutBtn = document.getElementById('modalLogoutBtn');
+  const openChangePinBtn = document.getElementById('openChangePinBtn');
+  const pinChangeBox = document.getElementById('pinChangeBox');
+  const newPinInput = document.getElementById('newPinInput');
+  const saveNewPinBtn = document.getElementById('saveNewPinBtn');
+  const cancelNewPinBtn = document.getElementById('cancelNewPinBtn');
+
   let currentSessionData = null;
+  let pinBuffer = '';
+
+  // ============================================================================
+  // 3-A. 🧸 2-Way 보안 잠금 게이트 (4자리 PIN & 이메일 선택) 로직
+  // ============================================================================
+  const AUTH_KEY_SESSION = 'daycare_local_auth_session';
+  const AUTH_KEY_PIN = 'daycare_custom_pin_code';
+  const DEFAULT_PIN = '0000';
+  const AUTH_30_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+  function getActivePin() {
+    return localStorage.getItem(AUTH_KEY_PIN) || DEFAULT_PIN;
+  }
+
+  function initAuthGate() {
+    if (!authGateModal) return;
+
+    // 1. 기존 세션 검사 (30일 유지 여부)
+    const savedSession = localStorage.getItem(AUTH_KEY_SESSION);
+    if (savedSession) {
+      try {
+        const sessionObj = JSON.parse(savedSession);
+        if (sessionObj.expiresAt && sessionObj.expiresAt > Date.now()) {
+          // 유효한 세션 존재 -> 잠금 해제 통과!
+          authGateModal.style.display = 'none';
+          if (sessionUserEmailText) {
+            sessionUserEmailText.textContent = sessionObj.user || '선생님 (간편 인증)';
+          }
+          setupAuthEventListeners();
+          return;
+        }
+      } catch (e) {
+        localStorage.removeItem(AUTH_KEY_SESSION);
+      }
+    }
+
+    // 세션 없거나 만료됨 -> 잠금 화면 표시!
+    authGateModal.style.display = 'flex';
+    resetPinDisplay();
+    setupAuthEventListeners();
+  }
+
+  function setupAuthEventListeners() {
+    // 탭 전환 (PIN vs 이메일)
+    if (tabPinBtn && tabEmailBtn) {
+      tabPinBtn.onclick = () => {
+        tabPinBtn.classList.add('active');
+        tabEmailBtn.classList.remove('active');
+        pinPanel.style.display = 'block';
+        emailPanel.style.display = 'none';
+        resetPinDisplay();
+      };
+      tabEmailBtn.onclick = () => {
+        tabEmailBtn.classList.add('active');
+        tabPinBtn.classList.remove('active');
+        emailPanel.style.display = 'block';
+        pinPanel.style.display = 'none';
+        if (authEmailInput) authEmailInput.focus();
+      };
+    }
+
+    // 3x4 키패드 클릭
+    keypadButtons.forEach(btn => {
+      btn.onclick = () => {
+        const num = btn.getAttribute('data-num');
+        if (num !== null) {
+          handlePinInput(num);
+        }
+      };
+    });
+
+    if (keypadClearBtn) {
+      keypadClearBtn.onclick = () => resetPinDisplay();
+    }
+
+    if (keypadBackspaceBtn) {
+      keypadBackspaceBtn.onclick = () => handlePinBackspace();
+    }
+
+    // 물리 키보드 숫자 입력 지원
+    window.addEventListener('keydown', (e) => {
+      if (authGateModal && authGateModal.style.display === 'flex' && pinPanel && pinPanel.style.display !== 'none') {
+        if (e.key >= '0' && e.key <= '9') {
+          handlePinInput(e.key);
+        } else if (e.key === 'Backspace') {
+          handlePinBackspace();
+        } else if (e.key === 'Escape') {
+          resetPinDisplay();
+        }
+      }
+    });
+
+    // 이메일 로그인 폼
+    if (emailLoginForm) {
+      emailLoginForm.onsubmit = (e) => {
+        e.preventDefault();
+        const emailVal = authEmailInput.value.trim();
+        if (!emailVal || !emailVal.includes('@')) {
+          if (emailErrorMsg) emailErrorMsg.textContent = '올바른 이메일 주소를 입력해 주세요.';
+          return;
+        }
+        // 이메일 로그인 성공
+        loginSuccess(emailVal);
+      };
+    }
+
+    // 헤더 및 모달 로그아웃 (잠금)
+    const handleLogout = () => {
+      localStorage.removeItem(AUTH_KEY_SESSION);
+      if (settingsModal) settingsModal.style.display = 'none';
+      if (authGateModal) authGateModal.style.display = 'flex';
+      resetPinDisplay();
+      showToast('🔒 보안 잠금 상태로 전환되었습니다.');
+    };
+
+    if (headerLogoutBtn) headerLogoutBtn.onclick = handleLogout;
+    if (modalLogoutBtn) modalLogoutBtn.onclick = handleLogout;
+
+    // PIN 변경 UI 핸들러
+    if (openChangePinBtn && pinChangeBox) {
+      openChangePinBtn.onclick = () => {
+        const isHidden = pinChangeBox.style.display === 'none';
+        pinChangeBox.style.display = isHidden ? 'block' : 'none';
+        if (isHidden && newPinInput) {
+          newPinInput.value = '';
+          newPinInput.focus();
+        }
+      };
+    }
+
+    if (cancelNewPinBtn && pinChangeBox) {
+      cancelNewPinBtn.onclick = () => {
+        pinChangeBox.style.display = 'none';
+      };
+    }
+
+    if (saveNewPinBtn && newPinInput) {
+      saveNewPinBtn.onclick = () => {
+        const newPin = newPinInput.value.trim();
+        if (!/^\d{4}$/.test(newPin)) {
+          alert('비밀번호는 반드시 4자리 숫자여야 합니다.');
+          newPinInput.focus();
+          return;
+        }
+        localStorage.setItem(AUTH_KEY_PIN, newPin);
+        pinChangeBox.style.display = 'none';
+        showToast(`✅ 새 4자리 PIN(${newPin})으로 성공적으로 변경되었습니다.`);
+      };
+    }
+  }
+
+  function handlePinInput(digit) {
+    if (pinBuffer.length >= 4) return;
+    pinBuffer += digit;
+    updatePinDots();
+
+    if (pinBuffer.length === 4) {
+      // 4자리 채워짐 -> 검증!
+      const activePin = getActivePin();
+      if (pinBuffer === activePin) {
+        // 성공!
+        if (pinErrorMsg) {
+          pinErrorMsg.textContent = '✨ 확인되었습니다. 잠시만 기다려주세요...';
+          pinErrorMsg.style.color = '#059669';
+        }
+        if (navigator.vibrate) navigator.vibrate([40, 40, 40]);
+        setTimeout(() => {
+          loginSuccess('햇살반 선생님 (PIN 인증)');
+        }, 200);
+      } else {
+        // 실패!
+        if (pinDotsContainer) {
+          pinDotsContainer.classList.add('pin-shake');
+          setTimeout(() => pinDotsContainer.classList.remove('pin-shake'), 400);
+        }
+        if (pinErrorMsg) {
+          pinErrorMsg.textContent = '비밀번호가 일치하지 않아요. (초기: 0000)';
+          pinErrorMsg.style.color = '#EF4444';
+        }
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        setTimeout(() => {
+          resetPinDisplay();
+        }, 450);
+      }
+    }
+  }
+
+  function handlePinBackspace() {
+    if (pinBuffer.length > 0) {
+      pinBuffer = pinBuffer.slice(0, -1);
+      updatePinDots();
+      if (pinErrorMsg) pinErrorMsg.textContent = '';
+    }
+  }
+
+  function resetPinDisplay() {
+    pinBuffer = '';
+    updatePinDots();
+    if (pinErrorMsg) {
+      pinErrorMsg.textContent = '';
+      pinErrorMsg.style.color = '#EF4444';
+    }
+  }
+
+  function updatePinDots() {
+    if (!pinDots || pinDots.length === 0) return;
+    pinDots.forEach((dot, idx) => {
+      if (idx < pinBuffer.length) {
+        dot.classList.add('filled');
+      } else {
+        dot.classList.remove('filled');
+      }
+    });
+  }
+
+  function loginSuccess(userName) {
+    const isRemember = rememberAuthCheck ? rememberAuthCheck.checked : true;
+    const sessionData = {
+      user: userName,
+      loggedInAt: Date.now(),
+      expiresAt: isRemember ? Date.now() + AUTH_30_DAYS_MS : Date.now() + (24 * 60 * 60 * 1000)
+    };
+    localStorage.setItem(AUTH_KEY_SESSION, JSON.stringify(sessionData));
+
+    if (sessionUserEmailText) {
+      sessionUserEmailText.textContent = userName;
+    }
+
+    if (authGateModal) {
+      authGateModal.style.display = 'none';
+    }
+    showToast(`🧸 ${userName}님, 환영합니다!`);
+  }
 
   // ============================================================================
   // 3. 초기화 (Init)
   // ============================================================================
   function init() {
+    // 🔐 2-Way 보안 게이트 초기화
+    initAuthGate();
+
     // 오늘 날짜 셋업
     const now = new Date();
     const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };

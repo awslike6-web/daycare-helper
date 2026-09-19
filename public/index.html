@@ -33,6 +33,7 @@
           <span>●</span> <span id="notionStatusText">연결 준비</span>
         </span>
         <button type="button" id="settingsBtn" class="settings-btn" title="설정">⚙️</button>
+        <button type="button" id="headerLogoutBtn" class="settings-btn" title="보안 잠금 / 로그아웃" style="font-size: 14px;">🔒</button>
       </div>
     </header>
 
@@ -336,10 +337,31 @@
               <div>• 로그인 계정: <b id="sessionUserEmailText" style="color: var(--text-main);">-</b></div>
               <div>• 세션 유지: <span id="sessionExpiryDateText" style="color: var(--text-main); font-weight: 600;">-</span> (<span id="sessionDaysLeftText">30일 유지</span>)</div>
             </div>
-            <div style="margin-top: 8px; display: flex; gap: 6px;">
-              <button type="button" id="testBannerToggleBtn" class="action-btn" style="font-size: 11px; padding: 4px 8px; border: 1px dashed var(--primary); background: #EEF2FF; color: var(--primary); cursor: pointer;">
-                🧪 만료 D-7 배너 미리보기 테스트
+            <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+              <button type="button" id="openChangePinBtn" class="action-btn" style="font-size: 11px; padding: 5px 10px; border: 1px solid #C7D2FE; background: #EEF2FF; color: var(--primary); cursor: pointer; border-radius: 6px; font-weight: 600;">
+                🔢 4자리 PIN 비밀번호 변경
               </button>
+              <button type="button" id="modalLogoutBtn" class="action-btn" style="font-size: 11px; padding: 5px 10px; border: 1px solid #FECACA; background: #FEF2F2; color: #DC2626; cursor: pointer; border-radius: 6px; font-weight: 600;">
+                🔒 로그아웃 (잠금)
+              </button>
+              <button type="button" id="testBannerToggleBtn" class="action-btn" style="font-size: 11px; padding: 5px 10px; border: 1px dashed #D1D5DB; background: #F9FAFB; color: #4B5563; cursor: pointer; border-radius: 6px;">
+                🧪 D-7 배너 테스트
+              </button>
+            </div>
+            
+            <!-- 🔢 PIN 변경 폼 (토글) -->
+            <div id="pinChangeBox" style="display: none; margin-top: 10px; padding: 10px; background: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0;">
+              <div style="font-weight: 700; color: var(--text-main); margin-bottom: 6px; font-size: 12px;">🔑 새 4자리 비밀번호 설정</div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <input type="password" id="newPinInput" maxlength="4" placeholder="새 4자리 숫자" style="width: 120px; padding: 6px 8px; font-size: 13px; text-align: center; border: 1px solid #CBD5E1; border-radius: 6px; letter-spacing: 2px;">
+                <button type="button" id="saveNewPinBtn" class="action-btn" style="font-size: 12px; padding: 6px 12px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                  저장
+                </button>
+                <button type="button" id="cancelNewPinBtn" class="action-btn" style="font-size: 12px; padding: 6px 10px; background: #E2E8F0; color: #475569; border: none; border-radius: 6px; cursor: pointer;">
+                  취소
+                </button>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">* 초기 비밀번호는 0000입니다. 변경 시 이 기기에 즉시 적용됩니다.</div>
             </div>
           </div>
 
@@ -506,6 +528,90 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- 🔐 2-Way 보안 잠금 화면 (4자리 PIN & 이메일 선택) -->
+    <div class="auth-gate-overlay" id="authGateModal" style="display: none;">
+      <div class="auth-gate-card">
+        <!-- 곰돌이 브랜드 헤더 -->
+        <div class="auth-gate-header">
+          <div class="auth-bear-avatar">🧸</div>
+          <h2 class="auth-gate-title">우리 반 보육 비서</h2>
+          <p class="auth-gate-subtitle">선생님을 위한 안심 스마트 보육 환경</p>
+        </div>
+
+        <!-- 2-Way 탭 스위처 -->
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab-btn active" id="tabPinBtn">
+            <span>🔢 4자리 간편 PIN</span>
+          </button>
+          <button type="button" class="auth-tab-btn" id="tabEmailBtn">
+            <span>✉️ 이메일 로그인</span>
+          </button>
+        </div>
+
+        <!-- 패널 1: 4자리 PIN 입력 -->
+        <div class="auth-panel" id="pinPanel">
+          <div class="pin-guide-text">4자리 비밀번호를 입력해 주세요</div>
+          
+          <!-- 4자리 도트 -->
+          <div class="pin-dots-container" id="pinDotsContainer">
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+          </div>
+          
+          <div class="pin-error-msg" id="pinErrorMsg"></div>
+
+          <!-- 3x4 키패드 -->
+          <div class="keypad-grid">
+            <button type="button" class="keypad-btn" data-num="1">1</button>
+            <button type="button" class="keypad-btn" data-num="2">2</button>
+            <button type="button" class="keypad-btn" data-num="3">3</button>
+            <button type="button" class="keypad-btn" data-num="4">4</button>
+            <button type="button" class="keypad-btn" data-num="5">5</button>
+            <button type="button" class="keypad-btn" data-num="6">6</button>
+            <button type="button" class="keypad-btn" data-num="7">7</button>
+            <button type="button" class="keypad-btn" data-num="8">8</button>
+            <button type="button" class="keypad-btn" data-num="9">9</button>
+            <button type="button" class="keypad-btn keypad-func" id="keypadClearBtn" title="초기화">C</button>
+            <button type="button" class="keypad-btn" data-num="0">0</button>
+            <button type="button" class="keypad-btn keypad-func" id="keypadBackspaceBtn" title="지우기">⌫</button>
+          </div>
+        </div>
+
+        <!-- 패널 2: 이메일 로그인 -->
+        <div class="auth-panel" id="emailPanel" style="display: none;">
+          <div class="email-guide-text">
+            등록된 선생님 이메일 주소를 입력해 주세요.
+          </div>
+          <form id="emailLoginForm" style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+            <input 
+              type="email" 
+              id="authEmailInput" 
+              class="auth-email-input" 
+              placeholder="예: teacher@example.com" 
+              required
+            >
+            <div class="pin-error-msg" id="emailErrorMsg"></div>
+            <button type="submit" class="submit-btn" style="padding: 12px; margin-top: 4px;">
+              🚀 이메일로 바로 시작하기
+            </button>
+          </form>
+        </div>
+
+        <!-- 하단 공통 옵션 -->
+        <div class="auth-gate-footer">
+          <label class="remember-label">
+            <input type="checkbox" id="rememberAuthCheck" checked>
+            <span>이 기기에서 30일간 로그인 유지</span>
+          </label>
+          <div class="auth-hint-text">
+            * 초기 비밀번호는 <b>0000</b>이며, 진입 후 설정에서 변경 가능합니다.
+          </div>
+        </div>
       </div>
     </div>
 

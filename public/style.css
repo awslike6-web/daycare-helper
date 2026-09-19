@@ -1065,3 +1065,250 @@ body {
   background: #EEF2FF !important;
 }
 
+/* ==========================================================================
+   🔐 2-Way 보안 잠금 화면 (Auth Gate Modal & 3x4 Keypad)
+   ========================================================================== */
+.auth-gate-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: authOverlayFadeIn 0.25s ease-out;
+}
+
+@keyframes authOverlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.auth-gate-card {
+  background: #ffffff;
+  border-radius: 24px;
+  max-width: 360px;
+  width: 100%;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: authCardScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@keyframes authCardScaleUp {
+  from { opacity: 0; transform: scale(0.92) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.auth-gate-header {
+  padding: 24px 20px 14px;
+  text-align: center;
+  background: linear-gradient(180deg, #EEF2FF 0%, #FFFFFF 100%);
+}
+
+.auth-bear-avatar {
+  font-size: 44px;
+  margin-bottom: 6px;
+  display: inline-block;
+  filter: drop-shadow(0 4px 8px rgba(99, 102, 241, 0.25));
+  animation: bearBounce 2s infinite ease-in-out;
+}
+
+@keyframes bearBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.auth-gate-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1E293B;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.auth-gate-subtitle {
+  font-size: 12px;
+  color: #64748B;
+  margin: 4px 0 0;
+  font-weight: 500;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 20px 14px;
+  background: #F1F5F9;
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.auth-tab-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748B;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.auth-tab-btn.active {
+  background: #ffffff;
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.auth-panel {
+  padding: 0 20px 14px;
+}
+
+.pin-guide-text {
+  text-align: center;
+  font-size: 12px;
+  color: #475569;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.email-guide-text {
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.auth-email-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #CBD5E1;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.auth-email-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.pin-dots-container {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 8px;
+  padding: 4px 0;
+}
+
+.pin-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #CBD5E1;
+  background: transparent;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pin-dot.filled {
+  background: var(--primary);
+  border-color: var(--primary);
+  transform: scale(1.15);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+}
+
+.pin-error-msg {
+  min-height: 20px;
+  font-size: 12px;
+  color: #EF4444;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.keypad-btn {
+  height: 50px;
+  border: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  border-radius: 14px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1E293B;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.keypad-btn:active {
+  background: #EEF2FF;
+  border-color: var(--primary);
+  transform: scale(0.93);
+}
+
+.keypad-btn.keypad-func {
+  font-size: 15px;
+  font-weight: 600;
+  color: #64748B;
+  background: #F1F5F9;
+}
+
+.auth-gate-footer {
+  padding: 12px 20px 18px;
+  background: #F8FAFC;
+  border-top: 1px solid #F1F5F9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.remember-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  user-select: none;
+}
+
+.auth-hint-text {
+  font-size: 11px;
+  color: #94A3B8;
+  line-height: 1.4;
+}
+
+/* 셰이크 애니메이션 (오입력 시) */
+@keyframes pinShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.pin-shake {
+  animation: pinShake 0.4s ease-in-out !important;
+}
+
