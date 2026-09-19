@@ -63,9 +63,13 @@
     <!-- 👶 원아 퀵 선택 가로 스크롤 섹션 -->
     <section class="child-selector-section">
       <div class="section-label" style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
           <span>원아 선택</span>
-          <span id="selectedChildAge" style="font-weight: 500; margin-left: 6px;">만 4세</span>
+          <span id="selectedChildAge" style="font-weight: 500; margin-left: 2px;">만 4세</span>
+          <button type="button" id="classFilterToggleBtn" class="class-filter-chip" title="우리 반 아이들만 보기 / 전체 원아 보기 전환">
+            <span id="classFilterIcon">🌱</span>
+            <span id="classFilterText">햇살반만</span>
+          </button>
         </div>
         <button type="button" id="addChildBtn" class="add-child-header-btn" title="새 원아 등록">
           <span>➕</span> <span>원아 등록</span>
@@ -82,6 +86,7 @@
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
           <div style="flex: 1;">
             <div class="child-traits-text" id="childTraitsText">💡 성향: 손으로 만지는 조작 놀이를 즐김 (소근육 발달 중)</div>
+            <div class="child-parent-text" id="childParentText" style="display: none;">👪 학부모 선호: 안심 서술형</div>
             <div class="child-alert-text" id="childAlertText" style="display: none;">⚠️ 주의: 우유 과다 섭취 주의</div>
           </div>
           <button type="button" id="editChildBtn" class="edit-child-btn" title="원아 정보 및 성향 수정">
@@ -479,9 +484,14 @@
             >
           </div>
 
-          <button type="button" id="saveSettingsBtn" class="submit-btn" style="padding: 12px; margin-top: 4px;">
-            💾 페르소나 설정 저장하기
-          </button>
+          <div style="display: flex; gap: 8px; margin-top: 6px;">
+            <button type="button" id="syncTeacherFromNotionBtn" class="edit-child-btn" style="flex: 1; padding: 10px; font-size: 12px; font-weight: 600; justify-content: center; background: #F1F5F9; border: 1px solid #CBD5E1; color: #334155;" title="노션 TEACHER_DB에서 내 프로필과 말투 동기화">
+              <span>☁️</span> <span>노션 프로필 불러오기</span>
+            </button>
+            <button type="button" id="saveSettingsBtn" class="submit-btn" style="flex: 1.4; padding: 10px; margin-top: 0;">
+              💾 설정 저장하기
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -553,6 +563,45 @@
             ></textarea>
             <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
               * 여기에 적힌 성향은 AI가 알림장이나 관찰일지를 쓸 때 아이의 고유한 개성으로 100% 반영됩니다.
+            </div>
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label style="font-weight: 700; color: var(--text-main);">
+                👪 학부모 성향 & 알림장 선호 스타일 (초개인화 핵심 ⭐)
+              </label>
+              <span style="font-size: 11px; color: var(--primary); font-weight: 600;">1:1 맞춤 소통</span>
+            </div>
+            
+            <!-- 4대 대표 프리셋 퀵 버튼 -->
+            <div class="parent-preset-grid" id="parentPresetGrid">
+              <button type="button" class="parent-preset-btn" data-preset="safe_detail" title="식사량, 낮잠, 작은 상처, 정서적 안정감 세심 안내 선호">
+                <span class="parent-preset-title">🌿 안심 서술형</span>
+                <span class="parent-preset-desc">식사·낮잠·정서 세심 안내</span>
+              </button>
+              <button type="button" class="parent-preset-btn" data-preset="speedy_summary" title="바쁜 맞벌이 부모님, 퇴근 후 3줄 핵심 요약 선호">
+                <span class="parent-preset-title">⚡ 스피디 요약형</span>
+                <span class="parent-preset-desc">맞벌이 퇴근길 3줄 요약</span>
+              </button>
+              <button type="button" class="parent-preset-btn" data-preset="social_care" title="친구 배려, 양보, 따뜻한 사회성 일화 중심 선호">
+                <span class="parent-preset-title">🤝 교우관계형</span>
+                <span class="parent-preset-desc">친구 배려·사회성 일화</span>
+              </button>
+              <button type="button" class="parent-preset-btn" data-preset="growth_praise" title="조작력과 문제해결력, 성취 칭찬 중심 선호">
+                <span class="parent-preset-title">🏆 성장 성취형</span>
+                <span class="parent-preset-desc">조작력·문제해결 성취 칭찬</span>
+              </button>
+            </div>
+
+            <textarea 
+              id="manageChildParentStyle" 
+              class="memo-textarea" 
+              style="min-height: 70px; font-size: 13px; line-height: 1.5;" 
+              placeholder="학부모님의 성향이나 원하는 알림장 스타일을 적어주세요. 위의 퀵 버튼을 누르면 자동 완성됩니다.&#10;예) 안심 서술형 (식사량과 정서적 안정감 세심 안내 선호, 작은 상처도 미리 다정하게 공유)"
+            ></textarea>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+              * 학부모 성향 데이터가 누적될수록 AI가 부모님이 꼭 듣고 싶어 하는 맞춤 어조로 알림장을 완성합니다.
             </div>
           </div>
 

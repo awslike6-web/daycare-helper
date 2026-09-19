@@ -63,6 +63,7 @@
       childName = '김민서',
       childAge = '만 4세',
       childTraits = '',
+      parentStyle = '',
       allergies = '',
       rawMemo = '',
       mode = 'partial',
@@ -96,6 +97,17 @@ ${sampleNote}
     const pastLogText = (pastLogs && pastLogs.length > 0) ? `
 [과거 관찰 기록 (Citation 출처)]:
 ${pastLogs.map(p => `- [${p.date}] [${p.activityArea || '놀이'}] ${maskText(p.content || '', childName)}`).join('\n')}` : '';
+
+    const parentStyleGuideline = parentStyle ? `
+[⭐ 학부모 맞춤 소통 가이드라인 (Parent Persona Adaptation)]
+이 아이의 학부모님은 다음과 같은 성향과 알림장 스타일을 선호하십니다:
+"${parentStyle}"
+- 알림장 본문(kidsnote.content) 작성 시 반드시 위 학부모님의 성향을 최우선으로 고려하라:
+  * '안심 서술형' 선호 시: 식사량, 낮잠, 작은 상처 유무, 정서적 안정감을 세심하고 다정하게 안심시켜 주며 서술할 것.
+  * '스피디 요약형' 선호 시: 퇴근길 바쁜 학부모를 위해 서두/결미는 다정하되 본문 핵심 놀이 몰입 장면을 3~4줄의 명확하고 알찬 내용으로 임팩트 있게 전달할 것.
+  * '교우관계형' 선호 시: 또래 친구를 배려하고, 양보하며 함께 웃은 따뜻한 사회성 일화를 중심으로 부각할 것.
+  * '성장 성취형' 선호 시: 아이의 소근육 조작력, 공간감각, 문제해결력과 기특한 성취를 칭찬하고 격려하는 내용을 강조할 것.
+` : '';
 
     let modeInstruction = '';
     if (isPlayStory) {
@@ -133,6 +145,8 @@ ${pastLogs.map(p => `- [${p.date}] [${p.activityArea || '놀이'}] ${maskText(p.
 ${sampleText}
 ${closingGreeting ? `- 단골 맺음말 지침: 본문 끝부분에 다음 맺음말을 자연스럽게 반영하라: "${closingGreeting}"` : ''}
 
+${parentStyleGuideline}
+
 ${modeInstruction}
 
 [품격 있는 긍정 서술 원칙 (필수)]
@@ -142,6 +156,7 @@ ${modeInstruction}
 [원아 정보]
 - 가명: [아동A] (${childAge})
 - 특이사항/성향: ${childTraits || '특이사항 없음'}
+- 학부모 성향/선호 스타일: ${parentStyle || '일반 다정형'}
 - 주의사항/알레르기: ${allergies || '없음'}
 ${pastLogText}
 

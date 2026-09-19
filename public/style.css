@@ -200,9 +200,90 @@ body {
   font-weight: 500;
 }
 
+.child-parent-text {
+  color: #6366F1;
+  font-weight: 600;
+  font-size: 11.5px;
+  margin-top: 1px;
+}
+
 .child-alert-text {
   color: #DC2626;
   font-weight: 600;
+}
+
+/* 🌱 반 필터 토글 칩 */
+.class-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #EFF6FF;
+  color: #2563EB;
+  border: 1px solid #BFDBFE;
+  border-radius: var(--radius-full);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.class-filter-chip:hover {
+  background: #DBEAFE;
+}
+
+.class-filter-chip.show-all {
+  background: #F3F4F6;
+  color: #4B5563;
+  border-color: #E5E7EB;
+}
+
+/* 👪 학부모 성향 4대 프리셋 퀵 버튼 */
+.parent-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.parent-preset-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 8px 10px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.parent-preset-btn:hover {
+  background: #F1F5F9;
+  border-color: #CBD5E1;
+}
+
+.parent-preset-btn.active {
+  background: #EEF2FF;
+  border-color: #6366F1;
+}
+
+.parent-preset-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.parent-preset-btn.active .parent-preset-title {
+  color: #4F46E5;
+}
+
+.parent-preset-desc {
+  font-size: 10.5px;
+  color: #64748B;
+  margin-top: 2px;
+  line-height: 1.3;
 }
 
 /* 📝 작성 입력 메인 영역 */

@@ -148,15 +148,24 @@ export async function getChildrenList(env) {
     const children = data.results.map(page => {
       const props = page.properties;
       const name = props['아동명']?.title?.[0]?.plain_text || '이름 없음';
-      const age = props['생년월일/연령']?.rich_text?.[0]?.plain_text || props['생년월일/연령']?.date?.start || '만 3세';
+      const age = props['생년월일/연령']?.rich_text?.[0]?.plain_text || props['생년월일/연령']?.date?.start || '만 4세';
       const traits = props['성향 및 특이사항']?.rich_text?.[0]?.plain_text || '';
+      const parentStyle = props['학부모 성향 & 알림장 스타일']?.rich_text?.[0]?.plain_text || '';
       const allergies = props['알레르기/주의사항']?.rich_text?.[0]?.plain_text || '';
+
+      let childClass = props['소속 반']?.select?.name || '';
+      if (!childClass && age.includes('(')) {
+        const match = age.match(/\((.*?)\)/);
+        if (match && match[1]) childClass = match[1].trim();
+      }
 
       return {
         id: page.id,
         name,
         age,
+        childClass,
         traits,
+        parentStyle,
         allergies
       };
     });
@@ -375,7 +384,7 @@ export async function saveDailyLogToNotion({
 /**
  * 4️⃣ 신규 원아 등록 (/api/children - POST)
  */
-export async function saveChildToNotion({ name, age, traits, allergies }, env) {
+export async function saveChildToNotion({ name, age, childClass, traits, parentStyle, allergies }, env) {
   const dbId = env.NOTION_CHILD_DB_ID;
   const token = env.NOTION_TOKEN;
   const proxyUrl = env.NOTION_PROXY_URL;
@@ -384,7 +393,7 @@ export async function saveChildToNotion({ name, age, traits, allergies }, env) {
     throw new Error('원아 이름이 필요합니다.');
   }
 
-  // 노션 DB가 연결되지 않은 경우 로컬 모크 생성
+  // 모크 모드인 경우
   if (!dbId || (!token && !proxyUrl)) {
     const mockId = `mock-child-${Date.now()}`;
     return {
@@ -394,7 +403,9 @@ export async function saveChildToNotion({ name, age, traits, allergies }, env) {
         id: mockId,
         name,
         age: age || '만 4세',
+        childClass: childClass || '',
         traits: traits || '',
+        parentStyle: parentStyle || '',
         allergies: allergies || ''
       }
     };
@@ -410,10 +421,17 @@ export async function saveChildToNotion({ name, age, traits, allergies }, env) {
     '성향 및 특이사항': {
       rich_text: [{ text: { content: traits || '' } }]
     },
+    '학부모 성향 & 알림장 스타일': {
+      rich_text: [{ text: { content: parentStyle || '' } }]
+    },
     '알레르기/주의사항': {
       rich_text: [{ text: { content: allergies || '' } }]
     }
   };
+
+  if (childClass) {
+    properties['소속 반'] = { select: { name: childClass } };
+  }
 
   const createPayload = {
     parent: { database_id: dbId },
@@ -435,7 +453,9 @@ export async function saveChildToNotion({ name, age, traits, allergies }, env) {
       id: response.id,
       name,
       age: age || '만 4세',
+      childClass: childClass || '',
       traits: traits || '',
+      parentStyle: parentStyle || '',
       allergies: allergies || '',
       url: response.url
     }
@@ -445,7 +465,7 @@ export async function saveChildToNotion({ name, age, traits, allergies }, env) {
 /**
  * 5️⃣ 원아 정보 수정 (/api/children/:id - PUT)
  */
-export async function updateChildInNotion(childId, { name, age, traits, allergies }, env) {
+export async function updateChildInNotion(childId, { name, age, childClass, traits, parentStyle, allergies }, env) {
   const token = env.NOTION_TOKEN;
   const proxyUrl = env.NOTION_PROXY_URL;
 
@@ -462,7 +482,9 @@ export async function updateChildInNotion(childId, { name, age, traits, allergie
         id: childId,
         name,
         age: age || '만 4세',
+        childClass: childClass || '',
         traits: traits || '',
+        parentStyle: parentStyle || '',
         allergies: allergies || ''
       }
     };
@@ -479,9 +501,17 @@ export async function updateChildInNotion(childId, { name, age, traits, allergie
       rich_text: [{ text: { content: age } }]
     };
   }
+  if (childClass !== undefined) {
+    properties['소속 반'] = { select: { name: childClass } };
+  }
   if (traits !== undefined) {
     properties['성향 및 특이사항'] = {
       rich_text: [{ text: { content: traits } }]
+    };
+  }
+  if (parentStyle !== undefined) {
+    properties['학부모 성향 & 알림장 스타일'] = {
+      rich_text: [{ text: { content: parentStyle } }]
     };
   }
   if (allergies !== undefined) {
@@ -508,7 +538,9 @@ export async function updateChildInNotion(childId, { name, age, traits, allergie
         id: response.id,
         name,
         age,
+        childClass,
         traits,
+        parentStyle,
         allergies
       }
     };

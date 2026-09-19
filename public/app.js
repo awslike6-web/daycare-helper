@@ -47,14 +47,22 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ============================================================================
-  // 1. 애플리케이션 상태 (State)
+  // 1. 애플리케이션 상태 (State) 및 학부모 프리셋
   // ============================================================================
   const savedPersona = localStorage.getItem('daycare_persona');
   const initialPersona = savedPersona ? JSON.parse(savedPersona) : PERSONA_PRESETS.play_friendly;
 
+  const PARENT_PRESETS = {
+    safe_detail: '안심 서술형 (식사량, 낮잠, 작은 상처, 정서적 안정감 세심 안내 선호)',
+    speedy_summary: '스피디 요약형 (바쁜 맞벌이 부모님, 퇴근 후 3줄 핵심 요약 선호)',
+    social_care: '인성·교우관계형 (또래 배려, 양보, 따뜻한 사회성 일화 중심 선호)',
+    growth_praise: '성장 성취형 (조작력과 문제해결력, 발달 성취 칭찬 중심 선호)'
+  };
+
   const state = {
     className: localStorage.getItem('daycare_class_name') || '햇살반',
     teacherName: localStorage.getItem('daycare_teacher_name') || '김선생님',
+    filterOnlyMyClass: true, // 🌱 우리 반 아이들만 우선 필터링 (아내 ↔ 처형 반 분리)
     children: [],
     selectedChild: null,
     mode: 'play_story', // 'play_story' (놀이 알림장 집중) | 'observation' | 'all_suite'
@@ -78,7 +86,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const notionStatusText = document.getElementById('notionStatusText');
   const childScrollContainer = document.getElementById('childScrollContainer');
   const selectedChildAge = document.getElementById('selectedChildAge');
+  const classFilterToggleBtn = document.getElementById('classFilterToggleBtn');
+  const classFilterIcon = document.getElementById('classFilterIcon');
+  const classFilterText = document.getElementById('classFilterText');
   const childTraitsText = document.getElementById('childTraitsText');
+  const childParentText = document.getElementById('childParentText');
   const childAlertText = document.getElementById('childAlertText');
   const addChildBtn = document.getElementById('addChildBtn');
   const editChildBtn = document.getElementById('editChildBtn');
@@ -91,8 +103,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const manageChildAge = document.getElementById('manageChildAge');
   const manageChildClass = document.getElementById('manageChildClass');
   const manageChildTraits = document.getElementById('manageChildTraits');
+  const manageChildParentStyle = document.getElementById('manageChildParentStyle');
+  const parentPresetGrid = document.getElementById('parentPresetGrid');
   const manageChildAllergies = document.getElementById('manageChildAllergies');
   const saveChildBtn = document.getElementById('saveChildBtn');
+  const syncTeacherFromNotionBtn = document.getElementById('syncTeacherFromNotionBtn');
 
   const modeSwitcher = document.getElementById('modeSwitcher');
   const areaSection = document.getElementById('areaSection');
@@ -805,6 +820,36 @@ document.addEventListener('DOMContentLoaded', () => {
       childManageForm.addEventListener('submit', handleChildFormSubmit);
     }
 
+    // 🌱 우리 반만 보기 ↔ 전체 원아 보기 토글 이벤트
+    if (classFilterToggleBtn) {
+      classFilterToggleBtn.addEventListener('click', () => {
+        state.filterOnlyMyClass = !state.filterOnlyMyClass;
+        renderChildrenChips();
+        showToast(state.filterOnlyMyClass ? `🌱 '${state.className}' 원아들만 표시합니다.` : '🌐 전체 원아를 표시합니다.');
+      });
+    }
+
+    // 👪 원아 모달: 학부모 4대 프리셋 클릭 시 자동 입력
+    if (parentPresetGrid) {
+      parentPresetGrid.querySelectorAll('.parent-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          parentPresetGrid.querySelectorAll('.parent-preset-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const presetKey = btn.dataset.preset;
+          const text = PARENT_PRESETS[presetKey];
+          if (text && manageChildParentStyle) {
+            manageChildParentStyle.value = text;
+            manageChildParentStyle.focus();
+          }
+        });
+      });
+    }
+
+    // ☁️ 설정 모달: 노션에서 내 교사 프로필 불러오기 동기화 버튼
+    if (syncTeacherFromNotionBtn) {
+      syncTeacherFromNotionBtn.addEventListener('click', handleSyncTeacherProfile);
+    }
+
     // 프리셋 칩 클릭 시 해당 프리셋 데이터 폼에 자동 주입
     if (personaPresetGrid) {
       personaPresetGrid.querySelectorAll('.persona-preset-chip').forEach(chip => {
@@ -825,6 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 1. 담당 반 및 선생님 호칭 저장
       const newClassName = settingClassNameInput ? settingClassNameInput.value.trim() || '햇살반' : '햇살반';
       const newTeacherName = settingTeacherNameInput ? settingTeacherNameInput.value.trim() || '김선생님' : '김선생님';
+      const classChanged = state.className !== newClassName;
       state.className = newClassName;
       state.teacherName = newTeacherName;
       localStorage.setItem('daycare_class_name', newClassName);
@@ -842,6 +888,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       localStorage.setItem('daycare_persona', JSON.stringify(state.persona));
       updatePersonaUI();
+      if (classChanged) {
+        renderChildrenChips();
+      }
       settingsModal.style.display = 'none';
       showToast(`🌱 '${newClassName}' (${newTeacherName}) 설정이 성공적으로 저장되었습니다!`);
     });
@@ -888,6 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   const NOTION_CONFIG = {
     PROXY_URL: 'https://minmin-notion.awslike6.workers.dev',
+    TEACHER_DB_ID: '3e0a2711-5b68-8186-ad30-cbaea7687006',
     CHILD_DB_ID: '3e0a2711-5b68-8182-955e-f116e4174e3a',
     DAILY_LOG_DB_ID: '3e0a2711-5b68-8122-9eea-dd49bf8a625c',
     VERSION: '2022-06-28'
@@ -925,10 +975,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const children = (data.results || []).map(page => {
         const props = page.properties;
         const name = props['아동명']?.title?.[0]?.plain_text || '이름 없음';
-        const age = props['생년월일/연령']?.rich_text?.[0]?.plain_text || '만 3세';
+        const rawAge = props['생년월일/연령']?.rich_text?.[0]?.plain_text || '만 4세';
         const traits = props['성향 및 특이사항']?.rich_text?.[0]?.plain_text || '';
+        const parentStyle = props['학부모 성향 & 알림장 스타일']?.rich_text?.[0]?.plain_text || '';
         const allergies = props['알레르기/주의사항']?.rich_text?.[0]?.plain_text || '';
-        return { id: page.id, name, age, traits, allergies };
+        
+        // 반 정보: 전용 프로퍼티 우선, 없으면 연령 괄호 파싱
+        let childClass = props['소속 반']?.select?.name || '';
+        if (!childClass && rawAge.includes('(')) {
+          const match = rawAge.match(/\((.*?)\)/);
+          if (match && match[1]) childClass = match[1].trim();
+        }
+
+        return { id: page.id, name, age: rawAge, traits, allergies, childClass, parentStyle };
       });
 
       state.children = children;
@@ -957,8 +1016,8 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('원아 목록 불러오기 실패, 기본 샘플 사용:', err);
       // 오프라인 폴백 샘플
       state.children = [
-        { id: 'mock-child-1', name: '김민서', age: '만 4세', traits: '블록 및 조작 놀이 즐김, 소근육 발달 중', allergies: '우유 주의' },
-        { id: 'mock-child-2', name: '이민수', age: '만 5세', traits: '또래 협동 놀이, 언어 표현력 우수', allergies: '' }
+        { id: 'mock-child-1', name: '김민서', age: '만 4세', childClass: '햇살반', traits: '블록 및 조작 놀이 즐김, 소근육 발달 중', parentStyle: '안심 서술형 (식사량, 낮잠 세심 안내 선호)', allergies: '우유 주의' },
+        { id: 'mock-child-2', name: '이민수', age: '만 4세', childClass: '바다반', traits: '또래 협동 놀이, 언어 표현력 우수', parentStyle: '스피디 요약형 (바쁜 맞벌이 부모님, 3줄 핵심 요약 선호)', allergies: '' }
       ];
       renderChildrenChips(selectedId);
     }
@@ -966,6 +1025,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderChildrenChips(selectedId = null) {
     childScrollContainer.innerHTML = '';
+
+    // 1. 반 필터 토글 UI 업데이트
+    if (classFilterToggleBtn) {
+      if (state.filterOnlyMyClass) {
+        classFilterToggleBtn.classList.remove('show-all');
+        if (classFilterIcon) classFilterIcon.textContent = '🌱';
+        if (classFilterText) classFilterText.textContent = `${state.className}만`;
+      } else {
+        classFilterToggleBtn.classList.add('show-all');
+        if (classFilterIcon) classFilterIcon.textContent = '🌐';
+        if (classFilterText) classFilterText.textContent = '전체 보기';
+      }
+    }
 
     if (state.children.length === 0) {
       const emptyChip = document.createElement('div');
@@ -977,21 +1049,58 @@ document.addEventListener('DOMContentLoaded', () => {
       state.selectedChild = null;
       selectedChildAge.textContent = '-';
       childTraitsText.textContent = '💡 아직 등록된 원아가 없습니다. [+ 원아 등록] 버튼을 눌러 아이를 추가해 주세요!';
+      if (childParentText) childParentText.style.display = 'none';
+      childAlertText.style.display = 'none';
+      return;
+    }
+
+    // 2. 현재 선택된 필터에 따라 노출할 원아 목록 계산
+    const currentClass = state.className || '햇살반';
+    let displayList = state.children;
+    if (state.filterOnlyMyClass) {
+      displayList = state.children.filter(c => !c.childClass || c.childClass === currentClass);
+    }
+
+    // 만약 현재 반에 원아가 한 명도 없으면
+    if (displayList.length === 0) {
+      const noticeChip = document.createElement('div');
+      noticeChip.className = 'child-chip';
+      noticeChip.style.background = '#FEF3C7';
+      noticeChip.style.borderColor = '#F59E0B';
+      noticeChip.style.color = '#92400E';
+      noticeChip.innerHTML = `<span>🌱 ${currentClass} 원아가 없습니다</span>`;
+      noticeChip.addEventListener('click', () => {
+        state.filterOnlyMyClass = false;
+        renderChildrenChips();
+      });
+      childScrollContainer.appendChild(noticeChip);
+
+      const addChip = document.createElement('div');
+      addChip.className = 'child-chip child-chip-add';
+      addChip.innerHTML = `<span>➕ ${currentClass} 원아 등록</span>`;
+      addChip.addEventListener('click', () => openChildModal('add'));
+      childScrollContainer.appendChild(addChip);
+
+      state.selectedChild = null;
+      selectedChildAge.textContent = '-';
+      childTraitsText.textContent = `💡 현재 '${currentClass}'으로 등록된 원아가 없습니다. [+ 원아 등록]으로 추가하거나 [전체 보기]를 눌러주세요.`;
+      if (childParentText) childParentText.style.display = 'none';
       childAlertText.style.display = 'none';
       return;
     }
 
     let targetChild = null;
 
-    state.children.forEach((child, index) => {
+    displayList.forEach((child, index) => {
       const isSelected = selectedId ? child.id === selectedId : index === 0;
       if (isSelected) targetChild = child;
 
       const chip = document.createElement('div');
       chip.className = `child-chip ${isSelected ? 'active' : ''}`;
+      const classBadge = (!state.filterOnlyMyClass && child.childClass) ? `<small style="font-size: 10px; opacity: 0.8; margin-left: 2px;">(${child.childClass})</small>` : '';
       chip.innerHTML = `
         <span class="child-avatar">${getAvatarEmoji(child.name)}</span>
-        <span>${child.name}</span>
+        <span>${child.name}${classBadge}</span>
       `;
       chip.addEventListener('click', () => {
         childScrollContainer.querySelectorAll('.child-chip').forEach(c => c.classList.remove('active'));
@@ -1010,8 +1119,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (targetChild) {
       selectChild(targetChild);
-    } else if (state.children.length > 0) {
-      selectChild(state.children[0]);
+    } else if (displayList.length > 0) {
+      selectChild(displayList[0]);
     }
   }
 
@@ -1023,9 +1132,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function selectChild(child) {
     state.selectedChild = child;
-    selectedChildAge.textContent = child.age || '만 3세';
+    selectedChildAge.textContent = child.age || '만 4세';
     childTraitsText.textContent = `💡 성향: ${child.traits || '특이사항 없음'}`;
     
+    // 👪 학부모 성향 & 알림장 스타일 표시
+    if (childParentText) {
+      if (child.parentStyle) {
+        childParentText.style.display = 'block';
+        childParentText.textContent = `👪 학부모 선호: ${child.parentStyle}`;
+      } else {
+        childParentText.style.display = 'none';
+      }
+    }
+
     if (child.allergies) {
       childAlertText.style.display = 'block';
       childAlertText.textContent = `⚠️ 주의: ${child.allergies}`;
@@ -1040,6 +1159,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function openChildModal(mode = 'add', child = null) {
     if (!childManageModal) return;
 
+    if (parentPresetGrid) {
+      parentPresetGrid.querySelectorAll('.parent-preset-btn').forEach(b => b.classList.remove('active'));
+    }
+
     if (mode === 'edit' && child) {
       childModalTitle.textContent = `👶 ${child.name} 정보 및 성향 수정`;
       manageChildId.value = child.id || '';
@@ -1047,16 +1170,17 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // 만약 '만 4세 (햇살반)' 형태면 분리
       let rawAge = child.age || '만 4세';
-      let extractedClass = state.className || '햇살반';
+      let extractedClass = child.childClass || state.className || '햇살반';
       if (rawAge.includes('(')) {
         const parts = rawAge.split('(');
         rawAge = parts[0].trim();
-        extractedClass = parts[1].replace(')', '').trim();
+        if (!child.childClass) extractedClass = parts[1].replace(')', '').trim();
       }
       manageChildAge.value = rawAge;
       if (manageChildClass) manageChildClass.value = extractedClass;
 
       manageChildTraits.value = child.traits || '';
+      if (manageChildParentStyle) manageChildParentStyle.value = child.parentStyle || '';
       manageChildAllergies.value = child.allergies || '';
       saveChildBtn.innerHTML = '<span>💾</span> <span>원아 정보 수정 저장</span>';
     } else {
@@ -1066,6 +1190,7 @@ document.addEventListener('DOMContentLoaded', () => {
       manageChildAge.value = '만 4세';
       if (manageChildClass) manageChildClass.value = state.className || '햇살반';
       manageChildTraits.value = '';
+      if (manageChildParentStyle) manageChildParentStyle.value = '';
       manageChildAllergies.value = '';
       saveChildBtn.innerHTML = '<span>💾</span> <span>노션에 원아 등록하기</span>';
     }
@@ -1087,6 +1212,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const childClass = manageChildClass ? manageChildClass.value.trim() || state.className : state.className;
     const age = childClass ? `${baseAge} (${childClass})` : baseAge;
     const traits = manageChildTraits.value.trim();
+    const parentStyle = manageChildParentStyle ? manageChildParentStyle.value.trim() : '';
     const allergies = manageChildAllergies.value.trim();
 
     saveChildBtn.disabled = true;
@@ -1104,7 +1230,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const updateProps = {
               '아동명': { title: [{ text: { content: name } }] },
               '생년월일/연령': { rich_text: [{ text: { content: age } }] },
+              '소속 반': { select: { name: childClass } },
               '성향 및 특이사항': { rich_text: [{ text: { content: traits } }] },
+              '학부모 성향 & 알림장 스타일': { rich_text: [{ text: { content: parentStyle } }] },
               '알레르기/주의사항': { rich_text: [{ text: { content: allergies } }] }
             };
             const updateRes = await directNotionCall(`/pages/${id}`, 'PATCH', { properties: updateProps });
@@ -1118,7 +1246,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 properties: {
                   '아동명': { title: [{ text: { content: name } }] },
                   '생년월일/연령': { rich_text: [{ text: { content: age } }] },
+                  '소속 반': { select: { name: childClass } },
                   '성향 및 특이사항': { rich_text: [{ text: { content: traits } }] },
+                  '학부모 성향 & 알림장 스타일': { rich_text: [{ text: { content: parentStyle } }] },
                   '알레르기/주의사항': { rich_text: [{ text: { content: allergies } }] }
                 }
               };
@@ -1136,7 +1266,9 @@ document.addEventListener('DOMContentLoaded', () => {
             properties: {
               '아동명': { title: [{ text: { content: name } }] },
               '생년월일/연령': { rich_text: [{ text: { content: age } }] },
+              '소속 반': { select: { name: childClass } },
               '성향 및 특이사항': { rich_text: [{ text: { content: traits } }] },
+              '학부모 성향 & 알림장 스타일': { rich_text: [{ text: { content: parentStyle } }] },
               '알레르기/주의사항': { rich_text: [{ text: { content: allergies } }] }
             }
           };
@@ -1159,11 +1291,100 @@ document.addEventListener('DOMContentLoaded', () => {
         res = await fetch(`/api/children/${encodeURIComponent(id)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, age, traits, allergies })
+          body: JSON.stringify({ name, age, childClass, traits, parentStyle, allergies })
         });
       } else {
         res = await fetch('/api/children', {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, age, childClass, traits, parentStyle, allergies })
+        });
+      }
+
+      if (!res.ok) {
+        throw new Error('원아 저장 중 오류가 발생했습니다.');
+      }
+
+      const json = await res.json();
+      childManageModal.style.display = 'none';
+      showToast(`🎉 ${name} 원아가 안전하게 저장되었습니다!`);
+      await loadChildren(json.child?.id || null);
+    } catch (err) {
+      console.error('원아 저장 실패:', err);
+      showToast(`저장 실패: ${err.message || '네트워크 오류'}`);
+    } finally {
+      saveChildBtn.disabled = false;
+      saveChildBtn.innerHTML = '<span>💾</span> <span>노션에 원아 저장하기</span>';
+    }
+  }
+
+  // ============================================================================
+  // 7-C. 노션 TEACHER_DB에서 교사 프로필 동기화
+  // ============================================================================
+  async function handleSyncTeacherProfile() {
+    if (!syncTeacherFromNotionBtn) return;
+    syncTeacherFromNotionBtn.disabled = true;
+    syncTeacherFromNotionBtn.innerHTML = '<span>⏳</span> <span>프로필 조회 중...</span>';
+
+    try {
+      const data = await directNotionCall(`/databases/${NOTION_CONFIG.TEACHER_DB_ID}/query`, 'POST', {
+        page_size: 20
+      });
+
+      const records = data.results || [];
+      if (records.length === 0) {
+        showToast('노션 TEACHER_DB에 등록된 교사 프로필이 없습니다.');
+        return;
+      }
+
+      const currentClass = (settingClassNameInput ? settingClassNameInput.value.trim() : state.className) || '햇살반';
+      const currentTeacher = (settingTeacherNameInput ? settingTeacherNameInput.value.trim() : state.teacherName) || '김선생님';
+
+      let matched = records.find(p => {
+        const cls = p.properties['담당반']?.select?.name;
+        const tch = p.properties['교사명']?.title?.[0]?.plain_text;
+        return (cls && cls === currentClass) || (tch && tch === currentTeacher);
+      });
+
+      if (!matched && records.length > 0) {
+        matched = records[0];
+      }
+
+      const pProps = matched.properties;
+      const tName = pProps['교사명']?.title?.[0]?.plain_text || currentTeacher;
+      const cClass = pProps['담당반']?.select?.name || currentClass;
+      const presetName = pProps['문체 프리셋']?.select?.name || '놀이 중심 다정체';
+      const sampleNote = pProps['평소 알림장 예시문']?.rich_text?.[0]?.plain_text || '';
+      const closing = pProps['기본 마무리 멘트']?.rich_text?.[0]?.plain_text || '';
+      const callStyle = pProps['원아 호칭']?.rich_text?.[0]?.plain_text || '우리 [아동A]';
+
+      if (settingClassNameInput) settingClassNameInput.value = cClass;
+      if (settingTeacherNameInput) settingTeacherNameInput.value = tName;
+      if (personaSampleNote) personaSampleNote.value = sampleNote;
+      if (personaClosingGreeting) personaClosingGreeting.value = closing;
+      if (personaCallStyle) personaCallStyle.value = callStyle;
+
+      let foundPresetKey = 'play_friendly';
+      if (presetName.includes('발달') || presetName.includes('서술')) foundPresetKey = 'growth_detail';
+      else if (presetName.includes('공감') || presetName.includes('따뜻')) foundPresetKey = 'warm_parent';
+      else if (presetName.includes('생동') || presetName.includes('밝')) foundPresetKey = 'lively_vivid';
+
+      if (personaPresetGrid) {
+        personaPresetGrid.querySelectorAll('.persona-preset-chip').forEach(chip => {
+          if (chip.dataset.preset === foundPresetKey) chip.classList.add('active');
+          else chip.classList.remove('active');
+        });
+      }
+
+      showToast(`☁️ 노션에서 '${tName} (${cClass})' 프로필을 불러왔습니다!`);
+    } catch (err) {
+      console.error('교사 프로필 동기화 실패:', err);
+      showToast('교사 프로필 불러오기에 실패했습니다.');
+    } finally {
+      syncTeacherFromNotionBtn.disabled = false;
+      syncTeacherFromNotionBtn.innerHTML = '<span>☁️</span> <span>노션 프로필 불러오기</span>';
+    }
+  }
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, age, traits, allergies })
         });
@@ -1358,6 +1579,7 @@ document.addEventListener('DOMContentLoaded', () => {
         childName: state.selectedChild.name,
         childAge: state.selectedChild.age,
         childTraits: state.selectedChild.traits,
+        parentStyle: state.selectedChild.parentStyle || '',
         allergies: state.selectedChild.allergies,
         rawMemo: memoText,
         images: state.photos,

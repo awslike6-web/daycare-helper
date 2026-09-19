@@ -177,6 +177,7 @@ function buildUserPrompt({
   maskedMemo,
   childAge,
   childTraits,
+  parentStyle,
   allergies,
   pastLogs,
   activityArea,
@@ -184,8 +185,9 @@ function buildUserPrompt({
 }) {
   let prompt = `[원아 기본 정보]
 - 가명: [아동A]
-- 연령: ${childAge || '만 3세'}
+- 연령: ${childAge || '만 4세'}
 - 특이사항 및 성향: ${childTraits || '특이사항 없음'}
+- 학부모 성향 & 알림장 선호 스타일: ${parentStyle || '일반 다정형'}
 - 알레르기/주의사항: ${allergies || '없음'}
 - 작성 모드: ${mode === 'partial' ? '부분/시간대별' : '하루 통합'}
 - 활동 영역: ${activityArea || '자유놀이'}
@@ -193,6 +195,11 @@ function buildUserPrompt({
 [선생님 작성 메모/단편 키워드]
 ${maskedMemo || '오늘 즐겁게 활동함'}
 `;
+
+  if (parentStyle) {
+    prompt += `\n[⭐ 학부모 맞춤 소통 가이드라인 (Parent Persona Adaptation)]\n`;
+    prompt += `이 아이의 학부모님은 '${parentStyle}' 성향을 선호하십니다. 알림장 본문(kidsnote.content) 작성 시 학부모님의 성향과 선호에 맞춘 톤앤매너로 서술해줘.\n`;
+  }
 
   if (pastLogs && pastLogs.length > 0) {
     prompt += `\n[해당 원아의 최근 이전 관찰 기록 (참조용)]\n`;
@@ -230,13 +237,14 @@ function parseImageData(imageInput) {
 }
 
 /**
- * Gemini 3.8 Flash 호출 핵심 함수
+ * Gemini API 호출 메인 오케스트레이터
  */
 export async function generateDaycareLog({
   apiKey,
   childName,
   childAge,
   childTraits,
+  parentStyle = '',
   allergies,
   rawMemo,
   images = [],
@@ -273,6 +281,7 @@ export async function generateDaycareLog({
     maskedMemo,
     childAge,
     childTraits: maskedTraits,
+    parentStyle,
     allergies,
     pastLogs: maskedPastLogs,
     activityArea,
