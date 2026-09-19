@@ -8,7 +8,7 @@
  */
 
 import { generateDaycareLog } from './api/gemini.js';
-import { getChildrenList, getRecentChildLogs, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion } from './api/notion.js';
+import { getChildrenList, getRecentChildLogs, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion, getAllDailyLogs } from './api/notion.js';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -214,6 +214,12 @@ export default {
           });
 
           return jsonResponse(generated);
+        }
+
+        // [GET] /api/logs - 노션 DAILY_LOG_DB 전체 기록 조회 (히스토리 뷰어용)
+        if (url.pathname === '/api/logs' && request.method === 'GET') {
+          const result = await getAllDailyLogs(env);
+          return jsonResponse(result);
         }
 
         // [POST] /api/logs/save - 노션 3대 DB 일지 적재

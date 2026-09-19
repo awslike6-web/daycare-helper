@@ -73,13 +73,17 @@ document.addEventListener('DOMContentLoaded', () => {
     isRecording: false,
     recognition: null,
     lastResult: null,
-    originalResult: null // ↺ 최초 생성본 (원래대로 복원용)
+    originalResult: null, // ↺ 최초 생성본 (원래대로 복원용)
+    historyLogs: [], // 📂 지난 기록 보관함 캐시
+    isHistoryLoaded: false,
+    selectedHistoryLog: null
   };
 
   // ============================================================================
   // 2. DOM 요소 참조
   // ============================================================================
   const headerDateText = document.getElementById('headerDateText');
+  const headerHistoryBtn = document.getElementById('headerHistoryBtn');
   const headerClassNameBtn = document.getElementById('headerClassNameBtn');
   const headerClassNameText = document.getElementById('headerClassNameText');
   const notionStatusBadge = document.getElementById('notionStatusBadge');
@@ -170,6 +174,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const printReportBtn = document.getElementById('printReportBtn');
   const copyFullReportTextBtn = document.getElementById('copyFullReportTextBtn');
   const saveClassReportNotionBtn = document.getElementById('saveClassReportNotionBtn');
+
+  // 📂 지난 보육 기록 보관함 DOM 요소들
+  const historyModal = document.getElementById('historyModal');
+  const btnCloseHistoryModal = document.getElementById('btnCloseHistoryModal');
+  const btnRefreshHistory = document.getElementById('btnRefreshHistory');
+  const historyClassSelect = document.getElementById('historyClassSelect');
+  const historyChildSelect = document.getElementById('historyChildSelect');
+  const historyTypeSelect = document.getElementById('historyTypeSelect');
+  const historySearchInput = document.getElementById('historySearchInput');
+  const historyListContainer = document.getElementById('historyListContainer');
+
+  // 📖 기록 상세 보기 모달 DOM 요소들
+  const historyDetailModal = document.getElementById('historyDetailModal');
+  const btnCloseHistoryDetailModal = document.getElementById('btnCloseHistoryDetailModal');
+  const historyDetailTitle = document.getElementById('historyDetailTitle');
+  const historyDetailMeta = document.getElementById('historyDetailMeta');
+  const historyDetailBody = document.getElementById('historyDetailBody');
+  const btnCopyHistoryText = document.getElementById('btnCopyHistoryText');
+  const btnCopyHistoryHwp = document.getElementById('btnCopyHistoryHwp');
+  const btnPrintHistory = document.getElementById('btnPrintHistory');
 
   // 3대 추가 서식 필드 및 복사 버튼
   const dailyPlaySummary = document.getElementById('dailyPlaySummary');
@@ -2195,6 +2219,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         await directNotionCall('/pages', 'POST', createPayload);
+        state.isHistoryLoaded = false; // 보관함 캐시 갱신
         showToast(`💾 노션 저장 완료: ${pageTitle}`);
         return;
       } catch (directSaveErr) {
@@ -2223,6 +2248,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const json = await res.json();
       if (json.success) {
+        state.isHistoryLoaded = false; // 보관함 캐시 갱신
         showToast(`💾 노션 저장 완료: ${json.title}`);
       } else {
         throw new Error(json.error || '저장에 실패했습니다.');
@@ -2236,6 +2262,394 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ============================================================================
+  // 📂 지난 보육 기록 보관함 (History Viewer) 모듈
+  // ============================================================================
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function populateHistoryChildOptions() {
+    if (!historyChildSelect) return;
+    const currentVal = historyChildSelect.value;
+    historyChildSelect.innerHTML = '<option value="all">전체 원아</option>';
+
+    const targetClass = historyClassSelect ? historyClassSelect.value : 'all';
+    const filtered = (state.children || []).filter(c => {
+      if (targetClass === 'all') return true;
+      return (c.childClass || '').includes(targetClass);
+    });
+
+    filtered.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.name;
+      opt.textContent = `${c.name} (${c.childClass || state.className})`;
+      historyChildSelect.appendChild(opt);
+    });
+
+    if (currentVal && Array.from(historyChildSelect.options).some(o => o.value === currentVal)) {
+      historyChildSelect.value = currentVal;
+    }
+  }
+
+  async function openHistoryModal() {
+    if (!historyModal) return;
+
+    // 현재 활성화된 교사 프로필에 맞춰 기본 반 선택
+    if (historyClassSelect) {
+      if (state.className === '소망반' || state.className.includes('소망')) {
+        historyClassSelect.value = '소망반';
+      } else if (state.className === '사랑반' || state.className.includes('사랑')) {
+        historyClassSelect.value = '사랑반';
+      } else {
+        historyClassSelect.value = 'all';
+      }
+    }
+
+    populateHistoryChildOptions();
+    historyModal.style.display = 'flex';
+
+    if (!state.isHistoryLoaded || state.historyLogs.length === 0) {
+      await fetchHistoryLogs();
+    } else {
+      renderHistoryList();
+    }
+  }
+
+  function closeHistoryModal() {
+    if (historyModal) historyModal.style.display = 'none';
+  }
+
+  async function fetchHistoryLogs(forceRefresh = false) {
+    if (!historyListContainer) return;
+    historyListContainer.innerHTML = `
+      <div class="history-empty-state">
+        <span style="font-size: 32px;">⏳</span>
+        <div style="margin-top: 8px; font-weight: 600;">노션에서 지난 기록을 불러오는 중...</div>
+      </div>
+    `;
+
+    try {
+      let rawResults = [];
+
+      // 1. 브라우저에서 directNotionCall 시도 (Cloudflare 1042 회피 1순위)
+      try {
+        const queryRes = await directNotionCall(`/databases/${NOTION_CONFIG.DAILY_LOG_DB_ID}/query`, 'POST', {
+          page_size: 100,
+          sorts: [{ property: '작성일자', direction: 'descending' }]
+        });
+        rawResults = queryRes.results || [];
+      } catch (directErr) {
+        console.warn('Direct notion history query failed, trying worker endpoint:', directErr);
+        // 2. 워커 엔드포인트 폴백
+        const workerResp = await fetch('/api/logs');
+        if (workerResp.ok) {
+          const workerData = await workerResp.json();
+          rawResults = workerData.results || workerData.logs || [];
+        } else {
+          throw directErr;
+        }
+      }
+
+      // 데이터 파싱
+      state.historyLogs = rawResults.map(p => {
+        const props = p.properties || {};
+        const title = props['기록명/식별자']?.title?.[0]?.plain_text || '제목 없음';
+        const date = props['작성일자']?.date?.start || (p.created_time ? p.created_time.split('T')[0] : '날짜 미상');
+        const area = props['활동 구분']?.select?.name || '자유놀이';
+        const subAreas = (props['표준보육 영역']?.multi_select || []).map(s => s.name).join(', ');
+        const memo = props['원시 메모/키워드']?.rich_text?.[0]?.plain_text || '';
+        const kidsnote = props['알림장 최종본']?.rich_text?.[0]?.plain_text || '';
+        const reportOrObs = props['관찰일지 최종본']?.rich_text?.[0]?.plain_text || '';
+        const refSummary = props['참조 출처 요약']?.rich_text?.[0]?.plain_text || '';
+
+        // 학급 추론
+        let cls = '기타';
+        if (title.includes('소망') || refSummary.includes('소망') || memo.includes('소망')) cls = '소망반';
+        else if (title.includes('사랑') || refSummary.includes('사랑') || memo.includes('사랑')) cls = '사랑반';
+        else if (title.includes('햇살')) cls = '햇살반';
+        else if (title.includes('바다')) cls = '바다반';
+
+        // 서식 유형 추론
+        let type = 'kidsnote';
+        if (title.includes('보육일지') || reportOrObs.includes('보육과정') || reportOrObs.includes('일과 및')) {
+          type = 'report';
+        } else if (title.includes('관찰일지') || reportOrObs.includes('관찰')) {
+          type = 'obs';
+        }
+
+        // 본문 프리뷰 텍스트
+        const contentPreview = kidsnote || reportOrObs || memo || '내용이 없습니다.';
+
+        return {
+          id: p.id,
+          title,
+          date,
+          area,
+          subAreas,
+          memo,
+          kidsnote,
+          reportOrObs,
+          refSummary,
+          cls,
+          type,
+          contentPreview
+        };
+      });
+
+      state.isHistoryLoaded = true;
+      renderHistoryList();
+    } catch (err) {
+      console.error('Failed to fetch history logs:', err);
+      historyListContainer.innerHTML = `
+        <div class="history-empty-state">
+          <span style="font-size: 32px;">⚠️</span>
+          <div style="margin-top: 8px; font-weight: 600; color: #EF4444;">기록을 불러오지 못했습니다.</div>
+          <div style="font-size: 11px; color: #94A3B8; margin-top: 4px;">${err.message || '네트워크 상태를 확인해주세요.'}</div>
+          <button type="button" class="history-btn-sm history-btn-primary" style="margin-top: 12px;" id="retryFetchHistoryBtn">다시 시도</button>
+        </div>
+      `;
+      const retryBtn = document.getElementById('retryFetchHistoryBtn');
+      if (retryBtn) retryBtn.onclick = () => fetchHistoryLogs(true);
+    }
+  }
+
+  function renderHistoryList() {
+    if (!historyListContainer) return;
+
+    const classVal = historyClassSelect ? historyClassSelect.value : 'all';
+    const childVal = historyChildSelect ? historyChildSelect.value : 'all';
+    const typeVal = historyTypeSelect ? historyTypeSelect.value : 'all';
+    const searchVal = historySearchInput ? historySearchInput.value.trim().toLowerCase() : '';
+
+    const filtered = (state.historyLogs || []).filter(log => {
+      // 학급 필터
+      if (classVal !== 'all' && log.cls !== classVal) return false;
+      // 원아 필터
+      if (childVal !== 'all' && !log.title.includes(childVal) && !log.refSummary.includes(childVal) && !log.contentPreview.includes(childVal)) return false;
+      // 서식 유형 필터
+      if (typeVal !== 'all' && log.type !== typeVal) return false;
+      // 검색어 필터
+      if (searchVal) {
+        const fullText = (log.title + ' ' + log.contentPreview + ' ' + log.memo + ' ' + log.refSummary).toLowerCase();
+        if (!fullText.includes(searchVal)) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      historyListContainer.innerHTML = `
+        <div class="history-empty-state">
+          <span style="font-size: 32px;">📭</span>
+          <div style="margin-top: 8px; font-weight: 600;">조건에 맞는 지난 기록이 없습니다.</div>
+          <div style="font-size: 11px; color: #94A3B8; margin-top: 4px;">필터를 변경하시거나 새로운 알림장/일지를 작성해 보세요!</div>
+        </div>
+      `;
+      return;
+    }
+
+    historyListContainer.innerHTML = filtered.map(log => {
+      let badgeHtml = '';
+      if (log.type === 'report') {
+        badgeHtml = '<span class="history-badge history-badge-report">📄 보육일지</span>';
+      } else if (log.type === 'obs') {
+        badgeHtml = '<span class="history-badge history-badge-obs">🧸 관찰일지</span>';
+      } else {
+        badgeHtml = '<span class="history-badge history-badge-kidsnote">📸 놀이 알림장</span>';
+      }
+
+      return `
+        <div class="history-card" data-id="${log.id}">
+          <div class="history-card-header">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="history-card-date">${log.date}</span>
+              <span style="font-size: 11px; font-weight: 600; color: #475569;">${log.cls}</span>
+              ${badgeHtml}
+            </div>
+            <span style="font-size: 11px; color: #64748B;">${log.area}</span>
+          </div>
+          <div class="history-card-title">${escapeHtml(log.title)}</div>
+          <div class="history-card-preview">${escapeHtml(log.contentPreview)}</div>
+          <div class="history-card-footer">
+            <span class="history-card-meta">${log.subAreas ? '🏷️ ' + escapeHtml(log.subAreas) : (log.refSummary ? escapeHtml(log.refSummary) : '')}</span>
+            <div class="history-card-btns">
+              <button type="button" class="history-btn-sm btn-view-history" data-id="${log.id}">🔍 상세</button>
+              <button type="button" class="history-btn-sm history-btn-primary btn-copy-history" data-id="${log.id}">📋 복사</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // 카드 및 버튼 이벤트 바인딩
+    historyListContainer.querySelectorAll('.btn-view-history').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        openHistoryDetail(btn.getAttribute('data-id'));
+      };
+    });
+
+    historyListContainer.querySelectorAll('.btn-copy-history').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        copyHistoryQuick(btn.getAttribute('data-id'));
+      };
+    });
+
+    historyListContainer.querySelectorAll('.history-card').forEach(card => {
+      card.onclick = () => {
+        openHistoryDetail(card.getAttribute('data-id'));
+      };
+    });
+  }
+
+  function openHistoryDetail(logId) {
+    const log = (state.historyLogs || []).find(l => l.id === logId);
+    if (!log || !historyDetailModal) return;
+
+    state.selectedHistoryLog = log;
+    historyDetailTitle.textContent = log.title;
+    historyDetailMeta.textContent = `📅 ${log.date} | 🏫 ${log.cls} | 🧩 ${log.area} ${log.subAreas ? '(' + log.subAreas + ')' : ''}`;
+
+    let bodyHtml = '';
+    if (log.memo) {
+      bodyHtml += `<div style="background: #F1F5F9; padding: 10px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 12px; border-left: 3px solid #64748B;">
+        <div style="font-weight: 700; color: #334155; margin-bottom: 3px;">📝 입력했던 원시 메모/키워드:</div>
+        <div>${escapeHtml(log.memo)}</div>
+      </div>`;
+    }
+
+    if (log.kidsnote) {
+      bodyHtml += `<div style="margin-bottom: 14px;">
+        <div style="font-weight: 700; color: #BE185D; margin-bottom: 6px;">📸 키즈노트 알림장 본문:</div>
+        <div style="background: #FFF; padding: 12px; border-radius: 6px; border: 1px solid #FBCFE8; white-space: pre-wrap;">${escapeHtml(log.kidsnote)}</div>
+      </div>`;
+    }
+
+    if (log.reportOrObs) {
+      bodyHtml += `<div>
+        <div style="font-weight: 700; color: #1D4ED8; margin-bottom: 6px;">📄 보육일지 / 관찰기록 전문:</div>
+        <div style="background: #FFF; padding: 12px; border-radius: 6px; border: 1px solid #BFDBFE; white-space: pre-wrap;">${escapeHtml(log.reportOrObs)}</div>
+      </div>`;
+    }
+
+    if (!log.kidsnote && !log.reportOrObs) {
+      bodyHtml += `<div style="white-space: pre-wrap;">${escapeHtml(log.contentPreview)}</div>`;
+    }
+
+    historyDetailBody.innerHTML = bodyHtml;
+
+    // HWP 복사 버튼 노출 여부
+    if (log.type === 'report' || (log.reportOrObs && log.reportOrObs.includes('보육과정'))) {
+      if (btnCopyHistoryHwp) btnCopyHistoryHwp.style.display = 'inline-flex';
+    } else {
+      if (btnCopyHistoryHwp) btnCopyHistoryHwp.style.display = 'none';
+    }
+
+    historyDetailModal.style.display = 'flex';
+  }
+
+  function closeHistoryDetailModal() {
+    if (historyDetailModal) historyDetailModal.style.display = 'none';
+  }
+
+  function copyHistoryQuick(logId) {
+    const log = (state.historyLogs || []).find(l => l.id === logId);
+    if (!log) return;
+    const textToCopy = log.kidsnote || log.reportOrObs || log.contentPreview;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      showToast(`📋 '${log.title}' 내용이 복사되었습니다!`);
+    }).catch(() => {
+      showToast('⚠️ 복사에 실패했습니다.');
+    });
+  }
+
+  function copyCurrentHistoryText() {
+    if (!state.selectedHistoryLog) return;
+    const log = state.selectedHistoryLog;
+    const textToCopy = log.kidsnote || log.reportOrObs || log.contentPreview;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      showToast('📋 본문 텍스트가 클립보드에 복사되었습니다.');
+    });
+  }
+
+  async function copyCurrentHistoryHwp() {
+    if (!state.selectedHistoryLog) return;
+    const log = state.selectedHistoryLog;
+    const content = log.reportOrObs || log.kidsnote || '';
+
+    // HWP 2열 테이블 HTML 생성
+    const tableHtml = `
+      <table border="1" style="border-collapse:collapse; width:100%; font-family:'맑은 고딕',sans-serif; font-size:10pt;">
+        <thead>
+          <tr style="background-color:#EEEEEE;">
+            <th colspan="2" style="padding:8px; text-align:center; font-weight:bold;">${escapeHtml(log.title)}</th>
+          </tr>
+          <tr style="background-color:#F8FAFC;">
+            <th style="padding:6px; width:40%; text-align:center;">구분 / 일과</th>
+            <th style="padding:6px; width:60%; text-align:center;">보육활동 및 관찰·지원 내용</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:8px; vertical-align:top; font-weight:bold;">기록 내용</td>
+            <td style="padding:8px; vertical-align:top; white-space:pre-wrap;">${escapeHtml(content)}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        const blobHtml = new Blob([tableHtml], { type: 'text/html' });
+        const blobText = new Blob([content], { type: 'text/plain' });
+        await navigator.clipboard.write([new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })]);
+        showToast('📑 한글(HWP) 표 복사 완료! 한글 문서에 Ctrl+V 하시면 표로 붙여넣기됩니다.');
+      } else {
+        await navigator.clipboard.writeText(content);
+        showToast('📋 텍스트로 복사되었습니다.');
+      }
+    } catch (err) {
+      console.warn('HWP copy fallback:', err);
+      navigator.clipboard.writeText(content);
+      showToast('📋 텍스트로 복사되었습니다.');
+    }
+  }
+
+  // 기록 보관함 이벤트 리스너 등록
+  if (headerHistoryBtn) headerHistoryBtn.onclick = openHistoryModal;
+  if (btnCloseHistoryModal) btnCloseHistoryModal.onclick = closeHistoryModal;
+  if (btnRefreshHistory) btnRefreshHistory.onclick = () => fetchHistoryLogs(true);
+
+  if (historyClassSelect) {
+    historyClassSelect.onchange = () => {
+      populateHistoryChildOptions();
+      renderHistoryList();
+    };
+  }
+  if (historyChildSelect) historyChildSelect.onchange = () => renderHistoryList();
+  if (historyTypeSelect) historyTypeSelect.onchange = () => renderHistoryList();
+  if (historySearchInput) historySearchInput.oninput = () => renderHistoryList();
+
+  if (btnCloseHistoryDetailModal) btnCloseHistoryDetailModal.onclick = closeHistoryDetailModal;
+  if (btnCopyHistoryText) btnCopyHistoryText.onclick = copyCurrentHistoryText;
+  if (btnCopyHistoryHwp) btnCopyHistoryHwp.onclick = copyCurrentHistoryHwp;
+  if (btnPrintHistory) btnPrintHistory.onclick = () => window.print();
+
+  // 모달 바깥 배경 클릭 시 닫기
+  window.addEventListener('click', (e) => {
+    if (e.target === historyModal) closeHistoryModal();
+    if (e.target === historyDetailModal) closeHistoryDetailModal();
+  });
+
   // 애플리케이션 시작
   init();
 });
+

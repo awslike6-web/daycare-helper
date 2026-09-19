@@ -26,6 +26,9 @@
         </div>
       </div>
       <div class="header-actions">
+        <button type="button" id="headerHistoryBtn" class="badge" style="background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; cursor: pointer; font-weight: 600;" title="지난 보육 기록 보관함">
+          <span>📂</span> <span id="headerHistoryText">기록 보관함</span>
+        </button>
         <button type="button" id="headerClassNameBtn" class="badge" style="background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; cursor: pointer;" title="반 이름 변경">
           <span>🌱</span> <span id="headerClassNameText">햇살반</span>
         </button>
@@ -846,6 +849,96 @@
           <div class="auth-hint-text">
             * 초기 비밀번호는 <b>0000</b>이며, 진입 후 설정에서 변경 가능합니다.
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 📂 지난 보육 기록 보관함 모달 -->
+    <div class="modal" id="historyModal" style="display: none;">
+      <div class="modal-content history-modal-content">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">📂</span>
+            <div>
+              <div class="modal-title">지난 보육 기록 보관함</div>
+              <div style="font-size: 11px; color: var(--text-muted);">노션 DAILY_LOG_DB 실시간 연동 보관소</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button type="button" class="history-refresh-btn" id="btnRefreshHistory" title="노션에서 최신 기록 새로고침">
+              <span>↻</span> <span>새로고침</span>
+            </button>
+            <button type="button" class="modal-close" id="btnCloseHistoryModal">&times;</button>
+          </div>
+        </div>
+
+        <!-- 보관함 상단 필터 바 -->
+        <div class="history-filter-bar">
+          <div class="history-filter-row">
+            <!-- 교사/반 필터 -->
+            <select id="historyClassSelect" class="history-select">
+              <option value="all">전체 학급</option>
+              <option value="사랑반">사랑반 (공가영 선생님)</option>
+              <option value="소망반">소망반 (공가희 주임님)</option>
+            </select>
+
+            <!-- 원아 필터 -->
+            <select id="historyChildSelect" class="history-select">
+              <option value="all">전체 원아</option>
+            </select>
+
+            <!-- 유형 필터 -->
+            <select id="historyTypeSelect" class="history-select">
+              <option value="all">모든 서식</option>
+              <option value="kidsnote">📸 놀이 알림장</option>
+              <option value="report">📄 표준보육일지</option>
+              <option value="obs">🧸 관찰일지</option>
+            </select>
+          </div>
+
+          <!-- 검색창 -->
+          <div class="history-search-row">
+            <input type="text" id="historySearchInput" class="history-search-input" placeholder="🔍 아이 이름, 놀이 키워드, 본문 내용 검색...">
+          </div>
+        </div>
+
+        <!-- 기록 목록 컨테이너 -->
+        <div class="history-list-container" id="historyListContainer">
+          <div class="history-empty-state">
+            <span style="font-size: 32px;">⏳</span>
+            <div style="margin-top: 8px; font-weight: 600;">기록을 불러오는 중입니다...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 📖 기록 상세 보기 모달 -->
+    <div class="modal" id="historyDetailModal" style="display: none; z-index: 1100;">
+      <div class="modal-content history-detail-modal-content">
+        <div class="modal-header">
+          <div>
+            <div class="modal-title" id="historyDetailTitle">기록 상세 보기</div>
+            <div style="font-size: 11px; color: var(--text-muted);" id="historyDetailMeta">작성일자 | 대상 아동</div>
+          </div>
+          <button type="button" class="modal-close" id="btnCloseHistoryDetailModal">&times;</button>
+        </div>
+
+        <!-- 본문 뷰어 -->
+        <div class="history-detail-body" id="historyDetailBody">
+          <!-- 상세 내용 동적 렌더링 -->
+        </div>
+
+        <!-- 하단 액션 버튼 바 -->
+        <div class="history-detail-actions" id="historyDetailActions">
+          <button type="button" class="action-btn copy-btn" id="btnCopyHistoryText" style="flex: 1;">
+            <span>📋</span> <span>텍스트 복사</span>
+          </button>
+          <button type="button" class="action-btn" id="btnCopyHistoryHwp" style="flex: 1; background: #2563EB; color: #fff; display: none;">
+            <span>📑</span> <span>한글(HWP) 표 복사</span>
+          </button>
+          <button type="button" class="action-btn" id="btnPrintHistory" style="background: #F3F4F6; color: var(--text-main);">
+            <span>🖨️</span> <span>인쇄</span>
+          </button>
         </div>
       </div>
     </div>

@@ -560,3 +560,42 @@ export async function updateChildInNotion(childId, { name, age, childClass, trai
   }
 }
 
+/**
+ * 📂 DAILY_LOG_DB 전체 기록 조회 (히스토리 뷰어 백엔드 폴백용)
+ */
+export async function getAllDailyLogs(env) {
+  const databaseId = env.DAILY_LOG_DB_ID;
+  const token = env.NOTION_API_KEY;
+  const proxyUrl = env.NOTION_PROXY_URL || 'https://minmin-notion.awslike6.workers.dev';
+
+  if (!databaseId) {
+    return { results: [], source: 'empty', message: 'DAILY_LOG_DB_ID 미설정' };
+  }
+
+  try {
+    const data = await callNotionApi({
+      endpoint: `/databases/${databaseId}/query`,
+      method: 'POST',
+      body: {
+        page_size: 100,
+        sorts: [{ property: '작성일자', direction: 'descending' }]
+      },
+      token,
+      proxyUrl
+    });
+
+    return {
+      results: data.results || [],
+      source: 'notion'
+    };
+  } catch (err) {
+    console.error('getAllDailyLogs Notion query error:', err);
+    return {
+      results: [],
+      error: err.message,
+      source: 'error'
+    };
+  }
+}
+
+
