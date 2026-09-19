@@ -746,7 +746,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const result = await res.json();
       childManageModal.style.display = 'none';
-      showToast(id ? `✅ ${name} 정보가 수정되었습니다.` : `🎉 ${name} 원아가 노션에 등록되었습니다!`);
+      if (result.mode === 'notion_created_fallback') {
+        showToast(`🎉 ${name} 원아가 노션 마스터 DB에 안전하게 등록되었습니다!`);
+      } else {
+        showToast(id && !id.startsWith('mock-') ? `✅ ${name} 정보가 수정되었습니다.` : `🎉 ${name} 원아가 노션에 등록되었습니다!`);
+      }
       
       const newChildId = result.child?.id || id;
       await loadChildren(newChildId);

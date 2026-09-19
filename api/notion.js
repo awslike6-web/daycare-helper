@@ -492,24 +492,39 @@ export async function updateChildInNotion(childId, { name, age, traits, allergie
 
   const updatePayload = { properties };
 
-  const response = await callNotionApi({
-    endpoint: `/pages/${childId}`,
-    method: 'PATCH',
-    body: updatePayload,
-    token,
-    proxyUrl
-  });
+  try {
+    const response = await callNotionApi({
+      endpoint: `/pages/${childId}`,
+      method: 'PATCH',
+      body: updatePayload,
+      token,
+      proxyUrl
+    });
 
-  return {
-    success: true,
-    mode: 'notion_updated',
-    child: {
-      id: response.id,
-      name,
-      age,
-      traits,
-      allergies
+    return {
+      success: true,
+      mode: 'notion_updated',
+      child: {
+        id: response.id,
+        name,
+        age,
+        traits,
+        allergies
+      }
+    };
+  } catch (err) {
+    // 💡 404 Not Found인 경우 (노션에 해당 페이지가 없거나 권한 만료된 경우):
+    // 에러로 사용자 작업을 중단시키지 않고, 노션 마스터 DB에 새 원아로 자동 등록(Upsert)
+    if (err.message && err.message.includes('404')) {
+      console.warn(`[Self-Healing] 원아 페이지(${childId}) 404 발생 -> 신규 원아로 자동 생성 전환:`, err.message);
+      const created = await saveChildToNotion({ name, age, traits, allergies }, env);
+      return {
+        ...created,
+        mode: 'notion_created_fallback',
+        message: '기존 페이지를 찾을 수 없어 노션 마스터 DB에 새 원아로 안전하게 등록되었습니다.'
+      };
     }
-  };
+    throw err;
+  }
 }
 
