@@ -11,5 +11,19 @@
       "sizes": "192x192 512x512",
       "type": "image/svg+xml"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "🎙️ 음성 메모 즉시 시작",
+      "short_name": "음성 메모",
+      "description": "접속 즉시 마이크를 켜고 놀이 관찰 메모를 음성으로 기록합니다.",
+      "url": "./?action=mic"
+    },
+    {
+      "name": "🧸 월간 관찰일지 작성",
+      "short_name": "관찰일지",
+      "description": "보건복지부 평가제 맞춤 월 2회 연속 관찰기록부 작성 모드로 진입합니다.",
+      "url": "./?mode=observation"
+    }
   ]
 }

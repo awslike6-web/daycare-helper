@@ -116,6 +116,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // 👩‍🏫 교사 프로필 1초 원터치 스위처 버튼
   const btnSwitchWife = document.getElementById('btnSwitchWife');
   const btnSwitchSisterInLaw = document.getElementById('btnSwitchSisterInLaw');
+  const btnSwitchSandbox = document.getElementById('btnSwitchSandbox');
+
+  // ❓ 선생님 맞춤 사용 가이드 모달 요소
+  const headerGuideBtn = document.getElementById('headerGuideBtn');
+  const teacherGuideModal = document.getElementById('teacherGuideModal');
+  const btnCloseGuideModal = document.getElementById('btnCloseGuideModal');
+  const btnConfirmGuideModal = document.getElementById('btnConfirmGuideModal');
 
   const modeSwitcher = document.getElementById('modeSwitcher');
   const areaSection = document.getElementById('areaSection');
@@ -680,11 +687,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================================
-  // 3-C. 👩‍🏫 교사 프로필 1초 원터치 스위처 (아내 공가영 vs 처형 공가희 주임)
+  // 3-C. 👩‍🏫 교사 프로필 1초 원터치 스위처 (공가영 선생님 ↔ 공가희 주임님 ↔ 체험·연구반)
   // ============================================================================
   function switchTeacherProfile(teacherKey) {
     if (teacherKey === 'sister_in_law') {
-      // 👩‍🏫 처형분 (공가희 주임선생님 · 소망반 만 2세)
+      // 👩‍🏫 공가희 주임님 (소망반 만 2세 유아)
       state.className = '소망반';
       state.teacherName = '공가희 선생님';
       state.persona = {
@@ -705,9 +712,32 @@ document.addEventListener('DOMContentLoaded', () => {
       syncTeacherSwitcherUI('sister_in_law');
       updatePersonaUI();
       renderChildrenChips('class-all');
-      showToast('👩‍🏫 처형분 (공가희 주임님 · 소망반 만2세) 모드로 전환되었습니다!');
+      showToast('👩‍🏫 공가희 주임님 (소망반 · 만2세) 모드로 전환되었습니다!');
+    } else if (teacherKey === 'sandbox') {
+      // 👨‍💻 체험·연구반 (자유 테스트 구역)
+      state.className = '연구반';
+      state.teacherName = '연구 선생님';
+      state.persona = {
+        preset: 'play_friendly',
+        name: '자유 체험형 (다정 체)',
+        sampleNote: '오늘 우리 [아동A]는 호기심 가득한 눈빛으로 새로운 놀이에 몰입하며 즐거운 하루를 보냈답니다.',
+        callStyle: '우리 [아동A]',
+        emojiLevel: 'moderate',
+        closingGreeting: '가정에서도 오늘 하루 즐거웠던 일에 대해 많은 칭찬 부탁드립니다.^^'
+      };
+      state.mode = 'play_story';
+
+      localStorage.setItem('daycare_class_name', '연구반');
+      localStorage.setItem('daycare_teacher_name', '연구 선생님');
+      localStorage.setItem('daycare_persona', JSON.stringify(state.persona));
+      localStorage.setItem('daycare_active_teacher', 'sandbox');
+
+      syncTeacherSwitcherUI('sandbox');
+      updatePersonaUI();
+      renderChildrenChips();
+      showToast('👨‍💻 [체험·연구반] 자유 테스트 모드로 전환되었습니다!');
     } else {
-      // 👩‍🍼 아내분 (공가영 선생님 · 사랑반 만 0세)
+      // 👩‍🍼 공가영 선생님 (사랑반 만 0세 영아)
       state.className = '사랑반';
       state.teacherName = '공가영 선생님';
       state.persona = {
@@ -728,19 +758,15 @@ document.addEventListener('DOMContentLoaded', () => {
       syncTeacherSwitcherUI('wife');
       updatePersonaUI();
       renderChildrenChips();
-      showToast('👩‍🍼 아내분 (공가영 선생님 · 사랑반 만0세) 모드로 전환되었습니다!');
+      showToast('👩‍🍼 공가영 선생님 (사랑반 · 만0세) 모드로 전환되었습니다!');
     }
   }
 
   function syncTeacherSwitcherUI(targetKey = null) {
-    const activeTeacher = targetKey || localStorage.getItem('daycare_active_teacher') || (state.className === '소망반' ? 'sister_in_law' : 'wife');
-    if (activeTeacher === 'sister_in_law') {
-      if (btnSwitchSisterInLaw) btnSwitchSisterInLaw.classList.add('active');
-      if (btnSwitchWife) btnSwitchWife.classList.remove('active');
-    } else {
-      if (btnSwitchWife) btnSwitchWife.classList.add('active');
-      if (btnSwitchSisterInLaw) btnSwitchSisterInLaw.classList.remove('active');
-    }
+    const activeTeacher = targetKey || localStorage.getItem('daycare_active_teacher') || (state.className === '소망반' ? 'sister_in_law' : (state.className === '연구반' ? 'sandbox' : 'wife'));
+    if (btnSwitchWife) btnSwitchWife.classList.toggle('active', activeTeacher === 'wife');
+    if (btnSwitchSisterInLaw) btnSwitchSisterInLaw.classList.toggle('active', activeTeacher === 'sister_in_law');
+    if (btnSwitchSandbox) btnSwitchSandbox.classList.toggle('active', activeTeacher === 'sandbox');
   }
 
   // ============================================================================
@@ -839,6 +865,58 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (btnSwitchSisterInLaw) {
       btnSwitchSisterInLaw.addEventListener('click', () => switchTeacherProfile('sister_in_law'));
+    }
+    if (btnSwitchSandbox) {
+      btnSwitchSandbox.addEventListener('click', () => switchTeacherProfile('sandbox'));
+    }
+
+    // ❓ 선생님 맞춤 사용 가이드 모달 열기/닫기
+    if (headerGuideBtn && teacherGuideModal) {
+      headerGuideBtn.addEventListener('click', () => {
+        teacherGuideModal.style.display = 'flex';
+      });
+    }
+    if (btnCloseGuideModal && teacherGuideModal) {
+      btnCloseGuideModal.addEventListener('click', () => {
+        teacherGuideModal.style.display = 'none';
+      });
+    }
+    if (btnConfirmGuideModal && teacherGuideModal) {
+      btnConfirmGuideModal.addEventListener('click', () => {
+        teacherGuideModal.style.display = 'none';
+      });
+    }
+    if (teacherGuideModal) {
+      teacherGuideModal.addEventListener('click', (e) => {
+        if (e.target === teacherGuideModal) {
+          teacherGuideModal.style.display = 'none';
+        }
+      });
+    }
+
+    // 🚀 PWA 홈 화면 위젯 및 바로가기 URL 파라미터 체크 (?action=mic, ?mode=observation, ?teacher=sandbox 등)
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const actionParam = urlParams.get('action');
+      const modeParam = urlParams.get('mode');
+      const teacherParam = urlParams.get('teacher');
+
+      if (teacherParam && ['wife', 'sister_in_law', 'sandbox'].includes(teacherParam)) {
+        switchTeacherProfile(teacherParam);
+      }
+
+      if (modeParam && modeSwitcher) {
+        const targetModeBtn = modeSwitcher.querySelector(`.mode-btn[data-mode="${modeParam}"]`);
+        if (targetModeBtn) targetModeBtn.click();
+      }
+
+      if (actionParam === 'mic' && voiceMicBtn) {
+        setTimeout(() => {
+          voiceMicBtn.click();
+        }, 800);
+      }
+    } catch (err) {
+      console.warn('URL params check error:', err);
     }
 
     // 모드 스위처 클릭
@@ -1334,6 +1412,34 @@ document.addEventListener('DOMContentLoaded', () => {
     let displayList = state.children;
     if (state.filterOnlyMyClass) {
       displayList = state.children.filter(c => !c.childClass || c.childClass === currentClass);
+    }
+
+    // 👨‍💻 체험·연구반일 때 등록된 아이가 없으면 편리한 테스트를 위해 가상 샘플 2명(민수, 민서) 자동 제공
+    if (currentClass === '연구반' && displayList.length === 0) {
+      displayList = [
+        {
+          id: 'sandbox_minsu',
+          name: '이민수',
+          childClass: '연구반',
+          age: '만 5세',
+          birthDate: '2021-05-15',
+          gender: '남',
+          traits: '블록 놀이와 탈것을 좋아하며 집중력이 높고 호기심이 많음.',
+          parentStyle: '칭찬과 격려를 좋아하시고 오늘의 특별한 놀이 활동을 궁금해하심',
+          allergies: '없음'
+        },
+        {
+          id: 'sandbox_minseo',
+          name: '김민서',
+          childClass: '연구반',
+          age: '만 1세',
+          birthDate: '2025-02-10',
+          gender: '여',
+          traits: '방긋방긋 잘 웃고 음악에 맞춰 몸을 흔드는 것을 좋아함.',
+          parentStyle: '따뜻한 일상 소통을 선호하시고 수면 및 이유식 섭취 상태를 세심하게 챙기심',
+          allergies: '계란 알레르기 주의'
+        }
+      ];
     }
 
     // 만약 현재 반에 원아가 한 명도 없으면

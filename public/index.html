@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧸</text></svg>">
   <link rel="manifest" href="./manifest.json" crossorigin="use-credentials">
-  <link rel="stylesheet" href="./style.css?v=20260919_v4">
+  <link rel="stylesheet" href="./style.css?v=20260919_v5">
 </head>
 <body>
   <div class="app-container">
@@ -26,6 +26,9 @@
         </div>
       </div>
       <div class="header-actions">
+        <button type="button" id="headerGuideBtn" class="badge" style="background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; cursor: pointer; font-weight: 600;" title="선생님 맞춤 사용 가이드 & 꿀팁">
+          <span>❓</span> <span id="headerGuideText">사용 가이드</span>
+        </button>
         <button type="button" id="headerHistoryBtn" class="badge" style="background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; cursor: pointer; font-weight: 600;" title="지난 보육 기록 보관함">
           <span>📂</span> <span id="headerHistoryText">기록 보관함</span>
         </button>
@@ -63,20 +66,27 @@
       </div>
     </div>
 
-    <!-- 👩‍🏫 교사 프로필 1초 원터치 스위처 (아내 공가영 선생님 ↔ 처형 공가희 주임선생님) -->
+    <!-- 👩‍🏫 교사 프로필 1초 원터치 스위처 (공가영 선생님 ↔ 공가희 주임님 ↔ 체험·연구반) -->
     <div class="teacher-switcher-bar">
       <button type="button" class="teacher-tab-btn active" id="btnSwitchWife" data-teacher="wife">
         <span class="teacher-tab-avatar">👩‍🍼</span>
         <div class="teacher-tab-info">
-          <div class="teacher-tab-name">아내 · 공가영 선생님</div>
+          <div class="teacher-tab-name">공가영 선생님</div>
           <div class="teacher-tab-sub">사랑반 (만 0세 영아 2명)</div>
         </div>
       </button>
       <button type="button" class="teacher-tab-btn" id="btnSwitchSisterInLaw" data-teacher="sister_in_law">
         <span class="teacher-tab-avatar">👩‍🏫</span>
         <div class="teacher-tab-info">
-          <div class="teacher-tab-name">처형 · 공가희 주임님 ⭐</div>
+          <div class="teacher-tab-name">공가희 주임님 ⭐</div>
           <div class="teacher-tab-sub">소망반 (만 2세 유아 7명)</div>
+        </div>
+      </button>
+      <button type="button" class="teacher-tab-btn" id="btnSwitchSandbox" data-teacher="sandbox">
+        <span class="teacher-tab-avatar">👨‍💻</span>
+        <div class="teacher-tab-info">
+          <div class="teacher-tab-name">체험 · 연구반</div>
+          <div class="teacher-tab-sub">자유 테스트 구역</div>
         </div>
       </button>
     </div>
@@ -1091,11 +1101,90 @@
       </div>
     </div>
 
+    <!-- ❓ 선생님을 위한 친절한 사용 가이드 & 꿀팁 모달 -->
+    <div class="modal-overlay" id="teacherGuideModal" style="display: none; z-index: 800;">
+      <div class="modal-content" style="max-width: 600px; max-height: 85vh; overflow-y: auto;">
+        <div class="modal-header">
+          <div>
+            <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+              <span>🧸</span> <span>보육비서 2026 AI 사용 가이드</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">선생님의 퇴근을 1시간 앞당겨주는 든든한 AI 조수 활용법</div>
+          </div>
+          <button type="button" class="close-btn" id="btnCloseGuideModal">&times;</button>
+        </div>
+
+        <div style="padding: 16px; font-size: 13px; line-height: 1.6; color: #334155;">
+          <!-- 1. 앱 설치 -->
+          <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+            <div style="font-weight: 700; color: #1D4ED8; margin-bottom: 4px;">📱 1. 스마트폰 앱처럼 1초 만에 설치하기</div>
+            <div style="font-size: 12px; color: #1E40AF;">
+              스마트폰(아이폰 사파리 / 갤럭시 삼성인터넷·크롬) 하단 공유(또는 메뉴 ⋮)에서 <strong>[홈 화면에 추가]</strong>를 누르시면 🧸 앱 아이콘이 바탕화면에 생성됩니다. 홈 화면 아이콘을 꾹 누르면 마이크가 바로 켜집니다!
+            </div>
+          </div>
+
+          <!-- 2. 교사 프로필 스위처 -->
+          <div style="margin-bottom: 14px;">
+            <div style="font-weight: 700; color: #0F172A; margin-bottom: 4px;">👩‍🏫 2. 선생님 프로필 선택 (1초 원터치)</div>
+            <div style="font-size: 12px; color: #475569;">
+              상단에서 <strong>[공가영 선생님(사랑반)]</strong>, <strong>[공가희 주임님(소망반)]</strong> 또는 <strong>[체험·연구반]</strong>을 클릭하면 우리 반 아이들과 선생님 고유의 문체가 자동으로 연결됩니다.
+            </div>
+          </div>
+
+          <!-- 3. 음성 메모 -->
+          <div style="margin-bottom: 14px;">
+            <div style="font-weight: 700; color: #0F172A; margin-bottom: 4px;">🎙️ 3. 교실에서 말로 편하게 메모하기 (음성 메모)</div>
+            <div style="font-size: 12px; color: #475569;">
+              글로 길게 적으실 필요 없어요! <strong>[🎙️ 음성 메모]</strong> 버튼을 누르고 <em>"블록 쌓다가 무너졌는데 울지 않고 선생님 부름. 친구한테 기차 양보함"</em>처럼 키워드만 말하면 예쁜 문장으로 착착 적힙니다.
+            </div>
+          </div>
+
+          <!-- 4. 4대 집중 모드 -->
+          <div style="margin-bottom: 14px;">
+            <div style="font-weight: 700; color: #0F172A; margin-bottom: 6px;">🚀 4. 목적별 4대 모드 활용법</div>
+            <div style="display: grid; gap: 8px;">
+              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px;">
+                <span style="font-weight: 700; color: #4F46E5;">📸 놀이 알림장</span>: 사진(최대 6장)과 키워드만 넣으면 학부모님이 감동하는 생생한 동화 같은 알림장이 완성됩니다.
+              </div>
+              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px;">
+                <span style="font-weight: 700; color: #2563EB;">📄 놀이 보육일지 (공문서)</span>: 표준보육과정 연계 정규 A4 공문서. <strong>[한글(HWP) 표 복사]</strong>를 누르고 한글 문서에서 <code>Ctrl+V</code> 하시면 표 선 그대로 붙여넣기됩니다.
+              </div>
+              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px;">
+                <span style="font-weight: 700; color: #059669;">🧸 평가제 관찰일지</span>: <strong>[🎲 날짜 자동 분산]</strong>을 누르면 평일 2회가 상순/하순으로 자동 배정되며, 1차 지도 후 2차 발전 변화가 연계된 정규 관찰기록부가 완성됩니다.
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. 1초 다듬기 -->
+          <div style="margin-bottom: 14px;">
+            <div style="font-weight: 700; color: #0F172A; margin-bottom: 4px;">🪄 5. AI 실시간 다듬기</div>
+            <div style="font-size: 12px; color: #475569;">
+              초안이 나온 후 <strong>[🎈 더 다정하게]</strong>, <strong>[✂️ 핵심만 간결하게]</strong>, <strong>[🍱 점심 칭찬 1줄 추가]</strong> 버튼을 누르면 1초 만에 내용이 자연스럽게 수정됩니다.
+            </div>
+          </div>
+
+          <!-- 6. 맞춤 피드백 안내 -->
+          <div style="background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 10px; padding: 12px;">
+            <div style="font-weight: 700; color: #92400E; margin-bottom: 4px;">💌 선생님! 이런 점은 언제든 편하게 말씀해 주세요</div>
+            <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: #78350F; line-height: 1.6;">
+              <li><strong>양식 수정</strong>: "우리 어린이집 결재 양식은 칸이 달라요" ➔ 원의 양식 사진을 보여주시면 100% 똑같이 맞춰드려요.</li>
+              <li><strong>말투 복제</strong>: "평소 내 말투랑 조금 달라요" ➔ 평소 마음에 들었던 알림장 1편만 보내주시면 어미와 감성을 똑같이 흉내 냅니다.</li>
+              <li><strong>아이 성향 업데이트</strong>: 새로운 습관이나 주의사항이 생기면 언제든 [✏️ 수정]으로 업데이트할 수 있습니다.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 12px 16px; display: flex; justify-content: flex-end;">
+          <button type="button" class="action-btn action-btn-copy" id="btnConfirmGuideModal" style="padding: 8px 16px;">확인 완료</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 🍞 알림 토스트 -->
     <div class="toast" id="toastMessage">클립보드에 복사되었습니다.</div>
   </div>
 
-  <script src="./gemini-client.js?v=20260919_v4"></script>
-  <script src="./app.js?v=20260919_v4"></script>
+  <script src="./gemini-client.js?v=20260919_v5"></script>
+  <script src="./app.js?v=20260919_v5"></script>
 </body>
 </html>

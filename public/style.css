@@ -1398,16 +1398,16 @@ body {
    ========================================================================== */
 .teacher-switcher-bar {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 10px 16px 4px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 10px 14px 4px;
 }
 
 .teacher-tab-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 7px 10px;
   background: #FFFFFF;
   border: 1.5px solid #E2E8F0;
   border-radius: var(--radius-md);
@@ -1423,7 +1423,7 @@ body {
 }
 
 .teacher-tab-avatar {
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -1435,7 +1435,7 @@ body {
 }
 
 .teacher-tab-name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: #475569;
   white-space: nowrap;
@@ -1444,7 +1444,7 @@ body {
 }
 
 .teacher-tab-sub {
-  font-size: 11px;
+  font-size: 10px;
   color: #94A3B8;
   margin-top: 1px;
   white-space: nowrap;
@@ -1452,7 +1452,7 @@ body {
   text-overflow: ellipsis;
 }
 
-/* 👩‍🍼 아내 공가영 선생님 (사랑반 만 0세) 활성화 스타일 */
+/* 👩‍🍼 공가영 선생님 (사랑반 만 0세) 활성화 스타일 */
 .teacher-tab-btn[data-teacher="wife"].active {
   background: #FFF1F2 !important;
   border-color: #FB7185 !important;
@@ -1466,7 +1466,7 @@ body {
   font-weight: 600;
 }
 
-/* 👩‍🏫 처형 공가희 주임선생님 (소망반 만 2세) 활성화 스타일 */
+/* 👩‍🏫 공가희 주임님 (소망반 만 2세) 활성화 스타일 */
 .teacher-tab-btn[data-teacher="sister_in_law"].active {
   background: #EFF6FF !important;
   border-color: #60A5FA !important;
@@ -1478,6 +1478,40 @@ body {
 .teacher-tab-btn[data-teacher="sister_in_law"].active .teacher-tab-sub {
   color: #2563EB !important;
   font-weight: 600;
+}
+
+/* 👨‍💻 체험·연구반 (자유 테스트 구역) 활성화 스타일 */
+.teacher-tab-btn[data-teacher="sandbox"].active {
+  background: #F5F3FF !important;
+  border-color: #A78BFA !important;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15) !important;
+}
+.teacher-tab-btn[data-teacher="sandbox"].active .teacher-tab-name {
+  color: #6D28D9 !important;
+}
+.teacher-tab-btn[data-teacher="sandbox"].active .teacher-tab-sub {
+  color: #7C3AED !important;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .teacher-switcher-bar {
+    gap: 4px;
+    padding: 6px 8px 3px;
+  }
+  .teacher-tab-btn {
+    padding: 5px 6px;
+    gap: 5px;
+  }
+  .teacher-tab-avatar {
+    font-size: 18px;
+  }
+  .teacher-tab-name {
+    font-size: 11px;
+  }
+  .teacher-tab-sub {
+    font-size: 9px;
+  }
 }
 
 @media (max-width: 380px) {
