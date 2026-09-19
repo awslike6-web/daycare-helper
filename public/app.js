@@ -2310,11 +2310,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 6. 과거 기록 출처 (Citation) 표기
     const cit = data.citation || {};
-    if (cit.has_citation && cit.summary) {
-      citationBox.style.display = 'flex';
-      citationSummaryText.textContent = cit.summary;
-    } else {
-      citationBox.style.display = 'none';
+    if (citationBox) {
+      if (cit.has_citation && cit.summary) {
+        citationBox.style.display = 'flex';
+        if (citationSummaryText) citationSummaryText.textContent = cit.summary;
+      } else {
+        citationBox.style.display = 'none';
+      }
     }
 
     // 선택된 모드에 맞추어 메인 탭 전환

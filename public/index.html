@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json?v=20260920_v3">
-  <link rel="stylesheet" href="./style.css?v=20260920_v3">
+  <link rel="manifest" href="./manifest.json?v=20260920_v4">
+  <link rel="stylesheet" href="./style.css?v=20260920_v4">
 </head>
 <body>
   <div class="app-container">
@@ -22,7 +22,7 @@
       <div class="brand-area">
         <span class="brand-logo">🧸</span>
         <div>
-          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span></div>
+          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v2.4</span></div>
           <div class="brand-sub" id="headerDateText">오늘의 보육 기록</div>
         </div>
       </div>
@@ -537,6 +537,12 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- 📌 과거 기록 출처 (Citation) 배지 -->
+          <div class="citation-box" id="citationBox" style="display: none; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 12px; margin-top: 10px; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
+            <span class="citation-icon">📌</span>
+            <span id="citationSummaryText">과거 기록 연계 내용</span>
           </div>
 
           <!-- 하단 액션 버튼 바 -->
@@ -1190,7 +1196,7 @@
     <div class="toast" id="toastMessage">클립보드에 복사되었습니다.</div>
   </div>
 
-  <script src="./gemini-client.js?v=20260920_v3"></script>
-  <script src="./app.js?v=20260920_v3"></script>
+  <script src="./gemini-client.js?v=20260920_v4"></script>
+  <script src="./app.js?v=20260920_v4"></script>
 </body>
 </html>
