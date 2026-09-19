@@ -109,6 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveChildBtn = document.getElementById('saveChildBtn');
   const syncTeacherFromNotionBtn = document.getElementById('syncTeacherFromNotionBtn');
 
+  // 👩‍🏫 교사 프로필 1초 원터치 스위처 버튼
+  const btnSwitchWife = document.getElementById('btnSwitchWife');
+  const btnSwitchSisterInLaw = document.getElementById('btnSwitchSisterInLaw');
+
   const modeSwitcher = document.getElementById('modeSwitcher');
   const areaSection = document.getElementById('areaSection');
   const areaGrid = document.getElementById('areaGrid');
@@ -484,6 +488,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
     headerDateText.textContent = now.toLocaleDateString('ko-KR', options);
 
+    // 👩‍🏫 교사 프로필 스위처 버튼 동기화
+    syncTeacherSwitcherUI();
+
     updatePersonaUI();
 
     // 🔐 보안 세션 확인 (Cloudflare Access D-7 체크)
@@ -620,9 +627,81 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================================
+  // 3-C. 👩‍🏫 교사 프로필 1초 원터치 스위처 (아내 공가영 vs 처형 공가희 주임)
+  // ============================================================================
+  function switchTeacherProfile(teacherKey) {
+    if (teacherKey === 'sister_in_law') {
+      // 👩‍🏫 처형분 (공가희 주임선생님 · 소망반 만 2세)
+      state.className = '소망반';
+      state.teacherName = '공가희 선생님';
+      state.persona = {
+        preset: 'play_friendly',
+        name: '놀이 중심 다정체 (소망반 만2세 주임)',
+        sampleNote: '평소 블록으로 길쭉길쭉 기차를 만들던 우리 아이들을 위해 오늘은 알록달록 기차와 레일을 짠! 준비해 주었는데요. 고사리손으로 기차를 꼭 쥐고 "칙칙폭폭~ 덜컹덜컹!" 소리를 내며 레일 위를 신나게 달렸어요.',
+        callStyle: '우리 [아동A]',
+        emojiLevel: 'rich',
+        closingGreeting: '가정에서도 오늘 즐거웠던 원 생활에 대해 많은 칭찬 부탁드립니다.^^'
+      };
+      state.mode = 'class_report';
+
+      localStorage.setItem('daycare_class_name', '소망반');
+      localStorage.setItem('daycare_teacher_name', '공가희 선생님');
+      localStorage.setItem('daycare_persona', JSON.stringify(state.persona));
+      localStorage.setItem('daycare_active_teacher', 'sister_in_law');
+
+      syncTeacherSwitcherUI('sister_in_law');
+      updatePersonaUI();
+      renderChildrenChips('class-all');
+      showToast('👩‍🏫 처형분 (공가희 주임님 · 소망반 만2세) 모드로 전환되었습니다!');
+    } else {
+      // 👩‍🍼 아내분 (공가영 선생님 · 사랑반 만 0세)
+      state.className = '사랑반';
+      state.teacherName = '공가영 선생님';
+      state.persona = {
+        preset: 'warm_parent',
+        name: '따뜻한 공감형 (사랑반 만0세 영아)',
+        sampleNote: '오늘 우리 [아동A]는 따뜻한 품에 안겨 방긋 미소를 지으며 작은 손으로 오감 딸랑이 교구를 부드럽게 탐색했답니다.',
+        callStyle: '우리 [아동A]',
+        emojiLevel: 'moderate',
+        closingGreeting: '가정에서도 따뜻하고 포근한 저녁 시간 보내세요^^'
+      };
+      state.mode = 'play_story';
+
+      localStorage.setItem('daycare_class_name', '사랑반');
+      localStorage.setItem('daycare_teacher_name', '공가영 선생님');
+      localStorage.setItem('daycare_persona', JSON.stringify(state.persona));
+      localStorage.setItem('daycare_active_teacher', 'wife');
+
+      syncTeacherSwitcherUI('wife');
+      updatePersonaUI();
+      renderChildrenChips();
+      showToast('👩‍🍼 아내분 (공가영 선생님 · 사랑반 만0세) 모드로 전환되었습니다!');
+    }
+  }
+
+  function syncTeacherSwitcherUI(targetKey = null) {
+    const activeTeacher = targetKey || localStorage.getItem('daycare_active_teacher') || (state.className === '소망반' ? 'sister_in_law' : 'wife');
+    if (activeTeacher === 'sister_in_law') {
+      if (btnSwitchSisterInLaw) btnSwitchSisterInLaw.classList.add('active');
+      if (btnSwitchWife) btnSwitchWife.classList.remove('active');
+    } else {
+      if (btnSwitchWife) btnSwitchWife.classList.add('active');
+      if (btnSwitchSisterInLaw) btnSwitchSisterInLaw.classList.remove('active');
+    }
+  }
+
+  // ============================================================================
   // 4. 이벤트 리스너 등록
   // ============================================================================
   function setupEventListeners() {
+    // 👩‍🏫 교사 프로필 1초 원터치 스위처 이벤트
+    if (btnSwitchWife) {
+      btnSwitchWife.addEventListener('click', () => switchTeacherProfile('wife'));
+    }
+    if (btnSwitchSisterInLaw) {
+      btnSwitchSisterInLaw.addEventListener('click', () => switchTeacherProfile('sister_in_law'));
+    }
+
     // 모드 스위처 클릭
     modeSwitcher.querySelectorAll('.mode-btn').forEach(btn => {
       btn.addEventListener('click', () => {
