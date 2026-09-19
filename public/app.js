@@ -60,9 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const state = {
-    className: localStorage.getItem('daycare_class_name') || '햇살반',
-    teacherName: localStorage.getItem('daycare_teacher_name') || '김선생님',
-    filterOnlyMyClass: true, // 🌱 우리 반 아이들만 우선 필터링 (아내 ↔ 처형 반 분리)
+    className: localStorage.getItem('daycare_class_name') || '사랑반',
+    teacherName: localStorage.getItem('daycare_teacher_name') || '공가영 선생님',
+    filterOnlyMyClass: true, // 🌱 우리 반 아이들만 우선 필터링 (사랑반 2명 vs 소망반 7명 완벽 분리)
     children: [],
     selectedChild: null,
     mode: 'play_story', // 'play_story' (놀이 알림장 집중) | 'observation' | 'all_suite'

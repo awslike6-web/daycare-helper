@@ -196,9 +196,15 @@ function buildUserPrompt({
 ${maskedMemo || '오늘 즐겁게 활동함'}
 `;
 
-  if (parentStyle) {
-    prompt += `\n[⭐ 학부모 맞춤 소통 가이드라인 (Parent Persona Adaptation)]\n`;
-    prompt += `이 아이의 학부모님은 '${parentStyle}' 성향을 선호하십니다. 알림장 본문(kidsnote.content) 작성 시 학부모님의 성향과 선호에 맞춘 톤앤매너로 서술해줘.\n`;
+  if (parentStyle && !parentStyle.includes('추 후') && !parentStyle.includes('추후')) {
+    prompt += `\n[⭐ 가정 연계 맞춤 소통 팁 (Parent Persona Adaptation)]\n`;
+    prompt += `이 아이의 가정 소통 메모: '${parentStyle}'. 알림장 본문(kidsnote.content) 작성 시 이 소통 포인트를 자연스럽게 반영해줘.\n`;
+  } else if (childAge && childAge.includes('0세')) {
+    prompt += `\n[⭐ 만 0세 영아 스마트 안심 소통 원칙]\n`;
+    prompt += `만 0세 영아는 수유/식사, 편안한 낮잠, 기저귀 컨디션과 교사와의 따뜻한 애착 스킨십을 학부모가 가장 궁금해합니다. 포근하고 안심되는 톤으로 서술해줘.\n`;
+  } else if (childAge && (childAge.includes('1세') || childAge.includes('2세'))) {
+    prompt += `\n[⭐ 만 2세 유아 스마트 안심 소통 원칙]\n`;
+    prompt += `만 2세는 또래와의 상호작용, 모방 및 언어/감정 표현 시도, 규칙을 익혀가는 기특한 노력을 칭찬 위주로 따뜻하게 서술해줘.\n`;
   }
 
   if (pastLogs && pastLogs.length > 0) {

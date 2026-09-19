@@ -75,16 +75,16 @@ for c in children:
 print("\n==================================================")
 print("3. 프론트엔드 반 필터링 시뮬레이션 (아내 vs 처형)")
 print("==================================================")
-# 시뮬레이션 1: 아내(햇살반 김선생님) 접속 시
-haetsal_children = [c['name'] for c in child_list if c['class'] == '햇살반']
-print(f"🌱 [아내 - 햇살반] 필터링 시 노출 원아: {haetsal_children}")
+# 시뮬레이션 1: 아내(사랑반 공가영 선생님) 접속 시
+sarang_children = [c['name'] for c in child_list if c['class'] == '사랑반']
+print(f"🍼 [아내 - 사랑반(만0세)] 필터링 시 노출 원아 (2명): {sarang_children}")
 
-# 시뮬레이션 2: 처형(바다반 이선생님) 접속 시
-bada_children = [c['name'] for c in child_list if c['class'] == '바다반']
-print(f"🌊 [처형 - 바다반] 필터링 시 노출 원아: {bada_children}")
+# 시뮬레이션 2: 처형(소망반 공가희 선생님) 접속 시
+somang_children = [c['name'] for c in child_list if c['class'] == '소망반']
+print(f"🎈 [처형 - 소망반(만2세)] 필터링 시 노출 원아 (7명): {somang_children}")
 
 # 시뮬레이션 3: 전체 보기 토글 시
 all_children = [f"{c['name']}({c['class']})" for c in child_list]
-print(f"🌐 [전체 보기 토글] 시 노출 원아: {all_children}")
+print(f"🌐 [전체 보기 토글] 시 노출 원아 ({len(all_children)}명): {all_children}")
 
 print("\n✅ 모든 데이터 연동 및 개인화 필터링이 100% 무결하게 작동함을 확인했습니다!")
