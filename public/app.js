@@ -65,8 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
     filterOnlyMyClass: true, // 🌱 우리 반 아이들만 우선 필터링 (사랑반 2명 vs 소망반 7명 완벽 분리)
     children: [],
     selectedChild: null,
-    mode: 'play_story', // 'play_story' (놀이 알림장 집중) | 'observation' | 'all_suite'
-    activityArea: '자유놀이',
+    mode: 'all_suite', // 📋 원터치 올인원 (알림장 + 보육일지 + 관찰일지 동시 생성)
+    activityArea: '자유놀이 및 일상생활',
     photos: [], // base64 strings
     teacherStyle: localStorage.getItem('daycare_teacher_style') || '놀이 중심 다정체',
     persona: initialPersona,
@@ -907,40 +907,16 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // 모드 스위처 클릭
-    modeSwitcher.querySelectorAll('.mode-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        modeSwitcher.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        state.mode = btn.dataset.mode;
-        
-        // 놀이 알림장, 공문서 보육일지, 관찰일지 모드일 때 활동 영역 선택 표시
-        if (state.mode === 'play_story' || state.mode === 'partial' || state.mode === 'class_report' || state.mode === 'observation') {
-          areaSection.style.display = 'flex';
-        } else {
-          areaSection.style.display = 'none';
-        }
-
-        // 🧸 월간 연속 관찰일지 패널 표출 및 초기화
-        if (state.mode === 'observation') {
-          if (monthlyObsPanel) {
-            monthlyObsPanel.style.display = 'block';
-            initMonthlyObsPanel();
-          }
-        } else {
-          if (monthlyObsPanel) monthlyObsPanel.style.display = 'none';
-        }
-
-        // 🌟 모드별 플레이스홀더 변경
-        if (state.mode === 'class_report') {
-          if (rawMemoInput) rawMemoInput.placeholder = "오늘 우리 반 유아들의 실내/바깥 놀이 장면과 키워드를 편하게 적어주세요.\n예) 블록 기차놀이로 레일 연결 및 역할놀이, 바깥 산책 후 앞마당 비눗방울 쫓기와 술래잡기, 체육 대형 무지개 낙하산 펄럭이기";
-        } else if (state.mode === 'observation') {
-          if (rawMemoInput) rawMemoInput.placeholder = "오늘 아이의 행동과 놀이 관찰 메모를 남겨주세요.\n예) 블록을 쌓다가 무너지자 울거나 떼쓰지 않고 교사를 쳐다보며 도움을 요청함. 친구에게 블록을 건네며 협동하여 큰 동물 우리를 완성함.";
-        } else {
-          if (rawMemoInput) rawMemoInput.placeholder = "오늘 아이가 몰입했던 놀이 장면이나 키워드를 편하게 남겨주세요.\n예) 블록으로 큰 동물원 우리를 만들며 기린 인형에게 풀을 주는 흉내를 냄. 친구와 웃으며 울타리를 넓혀감.";
-        }
+    // 모드 스위처 클릭 (숨김 상태여도 null-safe)
+    if (modeSwitcher) {
+      modeSwitcher.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          modeSwitcher.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state.mode = btn.dataset.mode;
+        });
       });
-    });
+    }
 
     // 🧸 월간 관찰일지 평일 자동 분산 버튼
     if (btnAutoDistributeDates) {
@@ -949,15 +925,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (monthlyObsTargetMonth) {
       monthlyObsTargetMonth.addEventListener('change', () => autoDistributeObsDates());
     }
+    // 페이지 로드 시 관찰일지 기본 날짜/영역 1회 자동 초기화
+    if (typeof initMonthlyObsPanel === 'function') {
+      try { initMonthlyObsPanel(); } catch (e) { /* ignore */ }
+    }
 
-    // 활동 영역 칩 클릭
-    areaGrid.querySelectorAll('.area-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        areaGrid.querySelectorAll('.area-chip').forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
-        state.activityArea = chip.dataset.area;
+    // 활동 영역 칩 클릭 (숨김 상태여도 null-safe)
+    if (areaGrid) {
+      areaGrid.querySelectorAll('.area-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          areaGrid.querySelectorAll('.area-chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          state.activityArea = chip.dataset.area;
+        });
       });
-    });
+    }
 
     // 사진 파일 첨부
     photoFileInput.addEventListener('change', handlePhotoUpload);
@@ -2064,7 +2046,7 @@ document.addEventListener('DOMContentLoaded', () => {
         persona: state.persona
       };
 
-      if (state.mode === 'observation' && monthlyObsTargetMonth) {
+      if (monthlyObsTargetMonth) {
         payload.monthlyObsOptions = {
           targetMonth: monthlyObsTargetMonth.value || '2026-09',
           date1: monthlyObsDate1 ? monthlyObsDate1.value : '',
@@ -2319,12 +2301,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // 선택된 모드에 맞추어 메인 탭 전환
+    // 7. 선택된 대상에 맞추어 스마트 기본 탭 전환
+    // 학급 전체('소망반 전체' 등)를 선택한 경우에만 'class_daily_report'가 1순위,
+    // 개별 원아를 선택한 경우 선생님이 가장 먼저 확인 및 발송할 'kidsnote'(알림장)가 무조건 1순위 기본 활성화!
     let targetTab = 'kidsnote';
-    if (state.mode === 'class_report' || rep) {
+    const isClassAll = state.selectedChild && (
+      state.selectedChild.id === 'class-all' ||
+      state.selectedChild.name?.includes('학급') ||
+      state.selectedChild.name?.includes('전체') ||
+      state.selectedChild.name?.includes('우리 반')
+    );
+
+    if (isClassAll) {
       targetTab = 'class_daily_report';
-    } else if (state.mode === 'observation') {
-      targetTab = 'observation';
+    } else {
+      targetTab = 'kidsnote';
     }
 
     resultTabBtns.forEach(b => {

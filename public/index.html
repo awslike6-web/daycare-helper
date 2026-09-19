@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json?v=20260920_v4">
-  <link rel="stylesheet" href="./style.css?v=20260920_v4">
+  <link rel="manifest" href="./manifest.json?v=20260920_v5">
+  <link rel="stylesheet" href="./style.css?v=20260920_v5">
 </head>
 <body>
   <div class="app-container">
@@ -22,7 +22,7 @@
       <div class="brand-area">
         <span class="brand-logo">🧸</span>
         <div>
-          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v2.4</span></div>
+          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v2.5</span></div>
           <div class="brand-sub" id="headerDateText">오늘의 보육 기록</div>
         </div>
       </div>
@@ -130,92 +130,18 @@
 
     <!-- 📝 입력 폼 메인 영역 -->
     <main class="content-area">
-      <!-- 🎛️ 목적별 집중 모드 스위처 (처형분 정규 보육일지 + 아내분 개별 알림장/관찰일지) -->
-      <div class="mode-switcher" id="modeSwitcher">
-        <button type="button" class="mode-btn active" data-mode="play_story">
-          <span>📸 놀이 알림장</span>
-          <span class="mode-subtext">놀이·사진 집중 서술</span>
-        </button>
-        <button type="button" class="mode-btn" data-mode="class_report">
-          <span>📄 놀이 보육일지</span>
-          <span class="mode-subtext">A4 공문서·표준과정</span>
-        </button>
-        <button type="button" class="mode-btn" data-mode="observation">
-          <span>🧸 관찰일지</span>
-          <span class="mode-subtext">월 2회 연속 관찰·총평</span>
-        </button>
-        <button type="button" class="mode-btn" data-mode="all_suite">
-          <span>📋 5대 서식 종합</span>
-          <span class="mode-subtext">하루 일과 풀팩</span>
+      <!-- 🎛️ 모드 스위처 (원터치 올인원으로 통합되어 숨김 유지) -->
+      <div class="mode-switcher" id="modeSwitcher" style="display: none;">
+        <button type="button" class="mode-btn active" data-mode="all_suite">
+          <span>📋 올인원 통합</span>
         </button>
       </div>
 
-      <!-- 🧩 활동 영역 칩 -->
-      <div class="area-section" id="areaSection">
+      <!-- 🧩 활동 영역 칩 (AI 자동 문맥 분석으로 통합되어 숨김 유지) -->
+      <div class="area-section" id="areaSection" style="display: none;">
         <div class="section-label">활동 영역 선택</div>
         <div class="area-grid" id="areaGrid">
           <div class="area-chip active" data-area="자유놀이">🧸 자유놀이</div>
-          <div class="area-chip" data-area="식습관/점심">🍱 점심/식습관</div>
-          <div class="area-chip" data-area="낮잠/배변">😴 낮잠/배변</div>
-          <div class="area-chip" data-area="실외활동">🌳 실외활동</div>
-          <div class="area-chip" data-area="미술/감각">🎨 미술/감각</div>
-          <div class="area-chip" data-area="신체/음악">🎵 신체/음악</div>
-        </div>
-      </div>
-
-      <!-- 🧸 월간 연속 관찰일지 설정 패널 (평가제 맞춤 월 2회 분산 & 연속 발달 연계) -->
-      <div class="monthly-obs-panel" id="monthlyObsPanel" style="display: none;">
-        <div class="monthly-obs-header">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 18px;">🧸</span>
-            <div>
-              <div style="font-size: 13px; font-weight: 700; color: #047857;">평가제 맞춤 월간 연속 관찰 세팅</div>
-              <div style="font-size: 11px; color: #065F46;">월 2회 랜덤 평일 분산 + 1차 지도 후 발전적 변화 연계</div>
-            </div>
-          </div>
-          <button type="button" class="history-refresh-btn" id="btnAutoDistributeDates" style="background: #ECFDF5; border-color: #A7F3D0; color: #065F46;" title="평일 중 1차/2차 날짜 자동 분산">
-            <span>🎲</span> <span>날짜 자동 분산</span>
-          </button>
-        </div>
-
-        <div class="monthly-obs-grid">
-          <!-- 대상 월 -->
-          <div class="monthly-obs-field">
-            <label class="monthly-obs-label">📅 대상 월</label>
-            <input type="month" id="monthlyObsTargetMonth" class="history-select" style="width: 100%;">
-          </div>
-
-          <!-- 1차 관찰 세팅 (상순) -->
-          <div class="monthly-obs-subcard">
-            <div class="monthly-obs-subtitle">🌱 1차 관찰 (상순 평일)</div>
-            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 6px; margin-top: 4px;">
-              <input type="date" id="monthlyObsDate1" class="history-select" style="width: 100%;">
-              <select id="monthlyObsArea1" class="history-select" style="width: 100%;">
-                <option value="의사소통" selected>의사소통</option>
-                <option value="신체운동">신체운동</option>
-                <option value="기본생활">기본생활</option>
-                <option value="사회관계">사회관계</option>
-                <option value="자연탐구">자연탐구</option>
-                <option value="예술경험">예술경험</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- 2차 관찰 세팅 (하순 · 연속성) -->
-          <div class="monthly-obs-subcard" style="border-color: #93C5FD; background: #F0F9FF;">
-            <div class="monthly-obs-subtitle" style="color: #1D4ED8;">✨ 2차 관찰 (하순 · 발전적 변화 연계 ⭐)</div>
-            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 6px; margin-top: 4px;">
-              <input type="date" id="monthlyObsDate2" class="history-select" style="width: 100%;">
-              <select id="monthlyObsArea2" class="history-select" style="width: 100%;">
-                <option value="사회관계" selected>사회관계</option>
-                <option value="의사소통">의사소통</option>
-                <option value="신체운동">신체운동</option>
-                <option value="자연탐구">자연탐구</option>
-                <option value="예술경험">예술경험</option>
-                <option value="기본생활">기본생활</option>
-              </select>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -249,9 +175,9 @@
         </div>
       </div>
 
-      <!-- 🚀 생성 버튼 -->
+      <!-- 🚀 올인원 원터치 생성 버튼 -->
       <button type="button" id="generateBtn" class="submit-btn">
-        <span>✨ 맞춤 보육 기록 즉시 생성</span>
+        <span>✨ AI 맞춤 보육 기록 즉시 생성 (알림장·보육일지·관찰일지 올인원)</span>
       </button>
 
       <!-- ⏳ 로딩 인디케이터 -->
@@ -265,8 +191,8 @@
         <!-- 5대 서식 가로 스크롤 탭 스위처 -->
         <div class="result-tabs-scroll">
           <div class="result-tabs" id="resultTabs">
-            <button type="button" class="result-tab-btn" data-tab="class_daily_report" id="tabClassDailyReport" style="background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8; font-weight: 700;">📄 놀이 보육일지 (공문서)</button>
             <button type="button" class="result-tab-btn active" data-tab="kidsnote">💌 키즈노트 알림장</button>
+            <button type="button" class="result-tab-btn" data-tab="class_daily_report" id="tabClassDailyReport" style="background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8; font-weight: 700;">📄 놀이 보육일지 (공문서)</button>
             <button type="button" class="result-tab-btn" data-tab="observation">🧸 평가제 관찰일지</button>
             <button type="button" class="result-tab-btn" data-tab="daily_care">📋 일일 보육일지</button>
             <button type="button" class="result-tab-btn" data-tab="counseling">🗣️ 학부모 상담일지</button>
@@ -446,6 +372,62 @@
               <button type="button" id="printMonthlyObsBtn" class="action-btn action-btn-share" style="padding: 6px 10px; font-size: 12px; background: #059669;">
                 <span>🖨️</span> <span>A4 인쇄/PDF</span>
               </button>
+            </div>
+          </div>
+
+          <!-- 🧸 평가제 맞춤 월간 연속 관찰 세팅 패널 -->
+          <div class="monthly-obs-panel" id="monthlyObsPanel" style="display: block; margin-bottom: 14px;">
+            <div class="monthly-obs-header">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">🧸</span>
+                <div>
+                  <div style="font-size: 13px; font-weight: 700; color: #047857;">평가제 맞춤 월간 연속 관찰 세팅</div>
+                  <div style="font-size: 11px; color: #065F46;">월 2회 랜덤 평일 분산 + 1차 지도 후 발전적 변화 연계</div>
+                </div>
+              </div>
+              <button type="button" class="history-refresh-btn" id="btnAutoDistributeDates" style="background: #ECFDF5; border-color: #A7F3D0; color: #065F46;" title="평일 중 1차/2차 날짜 자동 분산">
+                <span>🎲</span> <span>날짜 자동 분산</span>
+              </button>
+            </div>
+
+            <div class="monthly-obs-grid">
+              <!-- 대상 월 -->
+              <div class="monthly-obs-field">
+                <label class="monthly-obs-label">📅 대상 월</label>
+                <input type="month" id="monthlyObsTargetMonth" class="history-select" style="width: 100%;">
+              </div>
+
+              <!-- 1차 관찰 세팅 (상순) -->
+              <div class="monthly-obs-subcard">
+                <div class="monthly-obs-subtitle">🌱 1차 관찰 (상순 평일)</div>
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 6px; margin-top: 4px;">
+                  <input type="date" id="monthlyObsDate1" class="history-select" style="width: 100%;">
+                  <select id="monthlyObsArea1" class="history-select" style="width: 100%;">
+                    <option value="의사소통" selected>의사소통</option>
+                    <option value="신체운동">신체운동</option>
+                    <option value="기본생활">기본생활</option>
+                    <option value="사회관계">사회관계</option>
+                    <option value="자연탐구">자연탐구</option>
+                    <option value="예술경험">예술경험</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 2차 관찰 세팅 (하순 · 연속성) -->
+              <div class="monthly-obs-subcard" style="border-color: #93C5FD; background: #F0F9FF;">
+                <div class="monthly-obs-subtitle" style="color: #1D4ED8;">✨ 2차 관찰 (하순 · 발전적 변화 연계 ⭐)</div>
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 6px; margin-top: 4px;">
+                  <input type="date" id="monthlyObsDate2" class="history-select" style="width: 100%;">
+                  <select id="monthlyObsArea2" class="history-select" style="width: 100%;">
+                    <option value="사회관계" selected>사회관계</option>
+                    <option value="의사소통">의사소통</option>
+                    <option value="신체운동">신체운동</option>
+                    <option value="자연탐구">자연탐구</option>
+                    <option value="예술경험">예술경험</option>
+                    <option value="기본생활">기본생활</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1196,7 +1178,7 @@
     <div class="toast" id="toastMessage">클립보드에 복사되었습니다.</div>
   </div>
 
-  <script src="./gemini-client.js?v=20260920_v4"></script>
-  <script src="./app.js?v=20260920_v4"></script>
+  <script src="./gemini-client.js?v=20260920_v5"></script>
+  <script src="./app.js?v=20260920_v5"></script>
 </body>
 </html>
