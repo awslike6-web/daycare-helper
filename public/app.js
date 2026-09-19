@@ -1385,34 +1385,7 @@ document.addEventListener('DOMContentLoaded', () => {
       syncTeacherFromNotionBtn.innerHTML = '<span>☁️</span> <span>노션 프로필 불러오기</span>';
     }
   }
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, age, traits, allergies })
-        });
-      }
 
-      if (!res.ok) {
-        const errJson = await res.json();
-        throw new Error(errJson.error || '원아 저장에 실패했습니다.');
-      }
-
-      const result = await res.json();
-      childManageModal.style.display = 'none';
-      if (result.mode === 'notion_created_fallback') {
-        showToast(`🎉 ${name} 원아가 노션 마스터 DB에 안전하게 등록되었습니다!`);
-      } else {
-        showToast(id && !id.startsWith('mock-') ? `✅ ${name} 정보가 수정되었습니다.` : `🎉 ${name} 원아가 노션에 등록되었습니다!`);
-      }
-      
-      const newChildId = result.child?.id || id;
-      await loadChildren(newChildId);
-    } catch (err) {
-      console.error('Child save error:', err);
-      showToast(`저장 오류: ${err.message}`);
-    } finally {
-      saveChildBtn.disabled = false;
-      saveChildBtn.innerHTML = '<span>💾</span> <span>노션에 원아 저장하기</span>';
-    }
-  }
 
   // ============================================================================
   // 8. Web Speech API (STT 한국어 음성 메모)
