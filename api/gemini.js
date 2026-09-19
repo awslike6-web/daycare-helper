@@ -56,7 +56,7 @@ export function unmaskDeep(obj, childName) {
 /**
  * 시스템 인스트럭션 생성
  */
-function buildSystemInstruction(mode, activityArea, teacherStyle, persona = {}) {
+function buildSystemInstruction(mode, activityArea, teacherStyle, persona = {}, className = '햇살반', teacherName = '김선생님') {
   const isPlayStory = mode === 'play_story' || mode === 'partial';
   const isObservation = mode === 'observation';
 
@@ -82,6 +82,8 @@ ${persona.sampleNote}
 원아의 개인정보를 철저히 보호하기 위해 원아는 오직 '[아동A]'로만 호칭한다.
 
 [선생님 페르소나 & 스타일 가이드]
+- 소속 반: '${className || '햇살반'}'
+- 선생님 호칭: '${teacherName || '김선생님'}'
 - 원아 호칭 규칙: 원아를 부를 때 '${callRule}' 형태로 다정하게 호칭하라.
 - 이모지 스타일: ${emojiRule}
 ${sampleNoteText}
@@ -242,7 +244,9 @@ export async function generateDaycareLog({
   mode = 'partial',
   activityArea = '자유놀이',
   teacherStyle = '다정친절체',
-  persona = {}
+  persona = {},
+  className = '햇살반',
+  teacherName = '김선생님'
 }) {
   if (!apiKey) {
     throw new Error('Gemini API 키가 제공되지 않았습니다.');
@@ -264,7 +268,7 @@ export async function generateDaycareLog({
   };
 
   // 2. 시스템 인스트럭션 및 프롬프트 빌드
-  const systemInstruction = buildSystemInstruction(mode, activityArea, teacherStyle, maskedPersona);
+  const systemInstruction = buildSystemInstruction(mode, activityArea, teacherStyle, maskedPersona, className, teacherName);
   const userTextPrompt = buildUserPrompt({
     maskedMemo,
     childAge,

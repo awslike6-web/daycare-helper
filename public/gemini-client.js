@@ -68,6 +68,8 @@
       mode = 'partial',
       activityArea = '자유놀이',
       teacherStyle = '다정친절체',
+      className = '햇살반',
+      teacherName = '김선생님',
       persona = {},
       pastLogs = []
     } = payload;
@@ -124,6 +126,8 @@ ${pastLogs.map(p => `- [${p.date}] [${p.activityArea || '놀이'}] ${maskText(p.
 원아의 개인정보를 철저히 보호하기 위해 원아는 오직 '[아동A]'로만 호칭한다.
 
 [선생님 스타일 & 페르소나]
+- 소속 반: '${className}'
+- 선생님 호칭: '${teacherName}'
 - 원아 호칭: '${callStyle}'
 - 이모지 스타일: ${emojiRule}
 ${sampleText}
@@ -149,7 +153,7 @@ ${maskedMemo}
   "kidsnote": {
     "title": "놀이의 기쁨과 아이의 감정을 담은 다정한 알림장 제목",
     "content": "학부모를 감동시키는 따뜻하고 생생한 서술식 본문 (~했답니다, ~했어요)",
-    "tags": ["${activityArea}", "어린이집", "${childAge}"]
+    "tags": ["${className}", "${activityArea}", "어린이집", "${childAge}"]
   },
   "observation_log": {
     "standard_area": "신체운동·건강 / 의사소통 / 사회관계 / 예술경험 / 자연탐구 중 택1",

@@ -26,6 +26,9 @@
         </div>
       </div>
       <div class="header-actions">
+        <button type="button" id="headerClassNameBtn" class="badge" style="background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; cursor: pointer;" title="반 이름 변경">
+          <span>🌱</span> <span id="headerClassNameText">햇살반</span>
+        </button>
         <button type="button" id="headerPersonaBtn" class="badge" style="background: #EEF2FF; color: var(--primary); border: 1px solid #C7D2FE; cursor: pointer;">
           <span>🎭</span> <span id="headerPersonaText">스피디 실속형</span>
         </button>
@@ -365,6 +368,36 @@
             </div>
           </div>
 
+          <!-- 🏫 우리 반 & 선생님 기본 프로필 -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; background: #F8FAFC; border-radius: 12px; border: 1px solid #E2E8F0;">
+            <div>
+              <label style="font-weight: 700; display: block; margin-bottom: 4px; color: var(--text-main); font-size: 12px;">
+                🌱 담당 반 이름
+              </label>
+              <input 
+                type="text" 
+                id="settingClassNameInput" 
+                class="memo-textarea" 
+                style="min-height: 38px; padding: 6px 10px; font-size: 13px; font-weight: 700; color: #B45309;" 
+                placeholder="예: 햇살반, 바다반, 풀잎반"
+                value="햇살반"
+              >
+            </div>
+            <div>
+              <label style="font-weight: 700; display: block; margin-bottom: 4px; color: var(--text-main); font-size: 12px;">
+                👩‍🏫 선생님 호칭
+              </label>
+              <input 
+                type="text" 
+                id="settingTeacherNameInput" 
+                class="memo-textarea" 
+                style="min-height: 38px; padding: 6px 10px; font-size: 13px; font-weight: 600;" 
+                placeholder="예: 김선생님"
+                value="김선생님"
+              >
+            </div>
+          </div>
+
           <!-- 1. 퀵 프리셋 선택 칩 -->
           <div>
             <label style="font-weight: 700; display: block; margin-bottom: 6px; color: var(--text-main);">
@@ -478,18 +511,32 @@
             >
           </div>
 
-          <div>
-            <label style="font-weight: 700; display: block; margin-bottom: 4px; color: var(--text-main);">
-              연령 / 담당반
-            </label>
-            <select id="manageChildAge" class="memo-textarea" style="min-height: 40px; padding: 8px; font-size: 13px;">
-              <option value="만 0세">만 0세 (씨앗반)</option>
-              <option value="만 1세">만 1세 (새싹반)</option>
-              <option value="만 2세">만 2세 (꽃잎반)</option>
-              <option value="만 3세">만 3세 (열매반)</option>
-              <option value="만 4세" selected>만 4세 (햇살반)</option>
-              <option value="만 5세">만 5세 (하늘반)</option>
-            </select>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label style="font-weight: 700; display: block; margin-bottom: 4px; color: var(--text-main);">
+                연령
+              </label>
+              <select id="manageChildAge" class="memo-textarea" style="min-height: 40px; padding: 8px; font-size: 13px;">
+                <option value="만 0세">만 0세</option>
+                <option value="만 1세">만 1세</option>
+                <option value="만 2세">만 2세</option>
+                <option value="만 3세">만 3세</option>
+                <option value="만 4세" selected>만 4세</option>
+                <option value="만 5세">만 5세</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-weight: 700; display: block; margin-bottom: 4px; color: var(--text-main);">
+                소속 반 이름
+              </label>
+              <input 
+                type="text" 
+                id="manageChildClass" 
+                class="memo-textarea" 
+                style="min-height: 40px; padding: 8px 10px; font-size: 13px; font-weight: 600;" 
+                placeholder="예: 햇살반, 바다반"
+              >
+            </div>
           </div>
 
           <div>

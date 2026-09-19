@@ -53,6 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const initialPersona = savedPersona ? JSON.parse(savedPersona) : PERSONA_PRESETS.play_friendly;
 
   const state = {
+    className: localStorage.getItem('daycare_class_name') || '햇살반',
+    teacherName: localStorage.getItem('daycare_teacher_name') || '김선생님',
     children: [],
     selectedChild: null,
     mode: 'play_story', // 'play_story' (놀이 알림장 집중) | 'observation' | 'all_suite'
@@ -70,6 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2. DOM 요소 참조
   // ============================================================================
   const headerDateText = document.getElementById('headerDateText');
+  const headerClassNameBtn = document.getElementById('headerClassNameBtn');
+  const headerClassNameText = document.getElementById('headerClassNameText');
   const notionStatusBadge = document.getElementById('notionStatusBadge');
   const notionStatusText = document.getElementById('notionStatusText');
   const childScrollContainer = document.getElementById('childScrollContainer');
@@ -85,6 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const manageChildId = document.getElementById('manageChildId');
   const manageChildName = document.getElementById('manageChildName');
   const manageChildAge = document.getElementById('manageChildAge');
+  const manageChildClass = document.getElementById('manageChildClass');
   const manageChildTraits = document.getElementById('manageChildTraits');
   const manageChildAllergies = document.getElementById('manageChildAllergies');
   const saveChildBtn = document.getElementById('saveChildBtn');
@@ -158,6 +163,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const personaCallStyle = document.getElementById('personaCallStyle');
   const personaEmojiLevel = document.getElementById('personaEmojiLevel');
   const personaClosingGreeting = document.getElementById('personaClosingGreeting');
+  const settingClassNameInput = document.getElementById('settingClassNameInput');
+  const settingTeacherNameInput = document.getElementById('settingTeacherNameInput');
 
   // 🔐 Cloudflare Access 보안 세션 배너 및 모달 요소
   const sessionExpiryBanner = document.getElementById('sessionExpiryBanner');
@@ -363,7 +370,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (navigator.vibrate) navigator.vibrate([40, 40, 40]);
         setTimeout(() => {
-          loginSuccess('햇살반 선생님 (PIN 인증)');
+          const currentClass = state.className || '햇살반';
+          const currentTeacher = state.teacherName || '김선생님';
+          loginSuccess(`${currentClass} ${currentTeacher} (PIN 인증)`);
         }, 200);
       } else {
         // 실패!
@@ -548,6 +557,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const p = state.persona;
     headerPersonaText.textContent = p.name ? p.name.split('(')[0].trim() : '스피디 실속형';
     
+    // 🌱 담당 반 및 선생님 호칭 UI 동기화
+    if (headerClassNameText) {
+      headerClassNameText.textContent = state.className || '햇살반';
+    }
+    if (settingClassNameInput) {
+      settingClassNameInput.value = state.className || '햇살반';
+    }
+    if (settingTeacherNameInput) {
+      settingTeacherNameInput.value = state.teacherName || '김선생님';
+    }
+
     // 모달 폼 채우기
     if (personaSampleNote) personaSampleNote.value = p.sampleNote || '';
     if (personaCallStyle) personaCallStyle.value = p.callStyle || '우리 [아동A]';
@@ -706,6 +726,18 @@ document.addEventListener('DOMContentLoaded', () => {
     saveNotionBtn.addEventListener('click', handleSaveNotion);
 
     // 페르소나 및 설정 모달 열기
+    if (headerClassNameBtn) {
+      headerClassNameBtn.addEventListener('click', () => {
+        updatePersonaUI();
+        if (settingsModal) settingsModal.style.display = 'flex';
+        if (settingClassNameInput) {
+          setTimeout(() => {
+            settingClassNameInput.focus();
+            settingClassNameInput.select();
+          }, 100);
+        }
+      });
+    }
     if (headerPersonaBtn) {
       headerPersonaBtn.addEventListener('click', () => {
         updatePersonaUI();
@@ -788,8 +820,17 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // 페르소나 설정 저장
+    // 페르소나 및 우리 반 설정 저장
     saveSettingsBtn.addEventListener('click', () => {
+      // 1. 담당 반 및 선생님 호칭 저장
+      const newClassName = settingClassNameInput ? settingClassNameInput.value.trim() || '햇살반' : '햇살반';
+      const newTeacherName = settingTeacherNameInput ? settingTeacherNameInput.value.trim() || '김선생님' : '김선생님';
+      state.className = newClassName;
+      state.teacherName = newTeacherName;
+      localStorage.setItem('daycare_class_name', newClassName);
+      localStorage.setItem('daycare_teacher_name', newTeacherName);
+
+      // 2. 페르소나 문체 저장
       state.persona = {
         preset: state.persona.preset || 'custom',
         name: state.persona.name || '맞춤 페르소나',
@@ -802,7 +843,7 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('daycare_persona', JSON.stringify(state.persona));
       updatePersonaUI();
       settingsModal.style.display = 'none';
-      showToast('🎭 선생님 맞춤 페르소나가 저장되었습니다!');
+      showToast(`🌱 '${newClassName}' (${newTeacherName}) 설정이 성공적으로 저장되었습니다!`);
     });
   }
 
@@ -996,14 +1037,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   // 7-B. 원아 등록 및 수정 모달 제어
   // ============================================================================
-  function openChildModal(mode, child = null) {
+  function openChildModal(mode = 'add', child = null) {
     if (!childManageModal) return;
 
     if (mode === 'edit' && child) {
       childModalTitle.textContent = `👶 ${child.name} 정보 및 성향 수정`;
       manageChildId.value = child.id || '';
       manageChildName.value = child.name || '';
-      manageChildAge.value = child.age || '만 4세';
+      
+      // 만약 '만 4세 (햇살반)' 형태면 분리
+      let rawAge = child.age || '만 4세';
+      let extractedClass = state.className || '햇살반';
+      if (rawAge.includes('(')) {
+        const parts = rawAge.split('(');
+        rawAge = parts[0].trim();
+        extractedClass = parts[1].replace(')', '').trim();
+      }
+      manageChildAge.value = rawAge;
+      if (manageChildClass) manageChildClass.value = extractedClass;
+
       manageChildTraits.value = child.traits || '';
       manageChildAllergies.value = child.allergies || '';
       saveChildBtn.innerHTML = '<span>💾</span> <span>원아 정보 수정 저장</span>';
@@ -1012,6 +1064,7 @@ document.addEventListener('DOMContentLoaded', () => {
       manageChildId.value = '';
       manageChildName.value = '';
       manageChildAge.value = '만 4세';
+      if (manageChildClass) manageChildClass.value = state.className || '햇살반';
       manageChildTraits.value = '';
       manageChildAllergies.value = '';
       saveChildBtn.innerHTML = '<span>💾</span> <span>노션에 원아 등록하기</span>';
@@ -1030,7 +1083,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const id = manageChildId.value;
-    const age = manageChildAge.value;
+    const baseAge = manageChildAge.value;
+    const childClass = manageChildClass ? manageChildClass.value.trim() || state.className : state.className;
+    const age = childClass ? `${baseAge} (${childClass})` : baseAge;
     const traits = manageChildTraits.value.trim();
     const allergies = manageChildAllergies.value.trim();
 
@@ -1309,6 +1364,8 @@ document.addEventListener('DOMContentLoaded', () => {
         mode: state.mode,
         activityArea: state.activityArea,
         teacherStyle: state.teacherStyle,
+        className: state.className || '햇살반',
+        teacherName: state.teacherName || '김선생님',
         persona: state.persona
       };
 

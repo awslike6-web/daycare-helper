@@ -166,6 +166,8 @@ export default {
             mode = 'partial',
             activityArea = '자유놀이',
             teacherStyle = '다정친절체',
+            className = env.DEFAULT_CLASS_NAME || '햇살반',
+            teacherName = env.DEFAULT_TEACHER_NAME || '김선생님',
             persona = {}
           } = body;
 
@@ -204,6 +206,8 @@ export default {
             mode,
             activityArea,
             teacherStyle,
+            className,
+            teacherName,
             persona
           });
 
