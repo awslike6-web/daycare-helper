@@ -30,7 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedDate: new Date().toISOString().split('T')[0], // 📅 소급 작성 날짜 (기본: 오늘)
     historyLogs: [], // 📂 지난 기록 보관함 캐시
     isHistoryLoaded: false,
-    selectedHistoryLog: null
+    selectedHistoryLog: null,
+    currentAbortController: null, // ⏹️ AI 생성 즉시 중단용 제어기
+    isGenerationAborted: false
   };
   window.state = state;
 
@@ -95,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const generateBtn = document.getElementById('generateBtn');
   const loadingBox = document.getElementById('loadingBox');
   const loadingStepText = document.getElementById('loadingStepText');
+  const btnCancelAiGenerate = document.getElementById('btnCancelAiGenerate');
 
   // 결과 영역 요소들
   const resultsSection = document.getElementById('resultsSection');
@@ -807,24 +810,74 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // 🗑️ 작성 중인 메모 1초 비우기
+    // 🗑️ 작성 중인 메모 2-Tap 안전 비우기 (PWA 모바일 confirm 차단 버그 완전 해결)
     if (btnClearMemoBtn && rawMemoInput) {
+      let clearConfirmTimeout = null;
+      let isWaitingClearConfirm = false;
+
+      function resetClearBtn() {
+        isWaitingClearConfirm = false;
+        if (clearConfirmTimeout) {
+          clearTimeout(clearConfirmTimeout);
+          clearConfirmTimeout = null;
+        }
+        btnClearMemoBtn.innerHTML = '<span>🗑️</span> <span>비우기</span>';
+        btnClearMemoBtn.style.background = '#F1F5F9';
+        btnClearMemoBtn.style.color = '#64748B';
+        btnClearMemoBtn.style.borderColor = '#CBD5E1';
+      }
+
       btnClearMemoBtn.addEventListener('click', () => {
-        if (!rawMemoInput.value.trim()) {
-          showToast('비울 메모 내용이 없습니다.');
+        const hasMemo = rawMemoInput.value.trim().length > 0;
+        const hasPhotos = state.photos && state.photos.length > 0;
+        if (!hasMemo && !hasPhotos) {
+          showToast('비울 메모나 사진이 없습니다.');
+          resetClearBtn();
           return;
         }
-        if (confirm('작성 중인 메모를 모두 지우시겠습니까?')) {
+
+        if (!isWaitingClearConfirm) {
+          // 1단계 터치: 붉은색 경고 버튼으로 전환 및 안내
+          isWaitingClearConfirm = true;
+          btnClearMemoBtn.innerHTML = '<span>⚠️</span> <span>정말 비울까요?</span>';
+          btnClearMemoBtn.style.background = '#FEE2E2';
+          btnClearMemoBtn.style.color = '#DC2626';
+          btnClearMemoBtn.style.borderColor = '#FCA5A5';
+          showToast('🗑️ 3초 안에 한 번 더 누르면 메모와 사진이 완전히 비워집니다.');
+
+          clearConfirmTimeout = setTimeout(() => {
+            resetClearBtn();
+          }, 3000);
+        } else {
+          // 2단계 터치: 실제 초기화 실행
+          resetClearBtn();
           rawMemoInput.value = '';
+          state.photos = [];
+          const photoPreviews = document.getElementById('photoPreviews');
+          if (photoPreviews) photoPreviews.innerHTML = '';
+          const photoFileInput = document.getElementById('photoFileInput');
+          if (photoFileInput) photoFileInput.value = '';
           try {
             localStorage.removeItem('daycare_draft_memo');
           } catch (e) {}
-          showToast('🗑️ 메모가 깨끗하게 비워졌습니다.');
+          showToast('🗑️ 메모와 첨부 사진이 모두 깨끗하게 비워졌습니다.');
+          rawMemoInput.focus();
         }
       });
     }
 
-    // 🚀 PWA 홈 화면 위젯 및 바로가기 URL 파라미터 체크 (?action=mic, ?mode=observation, ?teacher=sandbox 등)
+    // ⏹️ AI 생성 중단 버튼 이벤트 리스너
+    if (btnCancelAiGenerate) {
+      btnCancelAiGenerate.addEventListener('click', () => {
+        if (state.currentAbortController) {
+          state.isGenerationAborted = true;
+          state.currentAbortController.abort();
+          showToast('⏹️ AI 생성을 즉시 중단하고 있습니다...');
+        }
+      });
+    }
+
+    // 🚀 PWA 홈 화면 위젯 및 바로가기 URL 파라미터 체크 (?action=mic, ?action=history, ?teacher=sandbox 등)
     setTimeout(() => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
@@ -844,10 +897,21 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
 
-        if (actionParam === 'mic' && voiceMicBtn) {
+        if (actionParam === 'mic') {
           setTimeout(() => {
-            if (!state.isRecording) voiceMicBtn.click();
-          }, 500);
+            if (rawMemoInput) {
+              rawMemoInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              rawMemoInput.focus();
+            }
+            if (voiceMicBtn && !state.isRecording) {
+              try {
+                voiceMicBtn.click();
+              } catch (e) {
+                console.warn('Voice mic auto-trigger error:', e);
+              }
+            }
+            showToast('🎙️ 음성 메모 모드입니다. 마이크 버튼을 눌러 말씀하세요!');
+          }, 350);
         }
 
         if (actionParam === 'history') {
@@ -1081,6 +1145,11 @@ document.addEventListener('DOMContentLoaded', () => {
     loadingBox.style.display = 'block';
     resultsSection.style.display = 'none';
 
+    // ⏹️ AbortController 초기화 (언제든 안전 중단 가능)
+    const abortController = new AbortController();
+    state.currentAbortController = abortController;
+    state.isGenerationAborted = false;
+
     // 단계별 메시지 애니메이션
     const steps = [
       '🛡️ 원아 실명 마스킹 가드 적용 중...',
@@ -1137,20 +1206,24 @@ document.addEventListener('DOMContentLoaded', () => {
       // 1. 한국 브라우저 IP 직통 호출 시도 (Cloudflare 유럽 노드 지역 제한 400 원천 회피)
       if (window.GeminiClient && typeof window.GeminiClient.generate === 'function') {
         try {
-          const clientRes = await window.GeminiClient.generate(payload);
+          const clientRes = await window.GeminiClient.generate(payload, { signal: abortController.signal });
           if (clientRes && clientRes.success) {
             resultData = clientRes.data;
           }
         } catch (clientErr) {
+          if (clientErr.name === 'AbortError' || state.isGenerationAborted) {
+            throw clientErr;
+          }
           console.warn('클라이언트 직통 호출 실패, 서버 엔드포인트로 폴백:', clientErr);
         }
       }
 
       // 2. 서버 폴백 (/api/generate)
-      if (!resultData) {
+      if (!resultData && !state.isGenerationAborted) {
         const res = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: abortController.signal,
           body: JSON.stringify(payload)
         });
 
@@ -1168,12 +1241,20 @@ document.addEventListener('DOMContentLoaded', () => {
       renderResults(resultData);
       showToast('🎉 맞춤 보육 기록이 완성되었습니다!');
     } catch (err) {
-      console.error('Generate Error:', err);
-      showToast(`오류: ${err.message}`);
+      if (err.name === 'AbortError' || state.isGenerationAborted) {
+        console.log('AI 작성이 교사에 의해 안전하게 취소되었습니다.');
+        showToast('⏹️ AI 생성이 안전하게 중단되었습니다. 메모를 수정해보세요.');
+        if (rawMemoInput) rawMemoInput.focus();
+      } else {
+        console.error('Generate Error:', err);
+        showToast(`오류: ${err.message}`);
+      }
     } finally {
       clearInterval(stepInterval);
       generateBtn.disabled = false;
       loadingBox.style.display = 'none';
+      state.currentAbortController = null;
+      state.isGenerationAborted = false;
     }
   }
 

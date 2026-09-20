@@ -53,7 +53,7 @@
     return obj;
   }
 
-  async function generateWithGeminiClient(payload) {
+  async function generateWithGeminiClient(payload, options = {}) {
     const apiKey = await getGeminiKey();
     if (!apiKey) {
       throw new Error('API 키를 워커에서 가져오지 못했습니다. 서버로 폴백합니다.');
@@ -346,8 +346,8 @@ ${maskedMemo}
       }
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(url, {
+    const abortSignal = options.signal || payload.signal;
+    const fetchOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -357,7 +357,9 @@ ${maskedMemo}
           responseMimeType: 'application/json'
         }
       })
-    });
+    };
+    if (abortSignal) fetchOptions.signal = abortSignal;
+    const response = await fetch(url, fetchOptions);
 
     if (!response.ok) {
       const errText = await response.text();

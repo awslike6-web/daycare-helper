@@ -174,7 +174,8 @@ function renderChildrenChips(selectedId = null) {
   }
 
   let targetChild = null;
-  const isClassAllSelected = selectedId === 'class-all' || state.mode === 'class_report';
+  // 🌟 사용자가 특정 원아를 명시적으로 클릭하지 않은 경우, 무조건 '우리 반 놀이 (전체 원아 자동 인식)'가 100% 기본값
+  const isClassAllSelected = (!selectedId || selectedId === 'class-all');
   const classAllChip = document.createElement('div');
   classAllChip.className = `child-chip ${isClassAllSelected ? 'active' : ''}`;
   classAllChip.style.borderColor = '#3B82F6';
@@ -196,8 +197,8 @@ function renderChildrenChips(selectedId = null) {
   });
   childScrollContainer.appendChild(classAllChip);
 
-  displayList.forEach((child, index) => {
-    const isSelected = selectedId ? child.id === selectedId : (!isClassAllSelected && index === 0);
+  displayList.forEach((child) => {
+    const isSelected = selectedId ? child.id === selectedId : false;
     if (isSelected && !targetChild) targetChild = child;
 
     const chip = document.createElement('div');
@@ -221,12 +222,10 @@ function renderChildrenChips(selectedId = null) {
   addChip.addEventListener('click', () => openChildModal('add'));
   childScrollContainer.appendChild(addChip);
 
-  if (isClassAllSelected) {
+  if (isClassAllSelected || !targetChild) {
     selectClassAllMode();
   } else if (targetChild) {
     selectChild(targetChild);
-  } else if (displayList.length > 0) {
-    selectChild(displayList[0]);
   }
 }
 
@@ -250,11 +249,11 @@ function selectClassAllMode() {
   };
   if (selectedChildAge) selectedChildAge.textContent = defaultAge;
   if (childTraitsText) {
-    childTraitsText.innerHTML = `🌟 <strong>${state.className} 놀이중심 보육일지 모드</strong>: 사진(최대 6장)과 활동 키워드를 넣으시면 정규 공문서(표준보육과정 연계)와 학급 전체 알림장이 완성됩니다.`;
+    childTraitsText.innerHTML = `🌟 <strong>${state.className} 놀이중심 보육일지 & 알림장 (원아 자동 인식)</strong>: 전체 놀이 메모를 남기시면 학급 보육일지와 개별 원아 놀이가 자동 발췌되어 1초 눈 검수 승인을 받습니다.`;
   }
   if (childParentText) {
     childParentText.style.display = 'block';
-    childParentText.textContent = `💌 학부모 소통: 학급 전체 공지용 알림장 (귀가 칭찬 가이드 포함)`;
+    childParentText.textContent = `💌 학부모 소통: 학급 전체 공지 알림장 + 개별 원아 알림장 자동 분할 연동`;
   }
   if (childAlertText) childAlertText.style.display = 'none';
 
