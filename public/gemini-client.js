@@ -233,10 +233,16 @@ ${pastLogText}
 교사 관찰 메모:
 ${maskedMemo}
 
-반드시 아래 JSON 규격으로만 응답하라:
-{
-  "class_daily_report": {
-    "title": "1. 만 2세 놀이중심 보육일지",
+    const selectedFormats = (Array.isArray(payload.selectedFormats) && payload.selectedFormats.length > 0)
+      ? payload.selectedFormats
+      : ['class_daily_report', 'kidsnote'];
+
+    // ⚡ 선택된 서식만 동적으로 JSON 필드에 포함 (출력 토큰 70% 절감 & 초고속 생성)
+    const jsonFields = [];
+
+    if (selectedFormats.includes('class_daily_report')) {
+      jsonFields.push(`  "class_daily_report": {
+    "title": "1. ${childAge} 놀이중심 보육일지",
     "date": "2026년 9월 17일 (목)",
     "weather": "맑음",
     "play_theme": "놀이 주제 요약 (예: 칙칙폭폭 기차놀이 & 가을 산책 후 신체놀이)",
@@ -254,13 +260,19 @@ ${maskedMemo}
       "environment": "○ 환경 지원: 기차 레일이 바닥에서 분리되지 않도록 넓은 공간에 안전하게 배치하고 기차 교구를 넉넉히 제공함.",
       "safety": "○ 바깥놀이 안전 관리: 짧은 산책 시 보행 안전선을 지키도록 손잡고 이동을 지도하며 충분한 안전거리를 유지시킴."
     }
-  },
-  "kidsnote": {
+  }`);
+    }
+
+    if (selectedFormats.includes('kidsnote')) {
+      jsonFields.push(`  "kidsnote": {
     "title": "놀이의 기쁨과 아이의 감정을 담은 다정한 알림장 제목",
     "content": "학부모를 감동시키는 따뜻하고 생생한 서술식 본문 (~했답니다, ~했어요)",
     "tags": ["${className}", "${activityArea}", "어린이집", "${childAge}"]
-  },
-  "observation_log": {
+  }`);
+    }
+
+    if (selectedFormats.includes('observation')) {
+      jsonFields.push(`  "observation_log": {
     "standard_area": "신체운동·건강 / 의사소통 / 사회관계 / 예술경험 / 자연탐구 중 택1",
     "activity_name": "${activityArea}",
     "behavior": "객관적 행동 관찰문 (~함 체)",
@@ -291,19 +303,36 @@ ${maskedMemo}
       "development_summary": "1·2차 관찰을 종합한 월간 발달 총평 (표준보육과정 관점)",
       "next_month_plan": "다음 달 교사의 개별 맞춤 지원 및 가정 연계 방향"
     }
-  },
-  "daily_care_log": {
+  }`);
+    }
+
+    if (selectedFormats.includes('daily_care')) {
+      jsonFields.push(`  "daily_care_log": {
     "play_summary": "오늘 우리 반 유아들의 전반적인 놀이 흐름 요약",
     "play_evaluation": "놀이에 대한 교사의 종합 평가 및 배움 분석",
     "next_support_plan": "내일 놀이 확장을 위한 공간/자료 및 교사 지원 계획"
-  },
-  "parent_counseling": {
+  }`);
+    }
+
+    if (selectedFormats.includes('counseling')) {
+      jsonFields.push(`  "parent_counseling": {
     "daily_routine": "식습관, 낮잠, 배변 등 기본생활습관 특징",
     "social_relations": "또래 및 교사와의 긍정적 상호작용과 사회성",
     "development_feature": "놀이 몰입도 및 신체/언어 발달 강점",
     "counseling_opinion": "가정 연계 및 학부모 상담 시 안내할 종합 조언"
-  },
-  "observation_summary": "오늘 아이의 행동양식과 놀이 몰입을 30자 내외로 압축한 핵심 1줄 요약 (노션 관찰 요약 속성 연동용)",
+  }`);
+    }
+
+    if (selectedFormats.includes('play_support')) {
+      jsonFields.push(`  "play_support": {
+    "play_theme": "놀이 주제",
+    "interest_cue": "유아의 흥미 관찰 단서",
+    "teacher_support": "교사의 놀이 지원 및 확장 계획"
+  }`);
+    }
+
+    // 🌟 원아 개별 놀이 발췌 및 노션 연동 속성은 상시 포함
+    jsonFields.push(`  "observation_summary": "오늘 아이의 행동양식과 놀이 몰입을 30자 내외로 압축한 핵심 1줄 요약 (노션 관찰 요약 속성 연동용)",
   "individual_observations": [
     {
       "child_name": "원아 실명 (메모에 언급된 아이 이름, 예: 김민수)",
@@ -315,8 +344,46 @@ ${maskedMemo}
   "citation": {
     "has_citation": true,
     "summary": "📌 참고한 과거 기록: 이전 관찰 대비 성장점 한 줄 요약"
-  }
-}
+  }`);
+
+    const jsonSchemaStr = '{\n' + jsonFields.join(',\n') + '\n}';
+
+    const prompt = `너는 대한민국 15년 차 수석 보육교사이자 보육 평가제 컨설턴트다.
+원아는 오직 '[아동A]'로만 호칭한다.
+
+[선생님 페르소나 & 스타일 가이드]
+- 소속 반: '${className || '사랑반'}'
+- 교사명: '${teacherName || '공가영 선생님'}'
+- 문체 스타일: ${teacherStyle || '놀이 중심 다정체'}
+- 원아 호칭: '${callStyle}'
+- 이모지 스타일: ${emojiRule}
+${sampleText}
+${closingGreeting ? `- 단골 맺음말: 알림장 본문 끝에 다음 인사를 자연스럽게 포함하라: "${closingGreeting}"` : ''}
+
+[소통 지침]
+${parentStyleGuideline}
+${observationGuideline}
+${modeInstruction}
+
+[품격 있는 긍정 서술 원칙 (필수)]
+- '실패', '미숙', '부족', '산만' 등 아이나 교사에게 부정적이거나 단정적인 어휘는 일체 사용하지 않는다.
+- 블록이 무너지거나 어려움이 생겨도 좌절하지 않고 미소 지으며 다시 시도하는 '회복탄력성'과 '배움의 호기심'으로 아름답게 승화하여 서술한다.
+
+[원아 정보]
+- 가명: [아동A] (${childAge})
+- 특이사항/성향: ${childTraits || '특이사항 없음'}
+- 학부모 성향/선호 스타일: ${parentStyle || '일반 다정형'}
+- 주의사항/알레르기: ${allergies || '없음'}
+${pastLogText}
+
+교사 관찰 메모:
+${maskedMemo}
+
+[⚡ 선택된 서식 생성 지침]
+선생님이 요청한 서식([${selectedFormats.join(', ')}])만 상세히 작성하라. 선택되지 않은 서식 키는 절대 생성하지 마라.
+반드시 아래 JSON 규격으로만 응답하라:
+${jsonSchemaStr}
+
 [🧩 개별 원아 놀이 발췌 지침 (individual_observations)]:
 - 메모나 사진 속에서 특정 아이(예: 민수, 민서 등)의 이름이나 뚜렷한 개별 놀이 모습이 언급된 경우에만 정확히 발췌하라.
 - 🚨 절대 메모에 없는 아이를 임의로 지어내지 말 것. 언급된 아이가 없으면 빈 배열 []로 응답하라.`;

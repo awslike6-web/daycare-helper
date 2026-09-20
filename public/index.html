@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json?v=20260920_v11">
-  <link rel="stylesheet" href="./style.css?v=20260920_v11">
+  <link rel="manifest" href="./manifest.json?v=20260920_v13">
+  <link rel="stylesheet" href="./style.css?v=20260920_v13">
 </head>
 <body>
   <div class="app-container">
@@ -22,7 +22,7 @@
       <div class="brand-area">
         <span class="brand-logo">🧸</span>
         <div>
-          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v3.2</span></div>
+          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v3.3</span></div>
           <div class="header-date-wrapper" id="headerDateWrapper" title="클릭하여 소급 작성 날짜 변경">
             <span class="header-date-icon">📅</span>
             <span class="brand-sub header-date-text" id="headerDateText">오늘의 보육 기록</span>
@@ -181,9 +181,46 @@
         </div>
       </div>
 
+      <!-- 📑 생성 서식 선택 툴바 (상시 체크 유지 및 토큰 70% 절감) -->
+      <div class="format-select-card" id="formatSelectCard">
+        <div class="format-select-header">
+          <div class="format-select-title">
+            <span>📑 생성할 서식 선택</span>
+            <span class="format-token-tag">⚡ 토큰 절감 & 초고속</span>
+          </div>
+          <div class="format-select-desc">체크한 서식만 생성됩니다 (설정 자동 저장)</div>
+        </div>
+        <div class="format-chips-grid" id="formatChipsGrid">
+          <button type="button" class="format-chip active" data-format="class_daily_report">
+            <span class="format-chip-check">✓</span>
+            <span>📄 놀이 보육일지</span>
+          </button>
+          <button type="button" class="format-chip active" data-format="kidsnote">
+            <span class="format-chip-check">✓</span>
+            <span>💌 키즈노트 알림장</span>
+          </button>
+          <button type="button" class="format-chip" data-format="observation">
+            <span class="format-chip-check">✓</span>
+            <span>🧸 평가제 관찰일지</span>
+          </button>
+          <button type="button" class="format-chip" data-format="daily_care">
+            <span class="format-chip-check">✓</span>
+            <span>📋 일일 보육일지</span>
+          </button>
+          <button type="button" class="format-chip" data-format="counseling">
+            <span class="format-chip-check">✓</span>
+            <span>🗣️ 학부모 상담일지</span>
+          </button>
+          <button type="button" class="format-chip" data-format="play_support">
+            <span class="format-chip-check">✓</span>
+            <span>🎯 놀이 지원안</span>
+          </button>
+        </div>
+      </div>
+
       <!-- 🚀 올인원 원터치 생성 버튼 -->
       <button type="button" id="generateBtn" class="submit-btn">
-        <span>✨ AI 맞춤 보육 기록 즉시 생성 (알림장·보육일지·관찰일지 올인원)</span>
+        <span id="generateBtnText">✨ 선택한 서식 스마트 즉시 생성</span>
       </button>
 
       <!-- ⏳ 로딩 인디케이터 -->

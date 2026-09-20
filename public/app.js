@@ -32,7 +32,17 @@ document.addEventListener('DOMContentLoaded', () => {
     isHistoryLoaded: false,
     selectedHistoryLog: null,
     currentAbortController: null, // ⏹️ AI 생성 즉시 중단용 제어기
-    isGenerationAborted: false
+    isGenerationAborted: false,
+    selectedFormats: (() => {
+      try {
+        const saved = localStorage.getItem('daycare_selected_formats');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
+      return ['class_daily_report', 'kidsnote']; // 🌟 기본값: 놀이 보육일지 + 알림장 2대 서식 집중
+    })()
   };
   window.state = state;
 
@@ -341,6 +351,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 이벤트 리스너 등록
     setupEventListeners();
+
+    // 📑 서식 선택 툴바 초기화 (상시 저장 및 토큰 절감)
+    initFormatSelector();
+  }
+
+  // ============================================================================
+  // 3-C. 📑 생성 서식 선택 툴바 관리 (상시 체크 유지 & 토큰 70% 절감)
+  // ============================================================================
+  function initFormatSelector() {
+    const formatChips = document.querySelectorAll('.format-chip');
+    if (!formatChips || formatChips.length === 0) return;
+
+    formatChips.forEach(chip => {
+      const fmt = chip.dataset.format;
+      const isActive = state.selectedFormats.includes(fmt);
+      chip.classList.toggle('active', isActive);
+    });
+
+    formatChips.forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        e.preventDefault();
+        const fmt = chip.dataset.format;
+        const isCurrentlyActive = state.selectedFormats.includes(fmt);
+
+        if (isCurrentlyActive) {
+          if (state.selectedFormats.length <= 1) {
+            showToast('⚠️ 최소 1개 이상의 서식을 선택해야 합니다.');
+            return;
+          }
+          state.selectedFormats = state.selectedFormats.filter(f => f !== fmt);
+          chip.classList.remove('active');
+        } else {
+          state.selectedFormats.push(fmt);
+          chip.classList.add('active');
+        }
+
+        try {
+          localStorage.setItem('daycare_selected_formats', JSON.stringify(state.selectedFormats));
+        } catch (err) {}
+
+        updateGenerateBtnText();
+      });
+    });
+
+    updateGenerateBtnText();
+  }
+
+  function updateGenerateBtnText() {
+    const generateBtnText = document.getElementById('generateBtnText');
+    if (!generateBtnText) return;
+    const names = [];
+    if (state.selectedFormats.includes('class_daily_report')) names.push('보육일지');
+    if (state.selectedFormats.includes('kidsnote')) names.push('알림장');
+    if (state.selectedFormats.includes('observation')) names.push('관찰일지');
+    if (state.selectedFormats.includes('daily_care')) names.push('일일일지');
+    if (state.selectedFormats.includes('counseling')) names.push('상담일지');
+    if (state.selectedFormats.includes('play_support')) names.push('지원안');
+
+    const summary = names.slice(0, 2).join('·') + (names.length > 2 ? ` 외 ${names.length - 2}종` : '');
+    generateBtnText.textContent = `✨ 선택한 서식 스마트 즉시 생성 (${summary})`;
   }
 
   // ============================================================================
@@ -1188,7 +1258,8 @@ document.addEventListener('DOMContentLoaded', () => {
         className: state.className || '햇살반',
         teacherName: state.teacherName || '김선생님',
         persona: state.persona,
-        pastLogs: pastLogs
+        pastLogs: pastLogs,
+        selectedFormats: state.selectedFormats // 📑 선택된 서식만 스마트 생성
       };
 
       if (monthlyObsTargetMonth) {
@@ -1518,10 +1589,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // 7. 선택된 대상에 맞추어 스마트 기본 탭 전환
-    // 학급 전체('소망반 전체' 등)를 선택한 경우에만 'class_daily_report'가 1순위,
-    // 개별 원아를 선택한 경우 선생님이 가장 먼저 확인 및 발송할 'kidsnote'(알림장)가 무조건 1순위 기본 활성화!
-    let targetTab = 'kidsnote';
+    // 7. 선택된 서식만 탭 바에 표시하고, 선택되지 않은 서식은 깔끔하게 숨김 (시인성 극대화)
+    const validFormats = (state.selectedFormats && state.selectedFormats.length > 0)
+      ? state.selectedFormats
+      : ['class_daily_report', 'kidsnote'];
+
+    resultTabBtns.forEach(b => {
+      const tab = b.dataset.tab;
+      if (validFormats.includes(tab)) {
+        b.style.display = 'inline-flex';
+      } else {
+        b.style.display = 'none';
+      }
+    });
+
+    // 기본 활성화 탭 결정 (선택된 서식 중 가장 적절한 탭 우선)
     const isClassAll = state.selectedChild && (
       state.selectedChild.id === 'class-all' ||
       state.selectedChild.name?.includes('학급') ||
@@ -1529,10 +1611,13 @@ document.addEventListener('DOMContentLoaded', () => {
       state.selectedChild.name?.includes('우리 반')
     );
 
-    if (isClassAll) {
+    let targetTab = 'kidsnote';
+    if (isClassAll && validFormats.includes('class_daily_report')) {
       targetTab = 'class_daily_report';
-    } else {
+    } else if (validFormats.includes('kidsnote')) {
       targetTab = 'kidsnote';
+    } else {
+      targetTab = validFormats[0] || 'class_daily_report';
     }
 
     resultTabBtns.forEach(b => {

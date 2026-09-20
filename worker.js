@@ -170,7 +170,8 @@ export default {
             className = env.DEFAULT_CLASS_NAME || '햇살반',
             teacherName = env.DEFAULT_TEACHER_NAME || '김선생님',
             persona = {},
-            monthlyObsOptions = null
+            monthlyObsOptions = null,
+            selectedFormats = ['class_daily_report', 'kidsnote']
           } = body;
 
           if (!childName) {
@@ -212,7 +213,8 @@ export default {
             className,
             teacherName,
             persona,
-            monthlyObsOptions
+            monthlyObsOptions,
+            selectedFormats
           });
 
           return jsonResponse(generated);

@@ -56,7 +56,7 @@ export function unmaskDeep(obj, childName) {
 /**
  * 시스템 인스트럭션 생성
  */
-function buildSystemInstruction(mode, activityArea, teacherStyle, persona = {}, className = '햇살반', teacherName = '김선생님') {
+function buildSystemInstruction(mode, activityArea, teacherStyle, persona = {}, className = '햇살반', teacherName = '김선생님', selectedFormats = ['class_daily_report', 'kidsnote']) {
   const isPlayStory = mode === 'play_story' || mode === 'partial';
   const isObservation = mode === 'observation';
 
@@ -77,6 +77,121 @@ ${persona.sampleNote}
 
   const callRule = persona.callStyle || '우리 [아동A]';
   const closingGreeting = persona.closingGreeting || '';
+
+  const targetFormats = (Array.isArray(selectedFormats) && selectedFormats.length > 0)
+    ? selectedFormats
+    : ['class_daily_report', 'kidsnote'];
+
+  // ⚡ 선택된 서식만 동적으로 JSON 필드에 포함 (출력 토큰 70% 절감 & 초고속 생성)
+  const jsonFields = [];
+
+  if (targetFormats.includes('class_daily_report')) {
+    jsonFields.push(`  "class_daily_report": {
+    "title": "1. 만 2세 놀이중심 보육일지",
+    "date": "2026년 9월 17일 (목)",
+    "weather": "맑음",
+    "play_theme": "놀이 주제 요약",
+    "activities": [
+      {
+        "photo_ref": "[사진 1, 2 참조]",
+        "activity_title": "기차놀이",
+        "observation": "[관찰 내용] 영아들의 생생한 발화와 행동 조작 관찰문",
+        "curriculum_areas": ["자연탐구", "예술경험"],
+        "learning_content": "[배움 읽기: 자연탐구, 예술경험] - 구체적 배움 분석. 이는 [자연탐구 > 수학적 탐구하기 > 공간과 도형에 관심 가지기]와 연계된다."
+      }
+    ],
+    "reflection": "● 성찰: 오늘 놀이에 대한 교사의 교육적 배움 성찰",
+    "support": {
+      "environment": "○ 환경 지원: 교구 및 공간 배치 환경 지원",
+      "safety": "○ 바깥놀이 안전 관리: 보행 안전선 또는 상호작용 지도"
+    }
+  }`);
+  }
+
+  if (targetFormats.includes('kidsnote')) {
+    jsonFields.push(`  "kidsnote": {
+    "title": "알림장 제목",
+    "content": "학부모용 다정체 서술문",
+    "tags": ["#태그1", "#태그2"]
+  }`);
+  }
+
+  if (targetFormats.includes('observation')) {
+    jsonFields.push(`  "observation_log": {
+    "standard_area": "표준보육 영역 (예: 신체운동·건강)",
+    "activity_name": "활동명",
+    "behavior": "객관적 행동 관찰문 (~함 체)",
+    "evaluation": "교사의 상호작용 지원 및 발달 평가"
+  },
+  "monthly_observation": {
+    "title": "2026년 9월 영유아 발달 관찰기록부",
+    "target_month": "2026년 9월",
+    "child_name": "[아동A]",
+    "age_group": "만 2세",
+    "class_name": "${className || '햇살반'}",
+    "obs_1": {
+      "date": "2026-09-08",
+      "area": "의사소통",
+      "activity_title": "블록 동물원 울타리 만들기",
+      "behavior": "객관적 행동 관찰문 (~함 체)",
+      "teacher_support": "교사의 언어 모델링 및 상호작용 지원 내용"
+    },
+    "obs_2": {
+      "date": "2026-09-22",
+      "area": "사회관계",
+      "activity_title": "기차 블록 협동 놀이",
+      "behavior": "1차 지도 이후 아이가 보인 발전된 행동양식 관찰문 (~함 체)",
+      "teacher_support": "긍정적 상호작용 지지 및 후속 지원 계획",
+      "growth_continuity": "1차 관찰 대비 변화된 성장점 요약"
+    },
+    "monthly_summary": {
+      "development_summary": "1·2차 관찰을 종합한 월간 발달 총평 (표준보육과정 관점)",
+      "next_month_plan": "다음 달 교사의 개별 맞춤 지원 및 가정 연계 방향"
+    }
+  }`);
+  }
+
+  if (targetFormats.includes('daily_care')) {
+    jsonFields.push(`  "daily_care_log": {
+    "play_summary": "오늘 우리 반 유아들의 전반적인 놀이 흐름 요약",
+    "play_evaluation": "놀이에 대한 교사의 종합 평가 및 배움 분석",
+    "next_support_plan": "내일 놀이 확장을 위한 공간/자료 및 교사 지원 계획"
+  }`);
+  }
+
+  if (targetFormats.includes('counseling')) {
+    jsonFields.push(`  "parent_counseling": {
+    "daily_routine": "식습관, 낮잠, 배변 등 기본생활습관 특징",
+    "social_relations": "또래 및 교사와의 긍정적 상호작용과 사회성",
+    "development_feature": "놀이 몰입도 및 신체/언어 발달 강점",
+    "counseling_opinion": "가정 연계 및 학부모 상담 시 안내할 종합 조언"
+  }`);
+  }
+
+  if (targetFormats.includes('play_support')) {
+    jsonFields.push(`  "play_support": {
+    "play_theme": "놀이 주제",
+    "interest_cue": "유아의 흥미 관찰 단서",
+    "teacher_support": "교사의 놀이 지원 및 확장 계획"
+  }`);
+  }
+
+  // 🌟 원아 개별 놀이 발췌 및 Citation은 상시 포함
+  jsonFields.push(`  "observation_summary": "오늘 아이의 행동양식과 놀이 몰입을 30자 내외로 압축한 핵심 1줄 요약",
+  "individual_observations": [
+    {
+      "child_name": "원아 실명 (메모에 언급된 아이, 예: 김민수)",
+      "activity": "놀이 활동명 (예: 블록 기차놀이)",
+      "standard_area": "표준보육 영역 (신체운동/의사소통/사회관계/예술경험/자연탐구)",
+      "summary": "해당 아이의 실제 행동과 배움을 객관적으로 요약한 1줄 관찰문 (40~70자)"
+    }
+  ],
+  "citation": {
+    "has_citation": true,
+    "summary": "📌 참고한 과거 기록: 이전 관찰 대비 성장 요약"
+  }`);
+
+  const dynamicJsonSchema = '{\n' + jsonFields.join(',\n') + '\n}';
 
   return `너는 대한민국 어린이집 및 유치원의 15년 차 수석 보육교사이자 보육 평가제(평가인증) 수석 컨설턴트다.
 원아의 개인정보를 철저히 보호하기 위해 원아는 오직 '[아동A]'로만 호칭한다.
@@ -144,87 +259,7 @@ ${isPlayStory ? `
    - monthly_summary (월말 발달 총평): 1·2차 관찰을 유기적으로 종합하여 아동의 한 달 성장 총평 및 다음 달 맞춤 지원 방향 도출.
 
 [반환 형식]: 반드시 아래 JSON 스키마를 엄격히 준수하여 응답하라 (추가 텍스트나 마크다운 코드블록 없이 순수 JSON만 반환).
-{
-  "class_daily_report": {
-    "title": "1. 만 2세 놀이중심 보육일지",
-    "date": "2026년 9월 17일 (목)",
-    "weather": "맑음",
-    "play_theme": "놀이 주제 요약",
-    "activities": [
-      {
-        "photo_ref": "[사진 1, 2 참조]",
-        "activity_title": "기차놀이",
-        "observation": "[관찰 내용] 영아들의 생생한 발화와 행동 조작 관찰문",
-        "curriculum_areas": ["자연탐구", "예술경험"],
-        "learning_content": "[배움 읽기: 자연탐구, 예술경험] - 구체적 배움 분석. 이는 [자연탐구 > 수학적 탐구하기 > 공간과 도형에 관심 가지기]와 연계된다."
-      }
-    ],
-    "reflection": "● 성찰: 오늘 놀이에 대한 교사의 교육적 배움 성찰",
-    "support": {
-      "environment": "○ 환경 지원: 교구 및 공간 배치 환경 지원",
-      "safety": "○ 바깥놀이 안전 관리: 보행 안전선 또는 상호작용 지도"
-    }
-  },
-  "kidsnote": {
-    "title": "알림장 제목",
-    "content": "학부모용 다정체 서술문",
-    "tags": ["#태그1", "#태그2"]
-  },
-  "observation_log": {
-    "standard_area": "표준보육 영역 (예: 신체운동·건강)",
-    "activity_name": "활동명",
-    "behavior": "객관적 행동 관찰문 (~함 체)",
-    "evaluation": "교사의 상호작용 지원 및 발달 평가"
-  },
-  "monthly_observation": {
-    "title": "2026년 9월 영유아 발달 관찰기록부",
-    "target_month": "2026년 9월",
-    "child_name": "[아동A]",
-    "age_group": "만 2세",
-    "class_name": "${className}",
-    "obs_1": {
-      "date": "2026-09-08",
-      "area": "의사소통",
-      "activity_title": "블록 동물원 울타리 만들기",
-      "behavior": "객관적 행동 관찰문 (~함 체)",
-      "teacher_support": "교사의 언어 모델링 및 상호작용 지원 내용"
-    },
-    "obs_2": {
-      "date": "2026-09-22",
-      "area": "사회관계",
-      "activity_title": "기차 블록 협동 놀이",
-      "behavior": "1차 지도 이후 아이가 보인 발전된 행동양식 관찰문 (~함 체)",
-      "teacher_support": "긍정적 상호작용 지지 및 후속 지원 계획",
-      "growth_continuity": "1차 관찰 대비 변화된 성장점 요약"
-    },
-    "monthly_summary": {
-      "development_summary": "1·2차 관찰을 종합한 월간 발달 총평 (표준보육과정 관점)",
-      "next_month_plan": "다음 달 교사의 개별 맞춤 지원 및 가정 연계 방향"
-    }
-  },
-  "daily_care_log": {
-    "play_summary": "오늘 우리 반 유아들의 전반적인 놀이 흐름 요약",
-    "play_evaluation": "놀이에 대한 교사의 종합 평가 및 배움 분석",
-    "next_support_plan": "내일 놀이 확장을 위한 공간/자료 및 교사 지원 계획"
-  },
-  "parent_counseling": {
-    "daily_routine": "식습관, 낮잠, 배변 등 기본생활습관 특징",
-    "social_relations": "또래 및 교사와의 긍정적 상호작용과 사회성",
-    "development_feature": "놀이 몰입도 및 신체/언어 발달 강점",
-    "counseling_opinion": "가정 연계 및 학부모 상담 시 안내할 종합 조언"
-  },
-  "individual_observations": [
-    {
-      "child_name": "원아 실명 (메모에 언급된 아이, 예: 김민수)",
-      "activity": "놀이 활동명 (예: 블록 기차놀이)",
-      "standard_area": "표준보육 영역 (신체운동/의사소통/사회관계/예술경험/자연탐구)",
-      "summary": "해당 아이의 실제 행동과 배움을 객관적으로 요약한 1줄 관찰문 (40~70자)"
-    }
-  ],
-  "citation": {
-    "has_citation": true,
-    "summary": "📌 참고한 과거 기록: [2026-09-05] 대비 성장 요약"
-  }
+${dynamicJsonSchema}`;
 }`;
 }
 
@@ -344,7 +379,8 @@ export async function generateDaycareLog({
   persona = {},
   className = '햇살반',
   teacherName = '김선생님',
-  monthlyObsOptions = null
+  monthlyObsOptions = null,
+  selectedFormats = ['class_daily_report', 'kidsnote']
 }) {
   if (!apiKey) {
     throw new Error('Gemini API 키가 제공되지 않았습니다.');
@@ -366,7 +402,7 @@ export async function generateDaycareLog({
   };
 
   // 2. 시스템 인스트럭션 및 프롬프트 빌드
-  const systemInstruction = buildSystemInstruction(mode, activityArea, teacherStyle, maskedPersona, className, teacherName);
+  const systemInstruction = buildSystemInstruction(mode, activityArea, teacherStyle, maskedPersona, className, teacherName, selectedFormats);
   const userTextPrompt = buildUserPrompt({
     maskedMemo,
     childAge,

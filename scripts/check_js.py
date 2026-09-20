@@ -54,13 +54,22 @@ def check_brackets(filepath):
             # Regex literal check (if preceded by assignment, return, comma, paren, etc.)
             prev_content = content[:i].rstrip()
             if prev_content and prev_content[-1] in '(=,:[!&|?{};\n':
-                # Possible regex literal! Scan until closing unescaped /
+                # Possible regex literal! Scan until closing unescaped / outside character class
                 j = i + 1
+                in_char_class = False
                 while j < len(content) and content[j] != '\n':
                     if content[j] == '\\':
                         j += 2
                         continue
-                    if content[j] == '/':
+                    if content[j] == '[' and not in_char_class:
+                        in_char_class = True
+                        j += 1
+                        continue
+                    if content[j] == ']' and in_char_class:
+                        in_char_class = False
+                        j += 1
+                        continue
+                    if content[j] == '/' and not in_char_class:
                         # End of regex literal!
                         col += (j - i + 1)
                         i = j + 1
@@ -95,7 +104,9 @@ all_ok = True
 targets = [
     'public/app.js',
     'public/gemini-client.js',
+    'api/gemini.js',
     'api/notion.js',
+    'worker.js',
     'public/js/config.js',
     'public/js/auth-gate.js',
     'public/js/children-store.js',
