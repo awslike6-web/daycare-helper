@@ -273,7 +273,8 @@ function buildUserPrompt({
   allergies,
   pastLogs,
   activityArea,
-  mode
+  mode,
+  monthlyObsOptions = null
 }) {
   let prompt = `[원아 기본 정보]
 - 가명: [아동A]

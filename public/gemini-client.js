@@ -397,20 +397,37 @@ ${jsonSchemaStr}
       })
     };
     if (abortSignal) fetchOptions.signal = abortSignal;
-    const response = await fetch(url, fetchOptions);
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Gemini Client Direct Error (${response.status}): ${errText}`);
+    const PRIMARY_MODEL = 'gemini-3.8-flash';
+    const FALLBACK_MODEL = 'gemini-3.6-flash';
+
+    const callDirectGemini = async (modelName) => {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      const response = await fetch(url, fetchOptions);
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Gemini Client Direct Error (${modelName}, status: ${response.status}): ${errText}`);
+      }
+
+      const data = await response.json();
+      const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawContent) {
+        throw new Error(`Gemini 응답 본문이 비어있습니다. (${modelName})`);
+      }
+
+      return JSON.parse(rawContent);
+    };
+
+    let parsed = null;
+    try {
+      parsed = await callDirectGemini(PRIMARY_MODEL);
+    } catch (err) {
+      if (err.name === 'AbortError' || abortSignal?.aborted) throw err;
+      console.warn(`클라이언트 직통 ${PRIMARY_MODEL} 실패, ${FALLBACK_MODEL} 폴백 시도:`, err);
+      parsed = await callDirectGemini(FALLBACK_MODEL);
     }
 
-    const data = await response.json();
-    const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawContent) {
-      throw new Error('Gemini 응답 본문이 비어있습니다.');
-    }
-
-    const parsed = JSON.parse(rawContent);
     const unmasked = unmaskDeep(parsed, childName);
     return { success: true, data: unmasked };
   }
