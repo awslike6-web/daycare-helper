@@ -8,12 +8,16 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 # job id 찾기
-run_id = '35433283038'
+run_id = sys.argv[1] if len(sys.argv) > 1 else '35493465801'
 url = f'https://api.github.com/repos/awslike6-web/daycare-helper/actions/runs/{run_id}/jobs'
 req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
 with urllib.request.urlopen(req) as resp:
     data = json.loads(resp.read().decode('utf-8'))
-    job_id = data['jobs'][0]['id']
+    jobs = data.get('jobs', [])
+    if not jobs:
+        print("No jobs found")
+        sys.exit(1)
+    job_id = jobs[0]['id']
 
 # job log url
 log_url = f'https://api.github.com/repos/awslike6-web/daycare-helper/actions/jobs/{job_id}/logs'

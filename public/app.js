@@ -632,13 +632,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (printMonthlyObsBtn) printMonthlyObsBtn.addEventListener('click', () => window.print());
 
     // 1. 키즈노트 알림장 복사 및 공유
-    copyKidsnoteBtn.addEventListener('click', handleCopyKidsnote);
-    shareKidsnoteBtn.addEventListener('click', handleShareKidsnote);
+    if (copyKidsnoteBtn) copyKidsnoteBtn.addEventListener('click', handleCopyKidsnote);
+    if (shareKidsnoteBtn) shareKidsnoteBtn.addEventListener('click', handleShareKidsnote);
 
     // 2. 평가제 관찰일지 복사
     if (copyObservationBtn) {
       copyObservationBtn.addEventListener('click', () => {
-        const text = `[관찰일지 - ${obsStandardArea.textContent} / ${obsActivityName.textContent}]\n\n[행동 관찰]\n${obsBehaviorContent.value}\n\n[지원 및 평가]\n${obsEvaluationContent.value}`;
+        const text = `[관찰일지 - ${obsStandardArea ? obsStandardArea.textContent : ''} / ${obsActivityName ? obsActivityName.textContent : ''}]\n\n[행동 관찰]\n${obsBehaviorContent ? obsBehaviorContent.value : ''}\n\n[지원 및 평가]\n${obsEvaluationContent ? obsEvaluationContent.value : ''}`;
         copyTextToClipboard(text, '📋 평가제 관찰일지가 복사되었습니다.');
       });
     }
@@ -646,7 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. 일일 보육일지 복사
     if (copyDailyCareBtn) {
       copyDailyCareBtn.addEventListener('click', () => {
-        const text = `[일일 보육일지 - 놀이 평가 및 지원 계획]\n\n1. 놀이 흐름 요약:\n${dailyPlaySummary.value}\n\n2. 교사 종합 평가:\n${dailyPlayEval.value}\n\n3. 내일 놀이 연계 및 지원 계획:\n${dailyNextPlan.value}`;
+        const text = `[일일 보육일지 - 놀이 평가 및 지원 계획]\n\n1. 놀이 흐름 요약:\n${dailyPlaySummary ? dailyPlaySummary.value : ''}\n\n2. 교사 종합 평가:\n${dailyPlayEval ? dailyPlayEval.value : ''}\n\n3. 내일 놀이 연계 및 지원 계획:\n${dailyNextPlan ? dailyNextPlan.value : ''}`;
         copyTextToClipboard(text, '📋 보육일지 놀이평가 및 지원계획이 복사되었습니다.');
       });
     }
@@ -654,7 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. 학부모 상담 면담일지 복사
     if (copyCounselingBtn) {
       copyCounselingBtn.addEventListener('click', () => {
-        const text = `[학부모 상담 면담일지 요약 - ${state.selectedChild?.name || '원아'}]\n\n1. 기본생활습관: ${counselRoutine.value}\n2. 대인관계 및 사회성: ${counselSocial.value}\n3. 발달 특성: ${counselDev.value}\n4. 종합 상담 의견: ${counselOpinion.value}`;
+        const text = `[학부모 상담 면담일지 요약 - ${state.selectedChild?.name || '원아'}]\n\n1. 기본생활습관: ${counselRoutine ? counselRoutine.value : ''}\n2. 대인관계 및 사회성: ${counselSocial ? counselSocial.value : ''}\n3. 발달 특성: ${counselDev ? counselDev.value : ''}\n4. 종합 상담 의견: ${counselOpinion ? counselOpinion.value : ''}`;
         copyTextToClipboard(text, '📋 학부모 상담 일지가 복사되었습니다.');
       });
     }
@@ -662,7 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 5. 놀이 지원안 복사
     if (copyPlaySupportBtn) {
       copyPlaySupportBtn.addEventListener('click', () => {
-        const text = `[놀이 지원 & 환경구성안]\n\n1. 확장 놀이 아이디어:\n${playExtension.value}\n\n2. 추천 준비 교구:\n${playMaterials.value}\n\n3. 교사 추천 발문 팁:\n${playTips.value}`;
+        const text = `[놀이 지원 & 환경구성안]\n\n1. 확장 놀이 아이디어:\n${playExtension ? playExtension.value : ''}\n\n2. 추천 준비 교구:\n${playMaterials ? playMaterials.value : ''}\n\n3. 교사 추천 발문 팁:\n${playTips ? playTips.value : ''}`;
         copyTextToClipboard(text, '📋 놀이 지원 및 환경구성안이 복사되었습니다.');
       });
     }
@@ -711,7 +711,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 노션 저장
-    saveNotionBtn.addEventListener('click', handleSaveNotion);
+    if (saveNotionBtn) {
+      saveNotionBtn.addEventListener('click', () => {
+        if (typeof handleSaveNotion === 'function') {
+          handleSaveNotion();
+        } else if (typeof window.handleSaveNotion === 'function') {
+          window.handleSaveNotion();
+        }
+      });
+    }
 
     // 페르소나 및 설정 모달 열기
     if (headerClassNameBtn) {
@@ -729,16 +737,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (headerPersonaBtn) {
       headerPersonaBtn.addEventListener('click', () => {
         updatePersonaUI();
-        settingsModal.style.display = 'flex';
+        if (settingsModal) settingsModal.style.display = 'flex';
       });
     }
-    settingsBtn.addEventListener('click', () => {
-      updatePersonaUI();
-      settingsModal.style.display = 'flex';
-    });
-    closeSettingsBtn.addEventListener('click', () => {
-      settingsModal.style.display = 'none';
-    });
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', () => {
+        updatePersonaUI();
+        if (settingsModal) settingsModal.style.display = 'flex';
+      });
+    }
+    if (closeSettingsBtn) {
+      closeSettingsBtn.addEventListener('click', () => {
+        if (settingsModal) settingsModal.style.display = 'none';
+      });
+    }
 
     // 🔐 보안 세션 배너 관련 이벤트 리스너
     if (dismissSessionBannerBtn) {
@@ -1689,6 +1701,60 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('ClipboardItem HTML 복사 실패, 텍스트 폴백:', err);
       await copyTextToClipboard(sheetEl.innerText, '📋 텍스트가 복사되었습니다.');
     }
+  }
+
+  // ============================================================================
+  // 11-C. 키즈노트 알림장 복사 및 공유 핸들러
+  // ============================================================================
+  async function handleCopyKidsnote() {
+    const textToCopy = kidsnoteContent ? kidsnoteContent.value : '';
+    if (!textToCopy) {
+      showToast('복사할 알림장 내용이 없습니다.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      showToast('📋 알림장이 클립보드에 복사되었습니다! 키즈노트에 붙여넣으세요.');
+    } catch (e) {
+      if (kidsnoteContent) kidsnoteContent.select();
+      document.execCommand('copy');
+      showToast('📋 복사되었습니다.');
+    }
+  }
+
+  async function handleShareKidsnote() {
+    const textToShare = kidsnoteContent ? kidsnoteContent.value : '';
+    const titleToShare = kidsnoteTitle ? kidsnoteTitle.textContent : '오늘의 알림장';
+
+    if (!textToShare) {
+      showToast('공유할 알림장 내용이 없습니다.');
+      return;
+    }
+
+    // 1. 클립보드에 우선 복사 (안전 보장)
+    try {
+      await navigator.clipboard.writeText(textToShare);
+    } catch (e) {}
+
+    // 2. 모바일 Web Share API 지원 시 공유 다이얼로그 호출
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: titleToShare,
+          text: textToShare
+        });
+        showToast('공유 완료! 키즈노트 앱에 바로 붙여넣으세요.');
+        return;
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Web Share failed:', err);
+        }
+      }
+    }
+
+    // 3. 미지원 환경일 때 안내 팝업 및 복사 완료 안내
+    showToast('📋 알림장이 복사되었습니다. 키즈노트 앱을 열어 붙여넣기 하세요!');
   }
 
   // ============================================================================
