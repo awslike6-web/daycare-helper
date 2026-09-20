@@ -430,6 +430,126 @@ async function handleSaveNotion() {
   }
 }
 
+// 📊 한그루 ERP 영유아 발달평가서 노션 DAILY_LOG_DB 저장
+async function handleSaveHangrooEvalNotion() {
+  const state = window.state || {};
+  const notionConfig = window.NOTION_CONFIG || {};
+  const saveHangrooEvalNotionBtn = document.getElementById('saveHangrooEvalNotionBtn');
+  const hangrooEvalSummaryText = document.getElementById('hangrooEvalSummaryText');
+  const hangrooEvalSupportText = document.getElementById('hangrooEvalSupportText');
+  const rawMemoInput = document.getElementById('rawMemoInput');
+
+  if (!state.lastResult || (!state.lastResult.hangroo_eval && !hangrooEvalSummaryText?.value)) {
+    if (typeof showToast === 'function') showToast('저장할 발달평가 내용이 없습니다. 먼저 생성해주세요.');
+    return;
+  }
+
+  if (saveHangrooEvalNotionBtn) {
+    saveHangrooEvalNotionBtn.disabled = true;
+    saveHangrooEvalNotionBtn.innerHTML = '<span>⏳</span> <span>노션에 발달평가 저장 중...</span>';
+  }
+
+  const todayStr = state.selectedDate || new Date().toISOString().split('T')[0];
+  const childName = state.selectedChild?.name || '원아';
+  const evalData = state.lastResult.hangroo_eval || {};
+  const summaryVal = hangrooEvalSummaryText ? hangrooEvalSummaryText.value.trim() : (evalData.development_summary || '');
+  const supportVal = hangrooEvalSupportText ? hangrooEvalSupportText.value.trim() : (evalData.support_plan || '');
+
+  const pageTitle = `[발달평가] 2026년 1학기 ${childName} 영유아 발달평가서 (한그루 ERP)`;
+  const fullEvalText = `[한그루 ERP 영유아 발달평가서 - ${childName}]\n` +
+    `반명: ${state.className} / 담임: ${state.teacherName}\n` +
+    `평가 학기: 2026학년도 1학기 (3월 ~ 8월 누적 관찰 종합)\n\n` +
+    `■ 아동발달종합평가 (3개 문단)\n${summaryVal}\n\n` +
+    `■ 다음 학기 지원계획 (2개 문단)\n${supportVal}`;
+
+  try {
+    // 1. 노션 직결 브릿지 시도
+    try {
+      let targetChildId = state.selectedChild?.id;
+      if (!targetChildId || targetChildId.startsWith('mock-') || targetChildId.startsWith('sandbox_')) {
+        const matched = state.children?.find(c => c.name === childName && !c.id.startsWith('mock-') && !c.id.startsWith('sandbox_'));
+        if (matched) targetChildId = matched.id;
+      }
+
+      const teacherMap = window.TEACHER_PAGE_MAP || {};
+      const currentTeacherKey = localStorage.getItem('daycare_active_teacher') || (state.className === '소망반' ? 'sister_in_law' : (state.className === '연구반' ? 'sandbox' : 'wife'));
+      const teacherPageId = teacherMap[currentTeacherKey];
+
+      const props = {
+        '기록명/식별자': { title: [{ text: { content: pageTitle } }] },
+        '작성일자': { date: { start: todayStr } },
+        '활동 구분': { select: { name: '발달평가' } },
+        '표준보육 영역': { multi_select: [{ name: '신체운동' }, { name: '기본생활' }, { name: '의사소통' }, { name: '사회관계' }, { name: '자연탐구' }, { name: '예술경험' }] },
+        '원시 메모/키워드': { rich_text: [{ text: { content: (rawMemoInput ? rawMemoInput.value.trim() : '') || `${childName} 1학기 발달평가 종합` } }] },
+        '관찰일지 최종본': { rich_text: [{ text: { content: fullEvalText.slice(0, 1900) } }] },
+        '참조 출처 요약': { rich_text: [{ text: { content: '한그루 ERP 1학기 영유아 발달평가서 (누적 관찰 종합)' } }] },
+        '관찰 요약': { rich_text: [{ text: { content: `${childName} 1학기 종합발달 및 다음 학기 지원계획`.slice(0, 80) } }] }
+      };
+
+      if (targetChildId && !targetChildId.startsWith('mock-') && !targetChildId.startsWith('sandbox_')) {
+        props['원아'] = { relation: [{ id: targetChildId }] };
+      }
+      if (teacherPageId) {
+        props['작성교사'] = { relation: [{ id: teacherPageId }] };
+      }
+
+      await directNotionCall('/pages', 'POST', {
+        parent: { database_id: notionConfig.DAILY_LOG_DB_ID },
+        properties: props
+      });
+
+      state.isHistoryLoaded = false;
+      if (typeof showToast === 'function') showToast(`🎉 노션 DAILY_LOG_DB에 ${childName} 발달평가가 안전하게 저장되었습니다!`);
+      return;
+    } catch (directErr) {
+      console.warn('Direct notion eval save failed, trying worker endpoint:', directErr);
+    }
+
+    // 2. 워커 /api/logs/save 폴백
+    let fallbackChildId = state.selectedChild?.id;
+    if (!fallbackChildId || fallbackChildId.startsWith('mock-') || fallbackChildId.startsWith('sandbox_')) {
+      const matched = state.children?.find(c => c.name === childName && !c.id.startsWith('mock-') && !c.id.startsWith('sandbox_'));
+      if (matched) fallbackChildId = matched.id;
+    }
+
+    const payload = {
+      date: todayStr,
+      childId: fallbackChildId,
+      childName,
+      activityArea: '발달평가',
+      standardArea: '종합발달',
+      rawMemo: rawMemoInput ? rawMemoInput.value.trim() : '',
+      kidsnoteText: '',
+      observationText: fullEvalText,
+      citationSummary: '한그루 ERP 1학기 영유아 발달평가서 (누적 관찰 종합)',
+      obsSummary: `${childName} 1학기 종합발달 및 차기학기 지원계획`.slice(0, 80),
+      referencedLogId: null
+    };
+
+    const res = await fetch('/api/logs/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const json = await res.json();
+    if (json.success) {
+      state.isHistoryLoaded = false;
+      if (typeof showToast === 'function') showToast(`🎉 노션에 ${childName} 발달평가가 성공적으로 저장되었습니다!`);
+    } else {
+      throw new Error(json.error || '저장 실패');
+    }
+  } catch (err) {
+    console.error('Save Hangroo Eval Notion Error:', err);
+    if (typeof showToast === 'function') showToast(`발달평가 노션 저장 오류: ${err.message}`);
+  } finally {
+    if (saveHangrooEvalNotionBtn) {
+      saveHangrooEvalNotionBtn.disabled = false;
+      saveHangrooEvalNotionBtn.innerHTML = '<span>💾</span> <span>노션 DAILY_LOG_DB에 발달평가 저장</span>';
+    }
+  }
+}
+
 // 🌐 전역 네임스페이스 및 하위 호환성 등록
 window.directNotionCall = directNotionCall;
 window.checkHealth = checkHealth;
@@ -437,6 +557,7 @@ window.handleSaveClassReportNotion = handleSaveClassReportNotion;
 window.updateSelectedIndivObsCount = updateSelectedIndivObsCount;
 window.handleSaveIndividualObs = handleSaveIndividualObs;
 window.handleSaveNotion = handleSaveNotion;
+window.handleSaveHangrooEvalNotion = handleSaveHangrooEvalNotion;
 
 window.DaycareNotion = {
   directNotionCall,
@@ -444,5 +565,6 @@ window.DaycareNotion = {
   handleSaveClassReportNotion,
   updateSelectedIndivObsCount,
   handleSaveIndividualObs,
-  handleSaveNotion
+  handleSaveNotion,
+  handleSaveHangrooEvalNotion
 };

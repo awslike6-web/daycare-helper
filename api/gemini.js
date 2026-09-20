@@ -87,23 +87,30 @@ ${persona.sampleNote}
 
   if (targetFormats.includes('class_daily_report')) {
     jsonFields.push(`  "class_daily_report": {
-    "title": "1. 만 2세 놀이중심 보육일지",
-    "date": "2026년 9월 17일 (목)",
+    "title": "주간보육일지 (${className} / 만 2세 / 영아)",
+    "date": "2026년 8월 24일(월)",
     "weather": "맑음",
-    "play_theme": "놀이 주제 요약",
+    "play_theme": "놀이 주제 요약 (예: 구조대 놀이 & 야외 물그림 놀이)",
+    "play_activity": "<놀이 활동명> 영아들의 구체적인 놀이 조작, 친구 및 교사와의 생생한 대화와 상호작용 내용. 놀이 관찰 후 다음날 지원 계획 포함.",
+    "outdoor_play": "<바깥놀이 또는 대체놀이> 야외 또는 대체 공간에서의 구체적 활동 내용",
+    "outdoor_check": "바깥놀이 o / 대체놀이 x",
+    "outdoor_note": "사유 (예: 대체놀이 진행 시 우천 예보로 대체놀이 진행함 등)",
+    "learning": "[배움] 소근육 조절, 눈과 손 협응, 공간 인지, 가작화 놀이 등 표준보육과정 연계 배움 분석",
+    "safety_nutrition": "생활안전 또는 영양교육 식습관 지도 일화",
+    "weekly_evaluation": "이번 주 영아들의 놀이 총평 및 다음 주 예상놀이 지원 계획",
     "activities": [
       {
         "photo_ref": "[사진 1, 2 참조]",
-        "activity_title": "기차놀이",
+        "activity_title": "놀이 활동명",
         "observation": "[관찰 내용] 영아들의 생생한 발화와 행동 조작 관찰문",
-        "curriculum_areas": ["자연탐구", "예술경험"],
-        "learning_content": "[배움 읽기: 자연탐구, 예술경험] - 구체적 배움 분석. 이는 [자연탐구 > 수학적 탐구하기 > 공간과 도형에 관심 가지기]와 연계된다."
+        "curriculum_areas": ["신체운동", "사회관계"],
+        "learning_content": "[배움] 구체적 배움 분석"
       }
     ],
-    "reflection": "● 성찰: 오늘 놀이에 대한 교사의 교육적 배움 성찰",
+    "reflection": "오늘 놀이에 대한 교사의 교육적 배움 성찰",
     "support": {
-      "environment": "○ 환경 지원: 교구 및 공간 배치 환경 지원",
-      "safety": "○ 바깥놀이 안전 관리: 보행 안전선 또는 상호작용 지도"
+      "environment": "교구 및 공간 배치 환경 지원",
+      "safety": "바깥놀이 안전 관리 또는 상호작용 지도"
     }
   }`);
   }
@@ -124,30 +131,53 @@ ${persona.sampleNote}
     "evaluation": "교사의 상호작용 지원 및 발달 평가"
   },
   "monthly_observation": {
-    "title": "2026년 9월 영유아 발달 관찰기록부",
-    "target_month": "2026년 9월",
+    "title": "한그루 ERP 월간 관찰일지 (월 2회)",
+    "target_month": "2026년 8월",
     "child_name": "[아동A]",
     "age_group": "만 2세",
-    "class_name": "${className || '햇살반'}",
+    "class_name": "${className || '소망반'}",
+    "play_obs": {
+      "date": "2026-08-11",
+      "type": "놀이",
+      "activity": "놀이 활동명 (예: 블록 기차놀이)",
+      "content": "미술/블록/신체 등 놀이 상황에서의 아동의 구체적 조작과 몰입, 상호작용 사실 (~함 체)"
+    },
+    "daily_obs": {
+      "date": "2026-08-25",
+      "type": "일상생활",
+      "area": "식사 / 낮잠 / 배변 / 위생 중 택1",
+      "content": "식사, 낮잠, 배변, 위생(양치/손씻기) 등 기본생활습관 실천 구체적 행동 사실 (~함 체)"
+    },
     "obs_1": {
-      "date": "2026-09-08",
+      "date": "2026-08-11",
       "area": "의사소통",
-      "activity_title": "블록 동물원 울타리 만들기",
+      "activity_title": "활동명",
       "behavior": "객관적 행동 관찰문 (~함 체)",
-      "teacher_support": "교사의 언어 모델링 및 상호작용 지원 내용"
+      "teacher_support": "교사의 상호작용 지원 내용"
     },
     "obs_2": {
-      "date": "2026-09-22",
+      "date": "2026-08-25",
       "area": "사회관계",
-      "activity_title": "기차 블록 협동 놀이",
-      "behavior": "1차 지도 이후 아이가 보인 발전된 행동양식 관찰문 (~함 체)",
+      "activity_title": "활동명",
+      "behavior": "발전된 행동양식 관찰문 (~함 체)",
       "teacher_support": "긍정적 상호작용 지지 및 후속 지원 계획",
       "growth_continuity": "1차 관찰 대비 변화된 성장점 요약"
     },
     "monthly_summary": {
-      "development_summary": "1·2차 관찰을 종합한 월간 발달 총평 (표준보육과정 관점)",
-      "next_month_plan": "다음 달 교사의 개별 맞춤 지원 및 가정 연계 방향"
+      "development_summary": "1·2차 관찰을 종합한 월간 발달 총평",
+      "next_month_plan": "다음 달 교사의 맞춤 지원 방향"
     }
+  }`);
+  }
+
+  if (targetFormats.includes('hangroo_eval')) {
+    jsonFields.push(`  "hangroo_eval": {
+    "title": "2026년 1학기 발달평가",
+    "child_name": "[아동A]",
+    "class_name": "${className || '소망반'}",
+    "age_group": "만 2세",
+    "development_summary": "학기 초 적응과 식사/낮잠/배변 기본생활습관 형성 문단, 대·소근육 조절과 흥미 놀이 창의적 확장 문단, 언어/비언어적 의사표현과 또래/교사 긍정적 상호작용 문단을 유기적으로 구성한 3개 문단의 품격 있는 종합평가",
+    "support_plan": "아동의 고유 성향을 존중한 언어 표현 자신감 지원 방안 문단, 좋아하는 놀이를 매개로 또래 어울림과 2학기 감각/경험 확장 지원 방안 문단을 포함한 2개 문단의 교사 지원 계획"
   }`);
   }
 

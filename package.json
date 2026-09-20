@@ -1,6 +1,6 @@
 {
   "name": "daycare-helper",
-  "version": "3.3.3",
+  "version": "3.4.0",
   "description": "어린이집/유치원 교사 맞춤형 AI 보육 비서 (알림장 & 일지 자동화)",
   "main": "worker.js",
   "type": "module",

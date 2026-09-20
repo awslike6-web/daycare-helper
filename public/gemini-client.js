@@ -213,23 +213,30 @@ ${observationGuideline}
 
     if (selectedFormats.includes('class_daily_report')) {
       jsonFields.push(`  "class_daily_report": {
-    "title": "1. ${childAge} 놀이중심 보육일지",
-    "date": "2026년 9월 17일 (목)",
+    "title": "주간보육일지 (${className} / 만 2세 / 영아)",
+    "date": "2026년 8월 24일(월)",
     "weather": "맑음",
-    "play_theme": "놀이 주제 요약 (예: 칙칙폭폭 기차놀이 & 가을 산책 후 신체놀이)",
+    "play_theme": "놀이 주제 요약 (예: 구조대 놀이 & 야외 물그림 놀이)",
+    "play_activity": "<놀이 활동명> 영아들의 구체적인 놀이 조작, 친구 및 교사와의 생생한 대화와 상호작용 내용. 놀이 관찰 후 다음날 지원 계획 포함.",
+    "outdoor_play": "<바깥놀이 또는 대체놀이> 야외 또는 대체 공간에서의 구체적 활동 내용",
+    "outdoor_check": "바깥놀이 o / 대체놀이 x",
+    "outdoor_note": "사유 (예: 대체놀이 진행 시 우천 예보로 대체놀이 진행함 등)",
+    "learning": "[배움] 소근육 조절, 눈과 손 협응, 공간 인지, 가작화 놀이 등 표준보육과정 연계 배움 분석",
+    "safety_nutrition": "생활안전 또는 영양교육 식습관 지도 일화",
+    "weekly_evaluation": "이번 주 영아들의 놀이 총평 및 다음 주 예상놀이 지원 계획",
     "activities": [
       {
         "photo_ref": "[사진 1, 2 참조]",
         "activity_title": "기차놀이",
-        "observation": "[관찰 내용] 영아들은 길게 이어진 파란색 기차 레일 위에... '칙칙폭폭 기차가 출발합니다!' 하고 외친다...",
-        "curriculum_areas": ["자연탐구", "예술경험"],
-        "learning_content": "[배움 읽기: 자연탐구, 예술경험] - 곡선과 직선 레일을 따라 조작하며 공간과 도형의 연속성을 탐색한다. 이는 [자연탐구 > 수학적 탐구하기 > 공간과 도형에 관심 가지기]와 연계된다. - 기차 소리를 내며 역할을 모방하는 가상놀이를 즐긴다. 이는 [예술경험 > 창의적으로 표현하기 > 모방과 극놀이 즐기기]와 연계된다."
+        "observation": "[관찰 내용] 영아들의 생생한 발화와 행동 조작 관찰문",
+        "curriculum_areas": ["신체운동", "사회관계"],
+        "learning_content": "[배움] 구체적 배움 분석"
       }
     ],
-    "reflection": "● 성찰: 영아들이 블록으로 길게 만들던 기차 형태에 착안해 실제 조립형 레일과 다양한 기차 놀잇감을 연계해 주었더니, 궤도 운동에 높은 집중력을 보였다. 야외에서는 대근육 신체활동을 진행해 아이들의 신체 발산 욕구를 시원하게 충족시켜 줄 수 있었다.",
+    "reflection": "오늘 놀이에 대한 교사의 교육적 배움 성찰",
     "support": {
-      "environment": "○ 환경 지원: 기차 레일이 바닥에서 분리되지 않도록 넓은 공간에 안전하게 배치하고 기차 교구를 넉넉히 제공함.",
-      "safety": "○ 바깥놀이 안전 관리: 짧은 산책 시 보행 안전선을 지키도록 손잡고 이동을 지도하며 충분한 안전거리를 유지시킴."
+      "environment": "교구 및 공간 배치 환경 지원",
+      "safety": "바깥놀이 안전 관리 또는 상호작용 지도"
     }
   }`);
     }
@@ -250,30 +257,53 @@ ${observationGuideline}
     "evaluation": "교사의 상호작용 지원 및 발달 평가 (~를 지원함)"
   },
   "monthly_observation": {
-    "title": "${targetMonthStr} 영유아 발달 관찰기록부",
+    "title": "한그루 ERP 월간 관찰일지 (월 2회)",
     "target_month": "${targetMonthStr}",
     "child_name": "[아동A]",
     "age_group": "${childAge}",
     "class_name": "${className}",
+    "play_obs": {
+      "date": "${obsDate1}",
+      "type": "놀이",
+      "activity": "놀이 활동명 (예: 블록 기차놀이)",
+      "content": "미술/블록/신체 등 놀이 상황에서의 아동의 구체적 조작과 몰입, 상호작용 사실 (~함 체)"
+    },
+    "daily_obs": {
+      "date": "${obsDate2}",
+      "type": "일상생활",
+      "area": "식사 / 낮잠 / 배변 / 위생 중 택1",
+      "content": "식사, 낮잠, 배변, 위생(양치/손씻기) 등 기본생활습관 실천 구체적 행동 사실 (~함 체)"
+    },
     "obs_1": {
       "date": "${obsDate1}",
       "area": "${obsArea1}",
       "activity_title": "활동명",
       "behavior": "객관적 행동 관찰문 (~함 체)",
-      "teacher_support": "교사의 언어 모델링 및 상호작용 지원 내용"
+      "teacher_support": "교사의 상호작용 지원 내용"
     },
     "obs_2": {
       "date": "${obsDate2}",
       "area": "${obsArea2}",
       "activity_title": "활동명",
-      "behavior": "1차 지도 이후 아이가 보인 발전된 행동양식 관찰문 (~함 체)",
+      "behavior": "발전된 행동양식 관찰문 (~함 체)",
       "teacher_support": "긍정적 상호작용 지지 및 후속 지원 계획",
       "growth_continuity": "1차 관찰 대비 변화된 성장점 요약"
     },
     "monthly_summary": {
-      "development_summary": "1·2차 관찰을 종합한 월간 발달 총평 (표준보육과정 관점)",
+      "development_summary": "1·2차 관찰을 종합한 월간 발달 총평",
       "next_month_plan": "다음 달 교사의 개별 맞춤 지원 및 가정 연계 방향"
     }
+  }`);
+    }
+
+    if (selectedFormats.includes('hangroo_eval')) {
+      jsonFields.push(`  "hangroo_eval": {
+    "title": "2026년 1학기 발달평가",
+    "child_name": "[아동A]",
+    "class_name": "${className}",
+    "age_group": "${childAge}",
+    "development_summary": "학기 초 적응과 식사/낮잠/배변 기본생활습관 형성 문단, 대·소근육 조절과 흥미 놀이 창의적 확장 문단, 언어/비언어적 의사표현과 또래/교사 긍정적 상호작용 문단을 유기적으로 구성한 3개 문단의 품격 있는 종합평가",
+    "support_plan": "아동의 고유 성향을 존중한 언어 표현 자신감 지원 방안 문단, 좋아하는 놀이를 매개로 또래 어울림과 2학기 감각/경험 확장 지원 방안 문단을 포함한 2개 문단의 교사 지원 계획"
   }`);
     }
 

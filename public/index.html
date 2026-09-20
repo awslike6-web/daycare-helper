@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json?v=20260920_v16">
-  <link rel="stylesheet" href="./style.css?v=20260920_v16">
+  <link rel="manifest" href="./manifest.json?v=20260920_v17">
+  <link rel="stylesheet" href="./style.css?v=20260920_v17">
 </head>
 <body>
   <div class="app-container">
@@ -193,7 +193,7 @@
         <div class="format-chips-grid" id="formatChipsGrid">
           <button type="button" class="format-chip active" data-format="class_daily_report">
             <span class="format-chip-check">✓</span>
-            <span>📄 놀이 보육일지</span>
+            <span>📄 한그루 보육일지</span>
           </button>
           <button type="button" class="format-chip active" data-format="kidsnote">
             <span class="format-chip-check">✓</span>
@@ -201,7 +201,11 @@
           </button>
           <button type="button" class="format-chip" data-format="observation">
             <span class="format-chip-check">✓</span>
-            <span>🧸 평가제 관찰일지</span>
+            <span>🧸 한그루 관찰일지 (월2회)</span>
+          </button>
+          <button type="button" class="format-chip" data-format="hangroo_eval">
+            <span class="format-chip-check">✓</span>
+            <span>📊 한그루 발달평가 (학기별)</span>
           </button>
           <button type="button" class="format-chip" data-format="daily_care">
             <span class="format-chip-check">✓</span>
@@ -238,8 +242,9 @@
         <div class="result-tabs-scroll">
           <div class="result-tabs" id="resultTabs">
             <button type="button" class="result-tab-btn active" data-tab="kidsnote">💌 키즈노트 알림장</button>
-            <button type="button" class="result-tab-btn" data-tab="class_daily_report" id="tabClassDailyReport" style="background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8; font-weight: 700;">📄 놀이 보육일지 (공문서)</button>
-            <button type="button" class="result-tab-btn" data-tab="observation">🧸 평가제 관찰일지</button>
+            <button type="button" class="result-tab-btn" data-tab="class_daily_report" id="tabClassDailyReport" style="background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8; font-weight: 700;">📄 한그루 보육일지</button>
+            <button type="button" class="result-tab-btn" data-tab="observation">🧸 한그루 관찰일지 (월2회)</button>
+            <button type="button" class="result-tab-btn" data-tab="hangroo_eval" id="tabHangrooEval" style="background: #FEF3C7; border-color: #F59E0B; color: #B45309; font-weight: 700;">📊 한그루 발달평가</button>
             <button type="button" class="result-tab-btn" data-tab="daily_care">📋 일일 보육일지</button>
             <button type="button" class="result-tab-btn" data-tab="counseling">🗣️ 학부모 상담일지</button>
             <button type="button" class="result-tab-btn" data-tab="play_support">🎯 놀이 지원안</button>
@@ -251,16 +256,19 @@
           <div class="result-card-header" style="margin-bottom: 12px;">
             <div>
               <div class="result-title" style="display: flex; align-items: center; gap: 6px;">
-                <span>📄 놀이중심 보육일지</span>
-                <span class="tag-badge" style="background: #DBEAFE; color: #1E40AF;">표준보육과정 연계 · 결재 서식</span>
+                <span>📄 한그루 ERP 보육일지</span>
+                <span class="tag-badge" style="background: #DBEAFE; color: #1E40AF;">한그루 ERP & 표준보육과정 결재 서식</span>
               </div>
               <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-                어린이집 정식 공문서 규격입니다. [한글(HWP) 표 복사]를 누르면 표 그대로 붙여넣기됩니다.
+                한그루 ERP 주간/일일 서식 규격입니다. [한그루 복사]를 누르면 &lt;놀이&gt;, [배움], &lt;바깥놀이&gt;가 완벽히 복사됩니다.
               </div>
             </div>
-            <div style="display: flex; gap: 6px;">
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button type="button" id="copyHangrooReportBtn" class="action-btn" style="padding: 6px 12px; font-size: 12px; background: #4F46E5; color: white; border: none; font-weight: 700;">
+                <span>📋</span> <span>한그루 복사</span>
+              </button>
               <button type="button" id="copyHwpTableBtn" class="action-btn action-btn-copy" style="padding: 6px 10px; font-size: 12px;">
-                <span>📋</span> <span>한글(HWP) 표 복사</span>
+                <span>📑</span> <span>한글(HWP) 표 복사</span>
               </button>
               <button type="button" id="printReportBtn" class="action-btn action-btn-share" style="padding: 6px 10px; font-size: 12px; background: #059669;">
                 <span>🖨️</span> <span>A4 인쇄/PDF</span>
@@ -440,9 +448,12 @@
                 월 2회 연속 관찰 및 월말 발달 종합 총평 리포트입니다.
               </div>
             </div>
-            <div style="display: flex; gap: 6px;">
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button type="button" id="copyHangrooObsBtn" class="action-btn" style="padding: 6px 12px; font-size: 12px; background: #4F46E5; color: white; border: none; font-weight: 700;">
+                <span>📋</span> <span>한그루 복사</span>
+              </button>
               <button type="button" id="copyMonthlyObsHwpBtn" class="action-btn action-btn-copy" style="padding: 6px 10px; font-size: 12px;">
-                <span>📋</span> <span>한글(HWP) 표 복사</span>
+                <span>📑</span> <span>한글(HWP) 표 복사</span>
               </button>
               <button type="button" id="printMonthlyObsBtn" class="action-btn action-btn-share" style="padding: 6px 10px; font-size: 12px; background: #059669;">
                 <span>🖨️</span> <span>A4 인쇄/PDF</span>
@@ -609,6 +620,56 @@
             </button>
             <button type="button" id="saveNotionBtn" class="action-btn action-btn-save">
               <span>💾</span> <span>노션 DAILY_LOG_DB 안전 저장</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 탭 2-B: 📊 한그루 ERP 발달평가 (아동발달종합평가 & 지원계획) -->
+        <div class="result-card" id="hangrooEvalCard" style="display: none;">
+          <div class="result-card-header" style="margin-bottom: 12px;">
+            <div>
+              <div class="result-title" style="display: flex; align-items: center; gap: 6px;">
+                <span>📊 한그루 ERP 학기 발달평가</span>
+                <span class="tag-badge" style="background: #FEF3C7; color: #92400E;">학기별 1회 · ERP 전산 결재 서식</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                6개월 누적 관찰을 종합한 아동발달종합평가(3문단) 및 차기학기 지원계획(2문단)입니다.
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button type="button" id="copyHangrooEvalBtn" class="action-btn" style="padding: 6px 12px; font-size: 12px; background: #4F46E5; color: white; border: none; font-weight: 700;">
+                <span>📋</span> <span>한그루 복사</span>
+              </button>
+              <button type="button" id="copyHangrooEvalHwpBtn" class="action-btn action-btn-copy" style="padding: 6px 10px; font-size: 12px;">
+                <span>📑</span> <span>한글(HWP) 표 복사</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 아동발달종합평가 & 지원계획 시트 -->
+          <div class="official-obs-sheet" id="officialHangrooEvalSheet" style="padding: 16px; background: white; border: 1px solid #E2E8F0; border-radius: 12px;">
+            <div style="font-size: 15px; font-weight: 800; color: #1E293B; margin-bottom: 12px;" id="hangrooEvalDocTitle">2026년 1학기 발달평가</div>
+            
+            <div style="margin-bottom: 16px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-size: 13px; font-weight: 700; color: #1E40AF;">🏆 아동발달종합평가 (3개 문단)</span>
+                <span style="font-size: 11px; color: #64748B;">적응/기본생활 · 신체/놀이 · 사회성/언어</span>
+              </div>
+              <textarea id="hangrooEvalSummaryText" class="result-body-text" rows="6" style="width: 100%; line-height: 1.6; font-size: 13px;"></textarea>
+            </div>
+
+            <div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-size: 13px; font-weight: 700; color: #047857;">🌱 다음 학기 지원계획 (2개 문단)</span>
+                <span style="font-size: 11px; color: #64748B;">언어/표현 지원 · 또래/감각 확장</span>
+              </div>
+              <textarea id="hangrooEvalSupportText" class="result-body-text" rows="5" style="width: 100%; line-height: 1.6; font-size: 13px;"></textarea>
+            </div>
+          </div>
+
+          <div class="action-btn-row" style="margin-top: 14px;">
+            <button type="button" id="saveHangrooEvalNotionBtn" class="action-btn action-btn-save">
+              <span>💾</span> <span>노션 DAILY_LOG_DB에 발달평가 저장</span>
             </button>
           </div>
         </div>
@@ -1328,12 +1389,12 @@
   </div>
 
   <!-- 🧩 2026 도메인별 모듈 분리 파이프라인 (AI 토큰 70% 절감 & 고속 로드) -->
-  <script src="./js/config.js?v=20260920_v16"></script>
-  <script src="./js/auth-gate.js?v=20260920_v16"></script>
-  <script src="./js/children-store.js?v=20260920_v16"></script>
-  <script src="./js/notion-bridge.js?v=20260920_v16"></script>
-  <script src="./js/history-viewer.js?v=20260920_v16"></script>
-  <script src="./gemini-client.js?v=20260920_v16"></script>
-  <script src="./app.js?v=20260920_v16"></script>
+  <script src="./js/config.js?v=20260920_v18"></script>
+  <script src="./js/auth-gate.js?v=20260920_v18"></script>
+  <script src="./js/children-store.js?v=20260920_v18"></script>
+  <script src="./js/notion-bridge.js?v=20260920_v18"></script>
+  <script src="./js/history-viewer.js?v=20260920_v18"></script>
+  <script src="./gemini-client.js?v=20260920_v18"></script>
+  <script src="./app.js?v=20260920_v18"></script>
 </body>
 </html>

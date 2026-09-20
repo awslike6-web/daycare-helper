@@ -182,10 +182,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const repReflectionText = document.getElementById('repReflectionText');
   const repSupportEnvText = document.getElementById('repSupportEnvText');
   const repSupportSafetyText = document.getElementById('repSupportSafetyText');
+  const copyHangrooReportBtn = document.getElementById('copyHangrooReportBtn');
   const copyHwpTableBtn = document.getElementById('copyHwpTableBtn');
   const printReportBtn = document.getElementById('printReportBtn');
   const copyFullReportTextBtn = document.getElementById('copyFullReportTextBtn');
   const saveClassReportNotionBtn = document.getElementById('saveClassReportNotionBtn');
+
+  // 📊 한그루 ERP 발달평가 요소들
+  const tabHangrooEval = document.getElementById('tabHangrooEval');
+  const hangrooEvalCard = document.getElementById('hangrooEvalCard');
+  const hangrooEvalDocTitle = document.getElementById('hangrooEvalDocTitle');
+  const hangrooEvalSummaryText = document.getElementById('hangrooEvalSummaryText');
+  const hangrooEvalSupportText = document.getElementById('hangrooEvalSupportText');
+  const copyHangrooEvalBtn = document.getElementById('copyHangrooEvalBtn');
+  const copyHangrooEvalHwpBtn = document.getElementById('copyHangrooEvalHwpBtn');
+  const saveHangrooEvalNotionBtn = document.getElementById('saveHangrooEvalNotionBtn');
+  const copyHangrooObsBtn = document.getElementById('copyHangrooObsBtn');
 
   // 🧩 감지된 원아별 놀이 요약 (교사 1초 눈 검수 & 개별 저장) 요소들
   const individualObsCard = document.getElementById('individualObsCard');
@@ -601,10 +613,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.add('active');
         const tab = btn.dataset.tab;
         
-        // 5대 서식 + 공문서 카드 전체 숨김 후 선택된 탭만 노출
+        // 5대 서식 + 한그루 서식 카드 전체 숨김 후 선택된 탭만 노출
         if (classDailyReportCard) classDailyReportCard.style.display = 'none';
         kidsnoteCard.style.display = 'none';
         observationCard.style.display = 'none';
+        if (hangrooEvalCard) hangrooEvalCard.style.display = 'none';
         if (dailyCareCard) dailyCareCard.style.display = 'none';
         if (counselingCard) counselingCard.style.display = 'none';
         if (playSupportCard) playSupportCard.style.display = 'none';
@@ -612,13 +625,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tab === 'class_daily_report' && classDailyReportCard) classDailyReportCard.style.display = 'block';
         else if (tab === 'kidsnote') kidsnoteCard.style.display = 'flex';
         else if (tab === 'observation') observationCard.style.display = 'block';
+        else if (tab === 'hangroo_eval' && hangrooEvalCard) hangrooEvalCard.style.display = 'block';
         else if (tab === 'daily_care' && dailyCareCard) dailyCareCard.style.display = 'flex';
         else if (tab === 'counseling' && counselingCard) counselingCard.style.display = 'flex';
         else if (tab === 'play_support' && playSupportCard) playSupportCard.style.display = 'flex';
       });
     });
 
-    // 0. 처형분 실무 공문서 버튼 (한글 표 복사, A4 인쇄, 노션 저장)
+    // 0. 한그루 ERP 및 실무 공문서 버튼 (한그루 복사, 한글 표 복사, A4 인쇄, 노션 저장)
+    if (copyHangrooReportBtn) copyHangrooReportBtn.addEventListener('click', handleCopyHangrooReport);
     if (copyHwpTableBtn) copyHwpTableBtn.addEventListener('click', handleCopyHwpTable);
     if (printReportBtn) printReportBtn.addEventListener('click', () => window.print());
     if (copyFullReportTextBtn) copyFullReportTextBtn.addEventListener('click', handleCopyFullReportText);
@@ -627,9 +642,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 0-A. 🧩 감지된 원아별 놀이 요약 분할 저장 버튼
     if (btnSaveIndividualObs) btnSaveIndividualObs.addEventListener('click', handleSaveIndividualObs);
 
-    // 0-B. 🧸 평가제 월간 연속 관찰기록부 버튼 (한글 표 복사, A4 인쇄)
+    // 0-B. 🧸 한그루 ERP 월간 관찰일지 버튼 (한그루 복사, 한글 표 복사, A4 인쇄)
+    if (copyHangrooObsBtn) copyHangrooObsBtn.addEventListener('click', handleCopyHangrooObs);
     if (copyMonthlyObsHwpBtn) copyMonthlyObsHwpBtn.addEventListener('click', handleCopyMonthlyObsHwp);
     if (printMonthlyObsBtn) printMonthlyObsBtn.addEventListener('click', () => window.print());
+
+    // 0-C. 📊 한그루 ERP 발달평가 버튼 (한그루 복사, 한글 복사, 노션 저장)
+    if (copyHangrooEvalBtn) copyHangrooEvalBtn.addEventListener('click', handleCopyHangrooEval);
+    if (copyHangrooEvalHwpBtn) copyHangrooEvalHwpBtn.addEventListener('click', handleCopyHangrooEvalHwp);
+    if (saveHangrooEvalNotionBtn) saveHangrooEvalNotionBtn.addEventListener('click', handleSaveHangrooEvalNotion);
 
     // 1. 키즈노트 알림장 복사 및 공유
     if (copyKidsnoteBtn) copyKidsnoteBtn.addEventListener('click', handleCopyKidsnote);
@@ -1447,13 +1468,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (repReflectionText) {
-        repReflectionText.textContent = rep?.reflection ? rep.reflection.replace(/^●\s*성찰:\s*/, '') : (dc.play_evaluation || '유아들의 흥미를 반영한 놀이 연계로 높은 몰입도를 보였다.');
+        repReflectionText.textContent = rep?.reflection ? rep.reflection.replace(/^●\s*성찰:\s*/, '') : (rep?.weekly_evaluation || dc.play_evaluation || '유아들의 흥미를 반영한 놀이 연계로 높은 몰입도를 보였다.');
       }
       if (repSupportEnvText) {
         repSupportEnvText.textContent = rep?.support?.environment ? rep.support.environment.replace(/^○\s*환경\s*지원:\s*/, '') : (dc.next_support_plan || '안전한 공간 확보 및 충분한 놀이 교구 배치 지원.');
       }
       if (repSupportSafetyText) {
-        repSupportSafetyText.textContent = rep?.support?.safety ? rep.support.safety.replace(/^○\s*바깥놀이\s*안전\s*관리:\s*/, '').replace(/^○\s*상호작용\s*지원:\s*/, '') : '짧은 산책 시 보행 안전선을 지키고 상호작용 간 안전거리를 유지하도록 지도함.';
+        if (rep?.outdoor_play) {
+          const outdoorStatus = rep.outdoor_check || '진행(O)';
+          const outdoorNote = rep.outdoor_note ? ` (사유: ${rep.outdoor_note})` : '';
+          const safetyText = rep.safety_nutrition ? ` / [안전·영양교육] ${rep.safety_nutrition}` : '';
+          repSupportSafetyText.textContent = `<바깥놀이: ${outdoorStatus}${outdoorNote}> ${rep.outdoor_play}${safetyText}`;
+        } else {
+          repSupportSafetyText.textContent = rep?.support?.safety ? rep.support.safety.replace(/^○\s*바깥놀이\s*안전\s*관리:\s*/, '').replace(/^○\s*상호작용\s*지원:\s*/, '') : '짧은 산책 시 보행 안전선을 지키고 상호작용 간 안전거리를 유지하도록 지도함.';
+        }
       }
     }
 
@@ -1539,24 +1567,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (monthlyObsTeacherName) monthlyObsTeacherName.textContent = teacherDisplayName;
     if (monthlyObsPeriod) monthlyObsPeriod.textContent = `${targetMonthStr} (상순 1회 + 하순 1회 연속 관찰)`;
 
-    // 1차 관찰 바인딩
-    const obs1Date = mob?.obs_1?.date || (monthlyObsDate1?.value || '2026-09-08');
-    const obs1Area = mob?.obs_1?.area || (monthlyObsArea1?.value || obs.standard_area || '의사소통');
+    // 1차 관찰 바인딩 (한그루 [놀이] 또는 obs_1)
+    const playObs = mob?.play_obs || mob?.obs_1 || {};
+    const obs1Date = playObs.date || (monthlyObsDate1?.value || '2026-09-08');
+    const obs1Area = playObs.area || (mob?.play_obs ? '놀이' : (monthlyObsArea1?.value || obs.standard_area || '의사소통'));
     if (obs1DateMeta) obs1DateMeta.textContent = `${obs1Date} (${getDayOfWeekName(obs1Date)})`;
     if (obs1AreaBadge) obs1AreaBadge.textContent = obs1Area;
-    if (obs1ActivityTitle) obs1ActivityTitle.textContent = mob?.obs_1?.activity_title || obs.activity_name || state.activityArea;
-    if (obs1BehaviorText) obs1BehaviorText.textContent = mob?.obs_1?.behavior || obs.behavior || '';
-    if (obs1SupportText) obs1SupportText.textContent = mob?.obs_1?.teacher_support || obs.evaluation || '';
+    if (obs1ActivityTitle) obs1ActivityTitle.textContent = playObs.activity_title || obs.activity_name || state.activityArea;
+    if (obs1BehaviorText) obs1BehaviorText.textContent = playObs.behavior || obs.behavior || '';
+    if (obs1SupportText) obs1SupportText.textContent = playObs.teacher_support || obs.evaluation || '';
 
-    // 2차 관찰 바인딩 (연속성)
-    const obs2Date = mob?.obs_2?.date || (monthlyObsDate2?.value || '2026-09-22');
-    const obs2Area = mob?.obs_2?.area || (monthlyObsArea2?.value || '사회관계');
+    // 2차 관찰 바인딩 (한그루 [일상생활] 또는 obs_2)
+    const dailyObs = mob?.daily_obs || mob?.obs_2 || {};
+    const obs2Date = dailyObs.date || (monthlyObsDate2?.value || '2026-09-22');
+    const obs2Area = dailyObs.area || (mob?.daily_obs ? '일상생활' : (monthlyObsArea2?.value || '사회관계'));
     if (obs2DateMeta) obs2DateMeta.textContent = `${obs2Date} (${getDayOfWeekName(obs2Date)})`;
     if (obs2AreaBadge) obs2AreaBadge.textContent = obs2Area;
-    if (obs2ActivityTitle) obs2ActivityTitle.textContent = mob?.obs_2?.activity_title || state.activityArea;
-    if (obs2BehaviorText) obs2BehaviorText.textContent = mob?.obs_2?.behavior || (obs.behavior ? `1차 지도 이후 ${obs.behavior}` : '');
-    if (obs2SupportText) obs2SupportText.textContent = mob?.obs_2?.teacher_support || (obs.evaluation || '');
-    if (obs2GrowthText) obs2GrowthText.textContent = mob?.obs_2?.growth_continuity || '1차 상호작용 지원 이후 상황을 수용하고 긍정적으로 반응하는 발전적 행동 변화를 보임.';
+    if (obs2ActivityTitle) obs2ActivityTitle.textContent = dailyObs.activity_title || state.activityArea;
+    if (obs2BehaviorText) obs2BehaviorText.textContent = dailyObs.behavior || (obs.behavior ? `1차 지도 이후 ${obs.behavior}` : '');
+    if (obs2SupportText) obs2SupportText.textContent = dailyObs.teacher_support || (obs.evaluation || '');
+    if (obs2GrowthText) obs2GrowthText.textContent = dailyObs.growth_continuity || mob?.obs_2?.growth_continuity || '1차 상호작용 지원 이후 상황을 수용하고 긍정적으로 반응하는 발전적 행동 변화를 보임.';
 
     // 월말 종합 총평 바인딩
     if (monthlySummaryDevText) {
@@ -1568,9 +1598,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 기존 단일 폼 필드 채우기 (하위 호환)
     if (obsStandardArea) obsStandardArea.textContent = `표준보육 영역: ${obs1Area}`;
-    if (obsActivityName) obsActivityName.textContent = `활동: ${mob?.obs_1?.activity_title || obs.activity_name || state.activityArea}`;
-    if (obsBehaviorContent) obsBehaviorContent.value = mob?.obs_1?.behavior || obs.behavior || '';
-    if (obsEvaluationContent) obsEvaluationContent.value = mob?.obs_1?.teacher_support || obs.evaluation || '';
+    if (obsActivityName) obsActivityName.textContent = `활동: ${playObs.activity_title || obs.activity_name || state.activityArea}`;
+    if (obsBehaviorContent) obsBehaviorContent.value = playObs.behavior || obs.behavior || '';
+    if (obsEvaluationContent) obsEvaluationContent.value = playObs.teacher_support || obs.evaluation || '';
+
+    // 2-B. 📊 한그루 ERP 발달평가 (아동발달종합평가 3문단 + 차기 지원계획 2문단) 채우기
+    const he = data.hangroo_eval;
+    if (he || (state.selectedFormats && state.selectedFormats.includes('hangroo_eval'))) {
+      if (tabHangrooEval) tabHangrooEval.style.display = 'inline-flex';
+      const evalChildName = state.selectedChild ? `${state.selectedChild.name} (${state.selectedChild.age || '만 2세'})` : '원아 (만 2세)';
+      if (hangrooEvalDocTitle) hangrooEvalDocTitle.textContent = `${evalChildName} 1학기 발달평가서 (한그루 ERP 규격)`;
+      if (hangrooEvalSummaryText) {
+        hangrooEvalSummaryText.value = he?.development_summary || (mob?.monthly_summary?.development_summary ? `${mob.monthly_summary.development_summary}\n\n신체운동 및 기본생활 영역에서 능동적인 태도를 보이며 고른 발달을 나타냄.` : '');
+      }
+      if (hangrooEvalSupportText) {
+        hangrooEvalSupportText.value = he?.support_plan || (mob?.monthly_summary?.next_month_plan ? `${mob.monthly_summary.next_month_plan}\n\n또래 간 긍정적인 상호작용과 언어 표현 확장을 돕기 위한 모델링 및 환경 구성을 지속 지원함.` : '');
+      }
+    }
 
     // 3. 일일 보육일지 (놀이 평가 및 내일 지원) 채우기
     if (dailyPlaySummary) dailyPlaySummary.value = dc.play_summary || '';
@@ -1626,6 +1670,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let targetTab = 'kidsnote';
     if (isClassAll && validFormats.includes('class_daily_report')) {
       targetTab = 'class_daily_report';
+    } else if (validFormats.includes('class_daily_report') && !validFormats.includes('kidsnote') && !validFormats.includes('observation')) {
+      targetTab = 'class_daily_report';
+    } else if (validFormats.includes('hangroo_eval') && !validFormats.includes('kidsnote') && !validFormats.includes('class_daily_report')) {
+      targetTab = 'hangroo_eval';
     } else if (validFormats.includes('kidsnote')) {
       targetTab = 'kidsnote';
     } else {
@@ -1638,6 +1686,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (classDailyReportCard) classDailyReportCard.style.display = targetTab === 'class_daily_report' ? 'block' : 'none';
     if (kidsnoteCard) kidsnoteCard.style.display = targetTab === 'kidsnote' ? 'flex' : 'none';
     if (observationCard) observationCard.style.display = targetTab === 'observation' ? 'block' : 'none';
+    if (hangrooEvalCard) hangrooEvalCard.style.display = targetTab === 'hangroo_eval' ? 'block' : 'none';
     if (dailyCareCard) dailyCareCard.style.display = targetTab === 'daily_care' ? 'flex' : 'none';
     if (counselingCard) counselingCard.style.display = targetTab === 'counseling' ? 'flex' : 'none';
     if (playSupportCard) playSupportCard.style.display = targetTab === 'play_support' ? 'flex' : 'none';
@@ -1700,6 +1749,213 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.warn('ClipboardItem HTML 복사 실패, 텍스트 폴백:', err);
       await copyTextToClipboard(sheetEl.innerText, '📋 텍스트가 복사되었습니다.');
+    }
+  }
+
+  // ============================================================================
+  // 11-B2. 🧸 한그루 ERP 3대 서식 전용 복사 및 노션 연동 핸들러 (v3.4.0)
+  // ============================================================================
+
+  // 1. 📄 한그루 ERP 보육일지 텍스트 복사 (한그루 ERP 웹 시스템 Ctrl+V 규격)
+  async function handleCopyHangrooReport() {
+    const rep = state.lastResult?.class_daily_report;
+    if (!rep) {
+      showToast('복사할 보육일지 내용이 없습니다. 먼저 생성해주세요.');
+      return;
+    }
+
+    const ageText = state.selectedChild?.age || (state.className && state.className.includes('사랑') ? '만 0세' : '만 2세');
+    const targetDateObj = state.selectedDate ? new Date(state.selectedDate + 'T00:00:00') : new Date();
+    const dateStr = rep.date || targetDateObj.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+
+    let actText = '';
+    if (Array.isArray(rep.activities) && rep.activities.length > 0) {
+      actText = rep.activities.map((a, i) => {
+        const actTitle = a.activity_title || `${i + 1}. 놀이 활동`;
+        const obs = a.observation || '';
+        const lrn = a.learning_content || '';
+        return `<${actTitle}>\n[배움] ${lrn}\n[관찰] ${obs}`;
+      }).join('\n\n');
+    } else if (rep.play_activity) {
+      actText = `<${rep.play_theme || '놀이 활동'}>\n[배움] ${rep.learning || ''}\n[관찰] ${rep.play_activity}`;
+    }
+
+    const outdoorCheck = rep.outdoor_check || '진행(O)';
+    const outdoorText = rep.outdoor_play || rep.support?.safety || '미세먼지 보통으로 안전 수칙을 지키며 야외 바깥놀이 진행.';
+    const outdoorNote = rep.outdoor_note ? ` (사유: ${rep.outdoor_note})` : '';
+    const safetyText = rep.safety_nutrition || '식사 전 손 씻기 및 실내외 보행 안전 지도를 실시함.';
+    const reflection = rep.reflection || rep.weekly_evaluation || '유아들의 흥미를 반영한 확장 놀이로 높은 몰입과 자발적 탐색을 관찰함.';
+    const envSupport = rep.support?.environment || '놀이 공간 확보 및 조작 교구 추가 배치 지원.';
+
+    let childObsSummary = '';
+    const indivObs = state.lastResult?.individual_observations;
+    if (Array.isArray(indivObs) && indivObs.length > 0) {
+      childObsSummary = '\n\n========================================\n[원아별 놀이 관찰 연동]\n========================================\n' + indivObs.map(item => {
+        const name = item.child_name || '원아';
+        const sum = item.summary || item.observation_summary || '';
+        return `- ${name}: ${sum}`;
+      }).join('\n');
+    }
+
+    const fullHangrooReport = `[한그루 ERP 보육일지 - ${state.className} (${ageText})]\n` +
+      `작성일: ${dateStr} | 담임: ${state.teacherName}\n` +
+      `놀이 주제: ${rep.play_theme || '자유놀이'}\n\n` +
+      `========================================\n` +
+      `■ 놀이 실행 및 배움\n` +
+      `========================================\n` +
+      `${actText}\n\n` +
+      `========================================\n` +
+      `■ 바깥놀이 / 대체놀이\n` +
+      `========================================\n` +
+      `진행 여부: ${outdoorCheck}${outdoorNote}\n` +
+      `활동 내용: ${outdoorText}\n\n` +
+      `========================================\n` +
+      `■ 안전 및 영양 교육\n` +
+      `========================================\n` +
+      `${safetyText}\n\n` +
+      `========================================\n` +
+      `■ 놀이 평가 및 지원 계획\n` +
+      `========================================\n` +
+      `[성찰 및 평가] ${reflection}\n` +
+      `[환경 및 교사 지원] ${envSupport}` +
+      childObsSummary;
+
+    await copyTextToClipboard(fullHangrooReport, '📋 한그루 ERP 보육일지 규격으로 복사되었습니다! ERP에 붙여넣으세요.');
+  }
+
+  // 2. 🧸 한그루 ERP 관찰일지(월 2회: 놀이 1건 + 일상생활 1건) 텍스트 복사
+  async function handleCopyHangrooObs() {
+    const mob = state.lastResult?.monthly_observation;
+    const obs = state.lastResult?.observation_log;
+    if (!mob && !obs) {
+      showToast('복사할 관찰일지 내용이 없습니다. 먼저 생성해주세요.');
+      return;
+    }
+
+    const childName = state.selectedChild?.name || '원아';
+    const ageText = state.selectedChild?.age || '만 2세';
+    const targetMonthStr = mob?.target_month || (monthlyObsTargetMonth?.value ? `${monthlyObsTargetMonth.value.split('-')[0]}년 ${parseInt(monthlyObsTargetMonth.value.split('-')[1])}월` : '2026년 9월');
+
+    const playData = mob?.play_obs || mob?.obs_1 || {};
+    const playDate = playData.date || (monthlyObsDate1?.value || '2026-09-08');
+    const playArea = playData.area || '놀이 (신체·탐구)';
+    const playTitle = playData.activity_title || obs?.activity_name || '놀이 활동';
+    const playBehavior = playData.behavior || obs?.behavior || '';
+    const playSupport = playData.teacher_support || obs?.evaluation || '';
+
+    const dailyData = mob?.daily_obs || mob?.obs_2 || {};
+    const dailyDate = dailyData.date || (monthlyObsDate2?.value || '2026-09-22');
+    const dailyArea = dailyData.area || '일상생활 (식사·낮잠·배변·위생)';
+    const dailyTitle = dailyData.activity_title || '일상생활 습관';
+    const dailyBehavior = dailyData.behavior || '';
+    const dailySupport = dailyData.teacher_support || '';
+    const growthText = dailyData.growth_continuity || mob?.obs_2?.growth_continuity || '';
+
+    const fullHangrooObs = `[한그루 ERP 월간 관찰일지 (월 2회) - ${childName} (${ageText})]\n` +
+      `반명: ${state.className} | 담임: ${state.teacherName} | 관찰월: ${targetMonthStr}\n\n` +
+      `========================================\n` +
+      `■ 1회차: [놀이] 관찰 (${playDate})\n` +
+      `========================================\n` +
+      `영역: ${playArea}\n` +
+      `활동명: ${playTitle}\n\n` +
+      `[관찰 내용]\n` +
+      `${playBehavior}\n\n` +
+      `[교사 지원 및 평가]\n` +
+      `${playSupport}\n\n` +
+      `========================================\n` +
+      `■ 2회차: [일상생활] 관찰 (${dailyDate})\n` +
+      `========================================\n` +
+      `영역: ${dailyArea}\n` +
+      `구분: ${dailyTitle}\n\n` +
+      `[관찰 내용]\n` +
+      `${dailyBehavior}\n\n` +
+      `[교사 지원 및 평가]\n` +
+      `${dailySupport}` +
+      (growthText ? `\n\n[발달 연속성 및 성장 변화]\n${growthText}` : '') +
+      (mob?.monthly_summary?.development_summary ? `\n\n========================================\n■ 월말 발달 종합 총평\n========================================\n${mob.monthly_summary.development_summary}` : '');
+
+    await copyTextToClipboard(fullHangrooObs, '📋 한그루 ERP 관찰일지(놀이 1건 + 일상생활 1건)가 복사되었습니다!');
+  }
+
+  // 3. 📊 한그루 ERP 발달평가서(종합평가 + 지원계획) 텍스트 복사
+  async function handleCopyHangrooEval() {
+    const evalData = state.lastResult?.hangroo_eval;
+    const summaryVal = hangrooEvalSummaryText ? hangrooEvalSummaryText.value.trim() : (evalData?.development_summary || '');
+    const supportVal = hangrooEvalSupportText ? hangrooEvalSupportText.value.trim() : (evalData?.support_plan || '');
+
+    if (!summaryVal && !supportVal) {
+      showToast('복사할 발달평가 내용이 없습니다. 먼저 생성해주세요.');
+      return;
+    }
+
+    const childName = state.selectedChild?.name || '원아';
+    const ageText = state.selectedChild?.age || '만 2세';
+
+    const fullHangrooEval = `[한그루 ERP 영유아 발달평가서 - ${childName} (${ageText})]\n` +
+      `반명: ${state.className} | 담임: ${state.teacherName}\n` +
+      `평가 주기: 2026학년도 1학기 (3월 ~ 8월 누적 관찰 종합)\n\n` +
+      `■ 아동발달종합평가 (3개 문단)\n` +
+      `${summaryVal}\n\n` +
+      `■ 다음 학기 지원계획 (2개 문단)\n` +
+      `${supportVal}`;
+
+    await copyTextToClipboard(fullHangrooEval, '📋 한그루 ERP 발달평가서가 복사되었습니다! ERP에 붙여넣으세요.');
+  }
+
+  // 4. 📊 한그루 ERP 발달평가서 한글(HWP) 표 복사
+  async function handleCopyHangrooEvalHwp() {
+    const sheetEl = document.getElementById('officialHangrooEvalSheet');
+    if (!sheetEl) {
+      showToast('복사할 발달평가 내용이 없습니다.');
+      return;
+    }
+    try {
+      const htmlContent = sheetEl.outerHTML;
+      const textContent = sheetEl.innerText;
+      if (navigator.clipboard && window.ClipboardItem) {
+        const blobHtml = new Blob([htmlContent], { type: 'text/html' });
+        const blobText = new Blob([textContent], { type: 'text/plain' });
+        await navigator.clipboard.write([new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })]);
+        showToast('🎉 한글(HWP) 표 복사 완료! 한글 문서에 Ctrl+V 하시면 발달평가서가 표 그대로 붙여넣기됩니다.');
+      } else {
+        await copyTextToClipboard(textContent, '📋 발달평가 텍스트가 복사되었습니다.');
+      }
+    } catch (err) {
+      console.warn('ClipboardItem HTML 복사 실패, 텍스트 폴백:', err);
+      await copyTextToClipboard(sheetEl.innerText, '📋 발달평가 텍스트가 복사되었습니다.');
+    }
+  }
+
+  // 5. 📊 한그루 ERP 발달평가서 노션 저장 핸들러
+  async function handleSaveHangrooEvalNotion() {
+    if (typeof window.handleSaveHangrooEvalNotion === 'function') {
+      return window.handleSaveHangrooEvalNotion();
+    } else if (window.DaycareNotion && typeof window.DaycareNotion.handleSaveHangrooEvalNotion === 'function') {
+      return window.DaycareNotion.handleSaveHangrooEvalNotion();
+    } else {
+      showToast('노션 연동 모듈이 준비되지 않았습니다.');
+    }
+  }
+
+  // 6. 📄 보육일지 노션 저장 래퍼
+  async function handleSaveClassReportNotion() {
+    if (typeof window.handleSaveClassReportNotion === 'function') {
+      return window.handleSaveClassReportNotion();
+    } else if (window.DaycareNotion && typeof window.DaycareNotion.handleSaveClassReportNotion === 'function') {
+      return window.DaycareNotion.handleSaveClassReportNotion();
+    } else {
+      showToast('노션 연동 모듈이 준비되지 않았습니다.');
+    }
+  }
+
+  // 7. 🧩 원아별 개별 관찰일지 노션 분할 저장 래퍼
+  async function handleSaveIndividualObs() {
+    if (typeof window.handleSaveIndividualObs === 'function') {
+      return window.handleSaveIndividualObs();
+    } else if (window.DaycareNotion && typeof window.DaycareNotion.handleSaveIndividualObs === 'function') {
+      return window.DaycareNotion.handleSaveIndividualObs();
+    } else {
+      showToast('노션 연동 모듈이 준비되지 않았습니다.');
     }
   }
 
