@@ -69,9 +69,59 @@ async function handleSaveClassReportNotion() {
 
   try {
     const todayStr = state.selectedDate || new Date().toISOString().split('T')[0];
-    const rep = state.lastResult.class_daily_report || {};
-    const activitiesSummary = (rep.activities || []).map(a => `${a.photo_ref || ''} ${a.activity_title || ''}\n- 관찰: ${a.observation || ''}\n- 배움: ${a.learning_content || ''}`).join('\n\n');
-    const fullDailyLog = `[${rep.title || '놀이중심 보육일지'}]\n주제: ${rep.play_theme || ''}\n\n[놀이 실행 및 배움 읽기]\n${activitiesSummary}\n\n[교사의 성찰 및 지원 내용]\n${rep.reflection || ''}\n- ${rep.support?.environment || ''}\n- ${rep.support?.safety || ''}`;
+    const ageText = state.selectedChild?.age || (state.className && state.className.includes('사랑') ? '만 0세' : '만 2세');
+    
+    let actText = '';
+    if (Array.isArray(rep.activities) && rep.activities.length > 0) {
+      actText = rep.activities.map((a, i) => {
+        const actTitle = a.activity_title || `${i + 1}. 놀이 활동`;
+        const obs = a.observation || '';
+        const lrn = a.learning_content || '';
+        return `<${actTitle}>\n[배움] ${lrn}\n[관찰] ${obs}`;
+      }).join('\n\n');
+    } else if (rep.play_activity) {
+      actText = `<${rep.play_theme || '놀이 활동'}>\n[배움] ${rep.learning || ''}\n[관찰] ${rep.play_activity}`;
+    }
+
+    const outdoorCheck = rep.outdoor_check || '진행(O)';
+    const outdoorText = rep.outdoor_play || rep.support?.safety || '미세먼지 보통으로 안전 수칙을 지키며 야외 바깥놀이 진행.';
+    const outdoorNote = rep.outdoor_note ? ` (사유: ${rep.outdoor_note})` : '';
+    const safetyText = rep.safety_nutrition || '식사 전 손 씻기 및 실내외 보행 안전 지도를 실시함.';
+    const reflection = rep.reflection || rep.weekly_evaluation || '유아들의 흥미를 반영한 확장 놀이로 높은 몰입과 자발적 탐색을 관찰함.';
+    const envSupport = rep.support?.environment || '놀이 공간 확보 및 조작 교구 추가 배치 지원.';
+
+    let childObsSummary = '';
+    const indivObs = state.lastResult?.individual_observations;
+    if (Array.isArray(indivObs) && indivObs.length > 0) {
+      childObsSummary = '\n\n========================================\n[원아별 놀이 관찰 연동]\n========================================\n' + indivObs.map(item => {
+        const name = item.child_name || '원아';
+        const sum = item.summary || item.observation_summary || '';
+        return `- ${name}: ${sum}`;
+      }).join('\n');
+    }
+
+    const fullDailyLog = `[한그루 ERP 보육일지 - ${state.className} (${ageText})]\n` +
+      `작성일: ${todayStr} | 담임: ${state.teacherName}\n` +
+      `놀이 주제: ${rep.play_theme || '자유놀이'}\n\n` +
+      `========================================\n` +
+      `■ 놀이 실행 및 배움\n` +
+      `========================================\n` +
+      `${actText}\n\n` +
+      `========================================\n` +
+      `■ 바깥놀이 / 대체놀이\n` +
+      `========================================\n` +
+      `진행 여부: ${outdoorCheck}${outdoorNote}\n` +
+      `활동 내용: ${outdoorText}\n\n` +
+      `========================================\n` +
+      `■ 안전 및 영양 교육\n` +
+      `========================================\n` +
+      `${safetyText}\n\n` +
+      `========================================\n` +
+      `■ 놀이 평가 및 지원 계획\n` +
+      `========================================\n` +
+      `[성찰 및 평가] ${reflection}\n` +
+      `[환경 및 교사 지원] ${envSupport}` +
+      childObsSummary;
 
     // 1. 노션 직결 브릿지 시도
     try {

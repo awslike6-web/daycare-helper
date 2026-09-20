@@ -265,32 +265,22 @@ ${observationGuideline}
     "play_obs": {
       "date": "${obsDate1}",
       "type": "놀이",
-      "activity": "놀이 활동명 (예: 블록 기차놀이)",
-      "content": "미술/블록/신체 등 놀이 상황에서의 아동의 구체적 조작과 몰입, 상호작용 사실 (~함 체)"
+      "area": "${obsArea1 || '신체운동'}",
+      "activity_title": "놀이 활동명 (예: 블록 기차놀이)",
+      "behavior": "미술/블록/신체 등 놀이 상황에서의 아동의 구체적 조작과 몰입, 상호작용 객관적 관찰문 (~함 체)",
+      "teacher_support": "교사의 언어 모델링 및 상호작용 지원 내용"
     },
     "daily_obs": {
       "date": "${obsDate2}",
       "type": "일상생활",
-      "area": "식사 / 낮잠 / 배변 / 위생 중 택1",
-      "content": "식사, 낮잠, 배변, 위생(양치/손씻기) 등 기본생활습관 실천 구체적 행동 사실 (~함 체)"
-    },
-    "obs_1": {
-      "date": "${obsDate1}",
-      "area": "${obsArea1}",
-      "activity_title": "활동명",
-      "behavior": "객관적 행동 관찰문 (~함 체)",
-      "teacher_support": "교사의 상호작용 지원 내용"
-    },
-    "obs_2": {
-      "date": "${obsDate2}",
-      "area": "${obsArea2}",
-      "activity_title": "활동명",
-      "behavior": "발전된 행동양식 관찰문 (~함 체)",
-      "teacher_support": "긍정적 상호작용 지지 및 후속 지원 계획",
-      "growth_continuity": "1차 관찰 대비 변화된 성장점 요약"
+      "area": "${obsArea2 || '식사'}",
+      "activity_title": "기본생활습관 활동명",
+      "behavior": "식사, 낮잠, 배변, 위생 등 일상생활 실천 구체적 행동 및 1차 지도 후 발전적 변화 (~함 체)",
+      "teacher_support": "교사의 기본생활습관 격려 및 후속 지원 계획",
+      "growth_continuity": "1차 놀이 관찰 대비 변화된 성장점 요약"
     },
     "monthly_summary": {
-      "development_summary": "1·2차 관찰을 종합한 월간 발달 총평",
+      "development_summary": "1·2차 관찰을 종합한 월간 발달 총평 (표준보육과정 관점)",
       "next_month_plan": "다음 달 교사의 개별 맞춤 지원 및 가정 연계 방향"
     }
   }`);
