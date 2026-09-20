@@ -182,9 +182,9 @@ async function handleSaveIndividualObs() {
     const itemData = (state.lastResult.individual_observations && state.lastResult.individual_observations[idx]) || {};
 
     const inputEl = document.getElementById(`indiv-obs-input-${idx}`);
-    const summaryText = inputEl ? inputEl.value.trim() : (itemData.observation_summary || '');
+    const summaryText = inputEl ? inputEl.value.trim() : (itemData.summary || itemData.observation_summary || '');
     const standardArea = itemData.standard_area || '신체운동';
-    const activityName = itemData.activity_name || state.activityArea || '놀이 활동';
+    const activityName = itemData.activity || itemData.activity_name || state.activityArea || '놀이 활동';
 
     if (btnSaveIndividualObsText) {
       btnSaveIndividualObsText.textContent = `⏳ 노션 DB에 저장 중 (${savedCount + 1}/${checkedBoxes.length}) - ${childName}...`;

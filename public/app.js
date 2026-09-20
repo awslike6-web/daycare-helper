@@ -1474,8 +1474,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
           const childName = item.child_name || `원아 ${idx + 1}`;
           const standardArea = item.standard_area || '신체운동';
-          const activityName = item.activity_name || state.activityArea || '놀이 활동';
-          const summary = item.observation_summary || '';
+          const activityName = item.activity || item.activity_name || state.activityArea || '놀이 활동';
+          const summary = item.summary || item.observation_summary || '';
 
           itemEl.innerHTML = `
             <div class="indiv-obs-top-row">
