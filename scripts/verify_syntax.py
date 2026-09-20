@@ -27,7 +27,7 @@ def check_js_syntax(path):
     print(f"[{path}] Code Tokens -> curlies: {c}, parens: {p}, brackets: {b}")
     return c == 0 and p == 0 and b == 0
 
-files = ['api/notion.js', 'public/app.js', 'worker.js']
+files = ['public/app.js', 'public/gemini-client.js', 'worker.js']
 all_pass = True
 for f in files:
     if not check_js_syntax(f):

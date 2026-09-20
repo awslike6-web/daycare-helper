@@ -204,35 +204,6 @@ ${observationGuideline}
 `;
     }
 
-    const prompt = `너는 대한민국 어린이집 15년 차 수석 보육교사이자 보육 평가제 수석 컨설턴트다.
-원아의 개인정보를 철저히 보호하기 위해 원아는 오직 '[아동A]'로만 호칭한다.
-
-[선생님 스타일 & 페르소나]
-- 소속 반: '${className}'
-- 선생님 호칭: '${teacherName}'
-- 원아 호칭: '${callStyle}'
-- 이모지 스타일: ${emojiRule}
-${sampleText}
-${closingGreeting ? `- 단골 맺음말 지침: 본문 끝부분에 다음 맺음말을 자연스럽게 반영하라: "${closingGreeting}"` : ''}
-
-${parentStyleGuideline}
-
-${modeInstruction}
-
-[품격 있는 긍정 서술 원칙 (필수)]
-- '실패', '미숙', '부족', '산만' 등 아이나 교사에게 부정적이거나 단정적인 어휘는 일체 사용하지 않는다.
-- 블록이 무너지거나 어려움이 생겨도 좌절하지 않고 미소 지으며 다시 시도하는 '회복탄력성'과 '배움의 호기심'으로 아름답게 승화하여 서술한다.
-
-[원아 정보]
-- 가명: [아동A] (${childAge})
-- 특이사항/성향: ${childTraits || '특이사항 없음'}
-- 학부모 성향/선호 스타일: ${parentStyle || '일반 다정형'}
-- 주의사항/알레르기: ${allergies || '없음'}
-${pastLogText}
-
-교사 관찰 메모:
-${maskedMemo}
-
     const selectedFormats = (Array.isArray(payload.selectedFormats) && payload.selectedFormats.length > 0)
       ? payload.selectedFormats
       : ['class_daily_report', 'kidsnote'];
