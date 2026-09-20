@@ -2008,5 +2008,130 @@ body {
   }
 }
 
+/* ==========================================================================
+   🧩 감지된 원아별 놀이 요약 (Human-in-the-Loop 교사 검수 및 개별 저장)
+   ========================================================================== */
+.individual-obs-box {
+  background: #F8FAFC;
+  border: 1px solid #CBD5E1;
+  border-radius: var(--radius-lg);
+  padding: 14px;
+}
+
+.individual-obs-item {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.individual-obs-item.active {
+  border-color: var(--primary);
+  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.1);
+}
+
+.individual-obs-item.saved {
+  background: #F0FDF4;
+  border-color: #86EFAC;
+}
+
+.indiv-obs-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.indiv-obs-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.indiv-obs-check-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.indiv-obs-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.indiv-obs-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1E293B;
+}
+
+.indiv-obs-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.indiv-obs-badge-area {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #EEF2FF;
+  color: #4338CA;
+}
+
+.indiv-obs-badge-activity {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #F1F5F9;
+  color: #475569;
+}
+
+.indiv-obs-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.indiv-obs-input {
+  flex: 1;
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #1E293B;
+  background: #F8FAFC;
+  border: 1px solid #CBD5E1;
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.indiv-obs-input:focus {
+  background: #FFFFFF;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.indiv-obs-status-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: #059669;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
 
 

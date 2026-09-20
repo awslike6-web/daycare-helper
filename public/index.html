@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json?v=20260920_v6">
-  <link rel="stylesheet" href="./style.css?v=20260920_v6">
+  <link rel="manifest" href="./manifest.json?v=20260920_v7">
+  <link rel="stylesheet" href="./style.css?v=20260920_v7">
 </head>
 <body>
   <div class="app-container">
@@ -22,7 +22,7 @@
       <div class="brand-area">
         <span class="brand-logo">🧸</span>
         <div>
-          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v2.6</span></div>
+          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v2.7</span></div>
           <div class="brand-sub" id="headerDateText">오늘의 보육 기록</div>
         </div>
       </div>
@@ -302,6 +302,35 @@
                   <span id="repSupportSafetyText">짧은 산책 시 보행 안전선을 지키도록 손잡고 이동을 지도하였으며, 광장 술래잡기 시 친구들과 부딪히거나 넘어지지 않도록 충분한 안전거리를 유지시킴.</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- 🧩 감지된 원아별 놀이 요약 (Human-in-the-Loop 교사 1초 눈 검수 & 개별 저장) -->
+          <div class="individual-obs-box" id="individualObsCard" style="display: none; margin-top: 16px;">
+            <div class="individual-obs-header">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 16px;">🧩</span>
+                  <span style="font-size: 13px; font-weight: 700; color: #1E293B;">감지된 원아별 놀이 요약</span>
+                  <span class="tag-badge" style="background: #FEF3C7; color: #92400E; font-size: 10px;">교사 눈 검수 승인제</span>
+                </div>
+                <span id="individualObsCountBadge" style="font-size: 11px; font-weight: 600; color: #4F46E5;">0명 감지됨</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted);">
+                우리 반 놀이 메모에서 언급된 원아들의 행동 팩트입니다. 내용을 확인/수정하신 후 체크된 원아만 개별 관찰일지 DB에 반영하세요.
+              </div>
+            </div>
+
+            <!-- 동적으로 생성될 아이별 검수 리스트 -->
+            <div class="individual-obs-list" id="individualObsList" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+              <!-- JS가 렌더링 -->
+            </div>
+
+            <!-- 개별 저장 액션 바 -->
+            <div class="individual-obs-actions" style="margin-top: 10px; display: flex; justify-content: flex-end;">
+              <button type="button" id="btnSaveIndividualObs" class="action-btn" style="background: #059669; color: white; border: none; font-weight: 700; padding: 8px 14px; border-radius: 8px; font-size: 12px;">
+                <span>💾</span> <span id="btnSaveIndividualObsText">선택한 원아 개별 관찰일지 DB에 반영</span>
+              </button>
             </div>
           </div>
 
@@ -1178,7 +1207,7 @@
     <div class="toast" id="toastMessage">클립보드에 복사되었습니다.</div>
   </div>
 
-  <script src="./gemini-client.js?v=20260920_v6"></script>
-  <script src="./app.js?v=20260920_v6"></script>
+  <script src="./gemini-client.js?v=20260920_v7"></script>
+  <script src="./app.js?v=20260920_v7"></script>
 </body>
 </html>

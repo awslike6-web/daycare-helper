@@ -223,6 +223,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const copyFullReportTextBtn = document.getElementById('copyFullReportTextBtn');
   const saveClassReportNotionBtn = document.getElementById('saveClassReportNotionBtn');
 
+  // 🧩 감지된 원아별 놀이 요약 (교사 1초 눈 검수 & 개별 저장) 요소들
+  const individualObsCard = document.getElementById('individualObsCard');
+  const individualObsCountBadge = document.getElementById('individualObsCountBadge');
+  const individualObsList = document.getElementById('individualObsList');
+  const btnSaveIndividualObs = document.getElementById('btnSaveIndividualObs');
+  const btnSaveIndividualObsText = document.getElementById('btnSaveIndividualObsText');
+
   // 📂 지난 보육 기록 보관함 DOM 요소들
   const historyModal = document.getElementById('historyModal');
   const btnCloseHistoryModal = document.getElementById('btnCloseHistoryModal');
@@ -983,6 +990,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (printReportBtn) printReportBtn.addEventListener('click', () => window.print());
     if (copyFullReportTextBtn) copyFullReportTextBtn.addEventListener('click', handleCopyFullReportText);
     if (saveClassReportNotionBtn) saveClassReportNotionBtn.addEventListener('click', handleSaveClassReportNotion);
+
+    // 0-A. 🧩 감지된 원아별 놀이 요약 분할 저장 버튼
+    if (btnSaveIndividualObs) btnSaveIndividualObs.addEventListener('click', handleSaveIndividualObs);
 
     // 0-B. 🧸 평가제 월간 연속 관찰기록부 버튼 (한글 표 복사, A4 인쇄)
     if (copyMonthlyObsHwpBtn) copyMonthlyObsHwpBtn.addEventListener('click', handleCopyMonthlyObsHwp);
@@ -2284,6 +2294,65 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // 0-B. 🧩 감지된 원아별 놀이 요약 (Human-in-the-Loop 교사 1초 눈 검수 목록) 채우기
+    const indivObs = data.individual_observations;
+    if (individualObsCard && individualObsList) {
+      if (Array.isArray(indivObs) && indivObs.length > 0) {
+        individualObsCard.style.display = 'block';
+        if (individualObsCountBadge) {
+          individualObsCountBadge.textContent = `${indivObs.length}명 감지됨`;
+        }
+        individualObsList.innerHTML = '';
+
+        indivObs.forEach((item, idx) => {
+          const itemEl = document.createElement('div');
+          itemEl.className = 'individual-obs-item active';
+          itemEl.id = `indiv-obs-item-${idx}`;
+
+          const childName = item.child_name || `원아 ${idx + 1}`;
+          const standardArea = item.standard_area || '신체운동';
+          const activityName = item.activity_name || state.activityArea || '놀이 활동';
+          const summary = item.observation_summary || '';
+
+          itemEl.innerHTML = `
+            <div class="indiv-obs-top-row">
+              <div class="indiv-obs-meta">
+                <label class="indiv-obs-check-label">
+                  <input type="checkbox" class="indiv-obs-checkbox" checked data-idx="${idx}" data-child-name="${childName}">
+                  <span class="indiv-obs-name">👶 ${childName}</span>
+                </label>
+                <div class="indiv-obs-badges">
+                  <span class="indiv-obs-badge-area">${standardArea}</span>
+                  <span class="indiv-obs-badge-activity">${activityName}</span>
+                </div>
+              </div>
+              <span class="indiv-obs-status-tag" id="indiv-obs-status-${idx}" style="display: none;">
+                ✓ 저장됨
+              </span>
+            </div>
+            <div class="indiv-obs-input-row">
+              <input type="text" class="indiv-obs-input" id="indiv-obs-input-${idx}" value="${summary.replace(/"/g, '&quot;')}" placeholder="원아의 관찰 요약 (1초 수정 가능)" data-original="${summary.replace(/"/g, '&quot;')}">
+            </div>
+          `;
+
+          // 체크박스 토글 시 스타일 및 버튼 텍스트 카운트 갱신
+          const chk = itemEl.querySelector('.indiv-obs-checkbox');
+          if (chk) {
+            chk.addEventListener('change', (e) => {
+              itemEl.classList.toggle('active', e.target.checked);
+              updateSelectedIndivObsCount();
+            });
+          }
+
+          individualObsList.appendChild(itemEl);
+        });
+
+        updateSelectedIndivObsCount();
+      } else {
+        individualObsCard.style.display = 'none';
+      }
+    }
+
     // 1. 키즈노트 알림장 채우기
     kidsnoteTitle.textContent = kn.title || '오늘의 알림장';
     kidsnoteContent.value = kn.content || '';
@@ -2524,6 +2593,148 @@ document.addEventListener('DOMContentLoaded', () => {
       if (saveClassReportNotionBtn) {
         saveClassReportNotionBtn.disabled = false;
         saveClassReportNotionBtn.innerHTML = '<span>💾</span> <span>노션 보육일지 DB 저장</span>';
+      }
+    }
+  }
+
+  // 🧩 감지된 원아별 체크박스 카운트 업데이트 헬퍼
+  function updateSelectedIndivObsCount() {
+    if (!individualObsList || !btnSaveIndividualObsText) return;
+    const checkedBoxes = individualObsList.querySelectorAll('.indiv-obs-checkbox:checked');
+    const count = checkedBoxes.length;
+    btnSaveIndividualObsText.textContent = count > 0
+      ? `선택한 원아 (${count}명) 개별 관찰일지 DB에 반영`
+      : '선택한 원아 없음 (체크 필요)';
+    if (btnSaveIndividualObs) {
+      btnSaveIndividualObs.disabled = count === 0;
+    }
+  }
+
+  // ============================================================================
+  // 11-C. 🧩 감지된 원아별 놀이 요약 개별 분할 저장 핸들러 (Human-in-the-Loop)
+  // ============================================================================
+  async function handleSaveIndividualObs() {
+    if (!state.lastResult || !state.lastResult.individual_observations) {
+      showToast('저장할 개별 관찰 데이터가 없습니다.');
+      return;
+    }
+
+    const checkedBoxes = individualObsList.querySelectorAll('.indiv-obs-checkbox:checked');
+    if (!checkedBoxes || checkedBoxes.length === 0) {
+      showToast('선택된 원아가 없습니다. 저장할 원아를 체크해주세요.');
+      return;
+    }
+
+    if (btnSaveIndividualObs) {
+      btnSaveIndividualObs.disabled = true;
+      if (btnSaveIndividualObsText) {
+        btnSaveIndividualObsText.textContent = `⏳ 노션 DB에 분할 저장 중 (0/${checkedBoxes.length})...`;
+      }
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const currentTeacherKey = localStorage.getItem('daycare_active_teacher') || (state.className === '소망반' ? 'sister_in_law' : (state.className === '연구반' ? 'sandbox' : 'wife'));
+    const teacherPageId = TEACHER_PAGE_MAP[currentTeacherKey];
+
+    let savedCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < checkedBoxes.length; i++) {
+      const chk = checkedBoxes[i];
+      const idx = parseInt(chk.dataset.idx, 10);
+      const childName = chk.dataset.childName;
+      const itemData = (state.lastResult.individual_observations && state.lastResult.individual_observations[idx]) || {};
+
+      const inputEl = document.getElementById(`indiv-obs-input-${idx}`);
+      const summaryText = inputEl ? inputEl.value.trim() : (itemData.observation_summary || '');
+      const standardArea = itemData.standard_area || '신체운동';
+      const activityName = itemData.activity_name || state.activityArea || '놀이 활동';
+
+      if (btnSaveIndividualObsText) {
+        btnSaveIndividualObsText.textContent = `⏳ 노션 DB에 저장 중 (${savedCount + 1}/${checkedBoxes.length}) - ${childName}...`;
+      }
+
+      // 원아 UUID 매칭 (지능형 매칭: 이름 일치 또는 포함)
+      let targetChildId = null;
+      if (Array.isArray(state.children) && state.children.length > 0) {
+        // 1차: 정확한 이름 매칭 (mock 제외)
+        let matched = state.children.find(c => c.name === childName && !c.id.startsWith('mock-') && !c.id.startsWith('sandbox_'));
+        // 2차: 포함 관계 매칭 (예: '김민수' vs '민수')
+        if (!matched) {
+          matched = state.children.find(c => (c.name.includes(childName) || childName.includes(c.name)) && !c.id.startsWith('mock-') && !c.id.startsWith('sandbox_'));
+        }
+        // 3차: fallback (id 존재 시)
+        if (!matched) {
+          matched = state.children.find(c => c.name === childName || c.name.includes(childName) || childName.includes(c.name));
+        }
+        if (matched) targetChildId = matched.id;
+      }
+
+      const pageTitle = `[관찰일지] ${todayStr} ${childName} - ${activityName}`;
+      const fullObsText = `[${todayStr} 개별 놀이 관찰일지 - ${childName}]\n` +
+        `반명: ${state.className} / 담당: ${state.teacherName}\n` +
+        `표준보육 영역: ${standardArea} / 활동명: ${activityName}\n\n` +
+        `■ 행동 관찰 내용\n${summaryText}\n\n` +
+        `■ 우리 반 전체 놀이 연계 맥락\n${rawMemoInput.value.trim() || '우리 반 놀이 활동 중 개별 발췌 관찰'}`;
+
+      const props = {
+        '기록명/식별자': { title: [{ text: { content: pageTitle } }] },
+        '작성일자': { date: { start: todayStr } },
+        '활동 구분': { select: { name: '관찰일지' } },
+        '표준보육 영역': { multi_select: [{ name: standardArea }] },
+        '원시 메모/키워드': { rich_text: [{ text: { content: rawMemoInput.value.trim() || `${childName} 놀이 관찰` } }] },
+        '알림장 최종본': { rich_text: [{ text: { content: (state.lastResult.kidsnote?.content || '').slice(0, 1900) } }] },
+        '관찰일지 최종본': { rich_text: [{ text: { content: fullObsText.slice(0, 1900) } }] },
+        '참조 출처 요약': { rich_text: [{ text: { content: `우리 반 놀이 발췌 관찰 (${state.className})` } }] },
+        '관찰 요약': { rich_text: [{ text: { content: summaryText.slice(0, 80) } }] }
+      };
+
+      if (targetChildId && !targetChildId.startsWith('mock-') && !targetChildId.startsWith('sandbox_')) {
+        props['원아'] = { relation: [{ id: targetChildId }] };
+      }
+      if (teacherPageId) {
+        props['작성교사'] = { relation: [{ id: teacherPageId }] };
+      }
+
+      try {
+        await directNotionCall('/pages', 'POST', {
+          parent: { database_id: NOTION_CONFIG.DAILY_LOG_DB_ID },
+          properties: props
+        });
+
+        savedCount++;
+
+        // UI 개별 저장 완료 표시
+        const itemEl = document.getElementById(`indiv-obs-item-${idx}`);
+        if (itemEl) {
+          itemEl.classList.remove('active');
+          itemEl.classList.add('saved');
+        }
+        const statusEl = document.getElementById(`indiv-obs-status-${idx}`);
+        if (statusEl) statusEl.style.display = 'inline-flex';
+        chk.checked = false;
+        chk.disabled = true;
+      } catch (saveErr) {
+        console.error(`원아 ${childName} 노션 저장 실패:`, saveErr);
+        failCount++;
+      }
+    }
+
+    state.isHistoryLoaded = false; // 히스토리 보관함 캐시 무효화
+
+    if (savedCount > 0) {
+      showToast(`🎉 선택하신 원아 ${savedCount}명의 개별 관찰일지가 노션 DAILY_LOG_DB에 성공적으로 저장되었습니다!`);
+    }
+    if (failCount > 0) {
+      showToast(`⚠️ ${failCount}명의 관찰일지 저장 중 오류가 발생했습니다. 콘솔을 확인해주세요.`);
+    }
+
+    if (btnSaveIndividualObs) {
+      btnSaveIndividualObs.disabled = false;
+      if (btnSaveIndividualObsText) {
+        btnSaveIndividualObsText.textContent = savedCount > 0
+          ? `✓ ${savedCount}명 DB 반영 완료 (추가 선택 가능)`
+          : '선택한 원아 개별 관찰일지 DB에 반영';
       }
     }
   }
