@@ -167,6 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
     recognition: null,
     lastResult: null,
     originalResult: null, // ↺ 최초 생성본 (원래대로 복원용)
+    selectedDate: new Date().toISOString().split('T')[0], // 📅 소급 작성 날짜 (기본: 오늘)
     historyLogs: [], // 📂 지난 기록 보관함 캐시
     isHistoryLoaded: false,
     selectedHistoryLog: null
@@ -175,7 +176,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   // 2. DOM 요소 참조
   // ============================================================================
+  const headerDateWrapper = document.getElementById('headerDateWrapper');
   const headerDateText = document.getElementById('headerDateText');
+  const recordDatePicker = document.getElementById('recordDatePicker');
+  const retroDateBadge = document.getElementById('retroDateBadge');
   const headerHistoryBtn = document.getElementById('headerHistoryBtn');
   const headerClassNameBtn = document.getElementById('headerClassNameBtn');
   const headerClassNameText = document.getElementById('headerClassNameText');
@@ -671,6 +675,33 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(`🧸 ${displayName}님, 환영합니다!`);
   }
 
+  // 📅 소급 작성 날짜 변경 및 UI 갱신 함수
+  function updateRecordDate(dateStr) {
+    if (!dateStr) return;
+    state.selectedDate = dateStr;
+    if (recordDatePicker) recordDatePicker.value = dateStr;
+    const dt = new Date(dateStr + 'T00:00:00');
+    const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
+    if (headerDateText) headerDateText.textContent = dt.toLocaleDateString('ko-KR', options);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isRetro = (dateStr !== todayStr);
+    if (retroDateBadge) {
+      retroDateBadge.style.display = isRetro ? 'inline-block' : 'none';
+    }
+    if (headerDateWrapper) {
+      if (isRetro) {
+        headerDateWrapper.title = `소급 작성 중 (${dateStr}) - 클릭하여 날짜 변경`;
+        headerDateWrapper.style.borderColor = '#EF4444';
+        headerDateWrapper.style.background = '#FEF2F2';
+      } else {
+        headerDateWrapper.title = '클릭하여 소급 작성 날짜 변경';
+        headerDateWrapper.style.borderColor = '#CBD5E1';
+        headerDateWrapper.style.background = '#F8FAFC';
+      }
+    }
+  }
+
   // ============================================================================
   // 3. 초기화 (Init)
   // ============================================================================
@@ -678,10 +709,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 🔐 2-Way 보안 게이트 초기화
     initAuthGate();
 
-    // 오늘 날짜 셋업
-    const now = new Date();
-    const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
-    headerDateText.textContent = now.toLocaleDateString('ko-KR', options);
+    // 📅 작성 날짜 셋업 (오늘 날짜 기본)
+    updateRecordDate(state.selectedDate || new Date().toISOString().split('T')[0]);
 
     // 👩‍🏫 교사 프로필 스위처 버튼 동기화
     syncTeacherSwitcherUI();
@@ -995,6 +1024,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (btnSwitchSandbox) {
       btnSwitchSandbox.addEventListener('click', () => handleTeacherSwitchClick('sandbox'));
+    }
+
+    // 📅 소급 작성용 캘린더 날짜 변경 이벤트
+    if (recordDatePicker) {
+      recordDatePicker.addEventListener('change', (e) => {
+        const newDate = e.target.value;
+        if (newDate) {
+          updateRecordDate(newDate);
+          const todayStr = new Date().toISOString().split('T')[0];
+          showToast(`📅 작성 날짜가 [${newDate}]로 설정되었습니다.${newDate !== todayStr ? ' (소급 작성)' : ''}`);
+        }
+      });
     }
 
     // ❓ 선생님 맞춤 사용 가이드 모달 열기/닫기
@@ -2362,7 +2403,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tabClassDailyReport) tabClassDailyReport.style.display = 'inline-flex';
 
       const ageText = state.selectedChild?.age || (state.className && state.className.includes('사랑') ? '만 0세' : '만 2세');
-      const todayFormatted = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+      const targetDateObj = state.selectedDate ? new Date(state.selectedDate + 'T00:00:00') : new Date();
+      const todayFormatted = targetDateObj.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 
       if (repDocTitle) repDocTitle.textContent = rep?.title || `1. ${ageText} 놀이중심 보육일지`;
       if (repHdrClass) repHdrClass.textContent = `${state.className} (${ageText})`;
@@ -2651,7 +2693,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = state.selectedDate || new Date().toISOString().split('T')[0];
       const rep = state.lastResult.class_daily_report || {};
       const activitiesSummary = (rep.activities || []).map(a => `${a.photo_ref || ''} ${a.activity_title || ''}\n- 관찰: ${a.observation || ''}\n- 배움: ${a.learning_content || ''}`).join('\n\n');
       const fullDailyLog = `[${rep.title || '놀이중심 보육일지'}]\n주제: ${rep.play_theme || ''}\n\n[놀이 실행 및 배움 읽기]\n${activitiesSummary}\n\n[교사의 성찰 및 지원 내용]\n${rep.reflection || ''}\n- ${rep.support?.environment || ''}\n- ${rep.support?.safety || ''}`;
@@ -2746,7 +2788,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = state.selectedDate || new Date().toISOString().split('T')[0];
     const currentTeacherKey = localStorage.getItem('daycare_active_teacher') || (state.className === '소망반' ? 'sister_in_law' : (state.className === '연구반' ? 'sandbox' : 'wife'));
     const teacherPageId = TEACHER_PAGE_MAP[currentTeacherKey];
 
@@ -2941,7 +2983,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveNotionBtn.disabled = true;
     saveNotionBtn.innerHTML = '<span>⏳</span> <span>노션에 저장 중...</span>';
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = state.selectedDate || new Date().toISOString().split('T')[0];
     const childName = state.selectedChild?.name || '원아';
     const activityArea = state.activityArea || '자유놀이';
 
