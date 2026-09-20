@@ -47,11 +47,9 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ============================================================================
-  // 1. 애플리케이션 상태 (State) 및 학부모 프리셋
   // ============================================================================
-  const savedPersona = localStorage.getItem('daycare_persona');
-  const initialPersona = savedPersona ? JSON.parse(savedPersona) : PERSONA_PRESETS.play_friendly;
-
+  // 1. 애플리케이션 상태 (State) 및 교사별 독립 프로필·격리 저장소
+  // ============================================================================
   const PARENT_PRESETS = {
     safe_detail: '안심 서술형 (식사량, 낮잠, 작은 상처, 정서적 안정감 세심 안내 선호)',
     speedy_summary: '스피디 요약형 (바쁜 맞벌이 부모님, 퇴근 후 3줄 핵심 요약 선호)',
@@ -59,24 +57,112 @@ document.addEventListener('DOMContentLoaded', () => {
     growth_praise: '성장 성취형 (조작력과 문제해결력, 발달 성취 칭찬 중심 선호)'
   };
 
-  // 👩‍🏫 노션 TEACHER_DB 교사 페이지 매핑 (작성교사 relation 안전 연결)
-  const TEACHER_PAGE_MAP = {
-    wife: '3e0a2711-5b68-8102-9fbb-c635637c5b33',          // 공가영 선생님 (사랑반)
-    sister_in_law: '3e0a2711-5b68-81a1-ba8e-d05d1f5e9631', // 공가희 주임님 (소망반)
-    sandbox: '3e0a2711-5b68-81ea-be6e-ed72a8a12f42'        // 연구 선생님 (연구반)
+  // 👩‍🏫 3대 교사 프로필 표준 (선생님별 PIN, 페르소나, 학급 완전 격리)
+  const TEACHER_PROFILES = {
+    wife: {
+      key: 'wife',
+      name: '공가영 선생님',
+      className: '사랑반',
+      ageText: '만 0세',
+      icon: '🌸',
+      defaultPreset: 'warm_parent',
+      defaultPersona: {
+        preset: 'warm_parent',
+        name: '따뜻한 공감형 (사랑반 만0세 영아)',
+        sampleNote: '오늘 우리 [아동A]는 따뜻한 품에 안겨 방긋 미소를 지으며 작은 손으로 오감 딸랑이 교구를 부드럽게 탐색했답니다.',
+        callStyle: '우리 [아동A]',
+        emojiLevel: 'moderate',
+        closingGreeting: '가정에서도 따뜻하고 포근한 저녁 시간 보내세요^^'
+      },
+      notionPageId: '3e0a2711-5b68-8102-9fbb-c635637c5b33'
+    },
+    sister_in_law: {
+      key: 'sister_in_law',
+      name: '공가희 주임교사',
+      className: '소망반',
+      ageText: '만 2세',
+      icon: '🌿',
+      defaultPreset: 'play_friendly',
+      defaultPersona: {
+        preset: 'play_friendly',
+        name: '놀이 중심 다정체 (소망반 만2세 주임)',
+        sampleNote: '평소 블록으로 길쭉길쭉 기차를 만들던 우리 아이들을 위해 오늘은 알록달록 기차와 레일을 짠! 준비해 주었는데요. 고사리손으로 기차를 꼭 쥐고 "칙칙폭폭~ 덜컹덜컹!" 소리를 내며 레일 위를 신나게 달렸어요.',
+        callStyle: '우리 [아동A]',
+        emojiLevel: 'rich',
+        closingGreeting: '가정에서도 오늘 즐거웠던 원 생활에 대해 많은 칭찬 부탁드립니다.^^'
+      },
+      notionPageId: '3e0a2711-5b68-81a1-ba8e-d05d1f5e9631'
+    },
+    sandbox: {
+      key: 'sandbox',
+      name: '연구 선생님',
+      className: '연구반',
+      ageText: '체험',
+      icon: '🧪',
+      defaultPreset: 'play_friendly',
+      defaultPersona: {
+        preset: 'play_friendly',
+        name: '자유 체험형 (다정 체)',
+        sampleNote: '오늘 우리 [아동A]는 호기심 가득한 눈빛으로 새로운 놀이에 몰입하며 즐거운 하루를 보냈답니다.',
+        callStyle: '우리 [아동A]',
+        emojiLevel: 'moderate',
+        closingGreeting: '가정에서도 오늘 하루 즐거웠던 일에 대해 많은 칭찬 부탁드립니다.^^'
+      },
+      notionPageId: '3e0a2711-5b68-81ea-be6e-ed72a8a12f42'
+    }
   };
 
+  // 🔐 교사별 격리 저장소 접근 헬퍼
+  function getTeacherPin(teacherKey) {
+    return localStorage.getItem(`daycare_custom_pin_${teacherKey}`) || '0000';
+  }
+
+  function setTeacherPin(teacherKey, pin) {
+    localStorage.setItem(`daycare_custom_pin_${teacherKey}`, pin);
+  }
+
+  function getTeacherPersona(teacherKey) {
+    const saved = localStorage.getItem(`daycare_persona_${teacherKey}`);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return TEACHER_PROFILES[teacherKey]?.defaultPersona || PERSONA_PRESETS.play_friendly;
+  }
+
+  function setTeacherPersona(teacherKey, persona) {
+    localStorage.setItem(`daycare_persona_${teacherKey}`, JSON.stringify(persona));
+  }
+
+  function getTeacherStyle(teacherKey) {
+    return localStorage.getItem(`daycare_teacher_style_${teacherKey}`) || getTeacherPersona(teacherKey).name;
+  }
+
+  function setTeacherStyle(teacherKey, style) {
+    localStorage.setItem(`daycare_teacher_style_${teacherKey}`, style);
+  }
+
+  // 👩‍🏫 노션 TEACHER_DB 교사 페이지 매핑
+  const TEACHER_PAGE_MAP = {
+    wife: TEACHER_PROFILES.wife.notionPageId,
+    sister_in_law: TEACHER_PROFILES.sister_in_law.notionPageId,
+    sandbox: TEACHER_PROFILES.sandbox.notionPageId
+  };
+
+  const initialTeacherKey = localStorage.getItem('daycare_active_teacher') || 'wife';
+  const initialProfile = TEACHER_PROFILES[initialTeacherKey] || TEACHER_PROFILES.wife;
+
   const state = {
-    className: localStorage.getItem('daycare_class_name') || '사랑반',
-    teacherName: localStorage.getItem('daycare_teacher_name') || '공가영 선생님',
-    filterOnlyMyClass: true, // 🌱 우리 반 아이들만 우선 필터링 (사랑반 2명 vs 소망반 7명 완벽 분리)
+    activeTeacherKey: initialProfile.key,
+    className: initialProfile.className,
+    teacherName: initialProfile.name,
+    filterOnlyMyClass: true, // 🔒 항상 담당 학급만 100% 철통 격리
     children: [],
     selectedChild: null,
-    mode: 'all_suite', // 📋 원터치 올인원 (알림장 + 보육일지 + 관찰일지 동시 생성)
+    mode: initialProfile.key === 'sister_in_law' ? 'class_report' : 'all_suite',
     activityArea: '자유놀이 및 일상생활',
     photos: [], // base64 strings
-    teacherStyle: localStorage.getItem('daycare_teacher_style') || '놀이 중심 다정체',
-    persona: initialPersona,
+    teacherStyle: getTeacherStyle(initialProfile.key),
+    persona: getTeacherPersona(initialProfile.key),
     isRecording: false,
     recognition: null,
     lastResult: null,
@@ -322,15 +408,22 @@ document.addEventListener('DOMContentLoaded', () => {
   let pinBuffer = '';
 
   // ============================================================================
-  // 3-A. 🧸 2-Way 보안 잠금 게이트 (4자리 PIN & 이메일 선택) 로직
+  // 3-A. 🧸 2-Way 보안 잠금 게이트 (선생님별 PIN & 학급 완전 격리) 로직
   // ============================================================================
   const AUTH_KEY_SESSION = 'daycare_local_auth_session';
-  const AUTH_KEY_PIN = 'daycare_custom_pin_code';
   const DEFAULT_PIN = '0000';
   const AUTH_30_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
-  function getActivePin() {
-    return localStorage.getItem(AUTH_KEY_PIN) || DEFAULT_PIN;
+  let authTargetTeacherKey = state.activeTeacherKey || 'wife';
+
+  function updateAuthTeacherUI() {
+    const chips = document.querySelectorAll('.auth-teacher-chip');
+    chips.forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.teacherKey === authTargetTeacherKey);
+    });
+    const targetProfile = TEACHER_PROFILES[authTargetTeacherKey] || TEACHER_PROFILES.wife;
+    const nameEl = document.getElementById('pinTargetTeacherName');
+    if (nameEl) nameEl.textContent = targetProfile.name;
   }
 
   function initAuthGate() {
@@ -342,10 +435,13 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const sessionObj = JSON.parse(savedSession);
         if (sessionObj.expiresAt && sessionObj.expiresAt > Date.now()) {
-          // 유효한 세션 존재 -> 잠금 해제 통과!
+          // 유효한 세션 존재 -> 세션에 저장된 교사 프로필 적용!
+          const sessionTeacherKey = sessionObj.teacherKey || state.activeTeacherKey || 'wife';
+          applyTeacherProfile(sessionTeacherKey, false);
+
           authGateModal.style.display = 'none';
           if (sessionUserEmailText) {
-            sessionUserEmailText.textContent = sessionObj.user || '선생님 (간편 인증)';
+            sessionUserEmailText.textContent = sessionObj.user || `${state.teacherName} (인증됨)`;
           }
           setupAuthEventListeners();
           return;
@@ -357,11 +453,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 세션 없거나 만료됨 -> 잠금 화면 표시!
     authGateModal.style.display = 'flex';
+    authTargetTeacherKey = state.activeTeacherKey || 'wife';
+    updateAuthTeacherUI();
     resetPinDisplay();
     setupAuthEventListeners();
   }
 
   function setupAuthEventListeners() {
+    // 👩‍🏫 잠금 화면 교사 프로필 칩 선택
+    const chips = document.querySelectorAll('.auth-teacher-chip');
+    chips.forEach(chip => {
+      chip.onclick = () => {
+        authTargetTeacherKey = chip.dataset.teacherKey;
+        updateAuthTeacherUI();
+        resetPinDisplay();
+      };
+    });
+
     // 탭 전환 (PIN vs 이메일)
     if (tabPinBtn && tabEmailBtn) {
       tabPinBtn.onclick = () => {
@@ -411,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // 이메일 로그인 폼
+    // 이메일 로그인 폼 (비상용)
     if (emailLoginForm) {
       emailLoginForm.onsubmit = (e) => {
         e.preventDefault();
@@ -420,8 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (emailErrorMsg) emailErrorMsg.textContent = '올바른 이메일 주소를 입력해 주세요.';
           return;
         }
-        // 이메일 로그인 성공
-        loginSuccess(emailVal);
+        loginSuccess(authTargetTeacherKey, emailVal);
       };
     }
 
@@ -430,6 +537,8 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.removeItem(AUTH_KEY_SESSION);
       if (settingsModal) settingsModal.style.display = 'none';
       if (authGateModal) authGateModal.style.display = 'flex';
+      authTargetTeacherKey = state.activeTeacherKey || 'wife';
+      updateAuthTeacherUI();
       resetPinDisplay();
       showToast('🔒 보안 잠금 상태로 전환되었습니다.');
     };
@@ -437,13 +546,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (headerLogoutBtn) headerLogoutBtn.onclick = handleLogout;
     if (modalLogoutBtn) modalLogoutBtn.onclick = handleLogout;
 
-    // PIN 변경 UI 핸들러
+    // PIN 변경 UI 핸들러 (오직 현재 로그인된 교사의 PIN만 독립 변경!)
     if (openChangePinBtn && pinChangeBox) {
       openChangePinBtn.onclick = () => {
         const isHidden = pinChangeBox.style.display === 'none';
         pinChangeBox.style.display = isHidden ? 'block' : 'none';
         if (isHidden && newPinInput) {
           newPinInput.value = '';
+          newPinInput.placeholder = `${state.teacherName} 새 PIN (4자리)`;
           newPinInput.focus();
         }
       };
@@ -463,9 +573,9 @@ document.addEventListener('DOMContentLoaded', () => {
           newPinInput.focus();
           return;
         }
-        localStorage.setItem(AUTH_KEY_PIN, newPin);
+        setTeacherPin(state.activeTeacherKey, newPin);
         pinChangeBox.style.display = 'none';
-        showToast(`✅ 새 4자리 PIN(${newPin})으로 성공적으로 변경되었습니다.`);
+        showToast(`✅ ${state.teacherName}의 새 4자리 PIN(${newPin})으로 안전하게 변경되었습니다.`);
       };
     }
   }
@@ -476,9 +586,9 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePinDots();
 
     if (pinBuffer.length === 4) {
-      // 4자리 채워짐 -> 검증!
-      const activePin = getActivePin();
-      if (pinBuffer === activePin) {
+      // 4자리 채워짐 -> 해당 선생님의 개별 PIN 검증!
+      const correctPin = getTeacherPin(authTargetTeacherKey);
+      if (pinBuffer === correctPin) {
         // 성공!
         if (pinErrorMsg) {
           pinErrorMsg.textContent = '✨ 확인되었습니다. 잠시만 기다려주세요...';
@@ -486,9 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (navigator.vibrate) navigator.vibrate([40, 40, 40]);
         setTimeout(() => {
-          const currentClass = state.className || '햇살반';
-          const currentTeacher = state.teacherName || '김선생님';
-          loginSuccess(`${currentClass} ${currentTeacher} (PIN 인증)`);
+          loginSuccess(authTargetTeacherKey);
         }, 200);
       } else {
         // 실패!
@@ -497,7 +605,8 @@ document.addEventListener('DOMContentLoaded', () => {
           setTimeout(() => pinDotsContainer.classList.remove('pin-shake'), 400);
         }
         if (pinErrorMsg) {
-          pinErrorMsg.textContent = '비밀번호가 일치하지 않아요. (초기: 0000)';
+          const targetProfile = TEACHER_PROFILES[authTargetTeacherKey] || TEACHER_PROFILES.wife;
+          pinErrorMsg.textContent = `${targetProfile.name}의 비밀번호가 일치하지 않아요. (초기: 0000)`;
           pinErrorMsg.style.color = '#EF4444';
         }
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
@@ -536,23 +645,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function loginSuccess(userName) {
+  function loginSuccess(teacherKey, customName = null) {
     const isRemember = rememberAuthCheck ? rememberAuthCheck.checked : true;
+    const profile = TEACHER_PROFILES[teacherKey] || TEACHER_PROFILES.wife;
+    const displayName = customName || `${profile.className} ${profile.name}`;
+
     const sessionData = {
-      user: userName,
+      teacherKey: profile.key,
+      user: displayName,
       loggedInAt: Date.now(),
       expiresAt: isRemember ? Date.now() + AUTH_30_DAYS_MS : Date.now() + (24 * 60 * 60 * 1000)
     };
     localStorage.setItem(AUTH_KEY_SESSION, JSON.stringify(sessionData));
 
     if (sessionUserEmailText) {
-      sessionUserEmailText.textContent = userName;
+      sessionUserEmailText.textContent = `${profile.name} (인증됨)`;
     }
+
+    // 해당 교사 프로필 적용 및 원아 목록 격리 로드
+    applyTeacherProfile(profile.key, true);
 
     if (authGateModal) {
       authGateModal.style.display = 'none';
     }
-    showToast(`🧸 ${userName}님, 환영합니다!`);
+    showToast(`🧸 ${displayName}님, 환영합니다!`);
   }
 
   // ============================================================================
@@ -714,83 +830,67 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================================
-  // 3-C. 👩‍🏫 교사 프로필 1초 원터치 스위처 (공가영 선생님 ↔ 공가희 주임님 ↔ 체험·연구반)
+  // 3-C. 👩‍🏫 교사 프로필 적용 및 보안 스위칭 가드 (PIN 인증 필수)
   // ============================================================================
-  function switchTeacherProfile(teacherKey) {
-    if (teacherKey === 'sister_in_law') {
-      // 👩‍🏫 공가희 주임님 (소망반 만 2세 유아)
-      state.className = '소망반';
-      state.teacherName = '공가희 선생님';
-      state.persona = {
-        preset: 'play_friendly',
-        name: '놀이 중심 다정체 (소망반 만2세 주임)',
-        sampleNote: '평소 블록으로 길쭉길쭉 기차를 만들던 우리 아이들을 위해 오늘은 알록달록 기차와 레일을 짠! 준비해 주었는데요. 고사리손으로 기차를 꼭 쥐고 "칙칙폭폭~ 덜컹덜컹!" 소리를 내며 레일 위를 신나게 달렸어요.',
-        callStyle: '우리 [아동A]',
-        emojiLevel: 'rich',
-        closingGreeting: '가정에서도 오늘 즐거웠던 원 생활에 대해 많은 칭찬 부탁드립니다.^^'
-      };
-      state.mode = 'class_report';
+  function applyTeacherProfile(teacherKey, showWelcomeToast = false) {
+    const profile = TEACHER_PROFILES[teacherKey] || TEACHER_PROFILES.wife;
+    state.activeTeacherKey = profile.key;
+    state.className = profile.className;
+    state.teacherName = profile.name;
+    state.persona = getTeacherPersona(profile.key);
+    state.teacherStyle = getTeacherStyle(profile.key);
+    state.mode = profile.key === 'sister_in_law' ? 'class_report' : 'all_suite';
 
-      localStorage.setItem('daycare_class_name', '소망반');
-      localStorage.setItem('daycare_teacher_name', '공가희 선생님');
-      localStorage.setItem('daycare_persona', JSON.stringify(state.persona));
-      localStorage.setItem('daycare_active_teacher', 'sister_in_law');
+    localStorage.setItem('daycare_active_teacher', profile.key);
+    localStorage.setItem('daycare_class_name', profile.className);
+    localStorage.setItem('daycare_teacher_name', profile.name);
 
-      syncTeacherSwitcherUI('sister_in_law');
-      updatePersonaUI();
-      renderChildrenChips('class-all');
-      showToast('👩‍🏫 공가희 주임님 (소망반 · 만2세) 모드로 전환되었습니다!');
-    } else if (teacherKey === 'sandbox') {
-      // 👨‍💻 체험·연구반 (자유 테스트 구역)
-      state.className = '연구반';
-      state.teacherName = '연구 선생님';
-      state.persona = {
-        preset: 'play_friendly',
-        name: '자유 체험형 (다정 체)',
-        sampleNote: '오늘 우리 [아동A]는 호기심 가득한 눈빛으로 새로운 놀이에 몰입하며 즐거운 하루를 보냈답니다.',
-        callStyle: '우리 [아동A]',
-        emojiLevel: 'moderate',
-        closingGreeting: '가정에서도 오늘 하루 즐거웠던 일에 대해 많은 칭찬 부탁드립니다.^^'
-      };
-      state.mode = 'play_story';
+    // 헤더 및 스위처 UI 갱신
+    if (headerClassNameText) headerClassNameText.textContent = `${profile.className} (${profile.ageText})`;
+    if (headerClassNameBtn) headerClassNameBtn.title = `${profile.name} (${profile.className})`;
+    syncTeacherSwitcherUI(profile.key);
 
-      localStorage.setItem('daycare_class_name', '연구반');
-      localStorage.setItem('daycare_teacher_name', '연구 선생님');
-      localStorage.setItem('daycare_persona', JSON.stringify(state.persona));
-      localStorage.setItem('daycare_active_teacher', 'sandbox');
+    // 상단 격리 뱃지 갱신
+    const classFilterText = document.getElementById('classFilterText');
+    if (classFilterText) classFilterText.textContent = `${profile.className} 전용`;
 
-      syncTeacherSwitcherUI('sandbox');
-      updatePersonaUI();
-      renderChildrenChips();
-      showToast('👨‍💻 [체험·연구반] 자유 테스트 모드로 전환되었습니다!');
-    } else {
-      // 👩‍🍼 공가영 선생님 (사랑반 만 0세 영아)
-      state.className = '사랑반';
-      state.teacherName = '공가영 선생님';
-      state.persona = {
-        preset: 'warm_parent',
-        name: '따뜻한 공감형 (사랑반 만0세 영아)',
-        sampleNote: '오늘 우리 [아동A]는 따뜻한 품에 안겨 방긋 미소를 지으며 작은 손으로 오감 딸랑이 교구를 부드럽게 탐색했답니다.',
-        callStyle: '우리 [아동A]',
-        emojiLevel: 'moderate',
-        closingGreeting: '가정에서도 따뜻하고 포근한 저녁 시간 보내세요^^'
-      };
-      state.mode = 'play_story';
+    // 페르소나 UI 갱신
+    updatePersonaUI();
 
-      localStorage.setItem('daycare_class_name', '사랑반');
-      localStorage.setItem('daycare_teacher_name', '공가영 선생님');
-      localStorage.setItem('daycare_persona', JSON.stringify(state.persona));
-      localStorage.setItem('daycare_active_teacher', 'wife');
+    // 현재 교사 반 원아만 100% 격리 로드
+    loadChildren();
 
-      syncTeacherSwitcherUI('wife');
-      updatePersonaUI();
-      renderChildrenChips();
-      showToast('👩‍🍼 공가영 선생님 (사랑반 · 만0세) 모드로 전환되었습니다!');
+    // 보관함 캐시 무효화
+    state.isHistoryLoaded = false;
+
+    if (showWelcomeToast) {
+      showToast(`👩‍🏫 ${profile.name} (${profile.className}) 모드가 안전하게 활성화되었습니다.`);
+    }
+  }
+
+  function handleTeacherSwitchClick(targetKey) {
+    if (targetKey === state.activeTeacherKey) {
+      showToast(`현재 ${state.teacherName} (${state.className}) 모드입니다.`);
+      return;
+    }
+
+    // 🔒 다른 교사 교실로 이동 시 PIN 보안 잠금 화면 호출!
+    openAuthGateForTeacher(targetKey);
+  }
+
+  function openAuthGateForTeacher(targetKey) {
+    authTargetTeacherKey = targetKey;
+    if (authGateModal) {
+      authGateModal.style.display = 'flex';
+      updateAuthTeacherUI();
+      resetPinDisplay();
+      const targetProfile = TEACHER_PROFILES[targetKey] || TEACHER_PROFILES.wife;
+      showToast(`🔒 ${targetProfile.name} 교실 진입을 위해 4자리 PIN을 입력하세요.`);
     }
   }
 
   function syncTeacherSwitcherUI(targetKey = null) {
-    const activeTeacher = targetKey || localStorage.getItem('daycare_active_teacher') || (state.className === '소망반' ? 'sister_in_law' : (state.className === '연구반' ? 'sandbox' : 'wife'));
+    const activeTeacher = targetKey || state.activeTeacherKey || 'wife';
     if (btnSwitchWife) btnSwitchWife.classList.toggle('active', activeTeacher === 'wife');
     if (btnSwitchSisterInLaw) btnSwitchSisterInLaw.classList.toggle('active', activeTeacher === 'sister_in_law');
     if (btnSwitchSandbox) btnSwitchSandbox.classList.toggle('active', activeTeacher === 'sandbox');
@@ -886,15 +986,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // 4. 이벤트 리스너 등록
   // ============================================================================
   function setupEventListeners() {
-    // 👩‍🏫 교사 프로필 1초 원터치 스위처 이벤트
+    // 👩‍🏫 교사 프로필 1초 원터치 스위처 이벤트 (보안 PIN 인증 게이트 거침)
     if (btnSwitchWife) {
-      btnSwitchWife.addEventListener('click', () => switchTeacherProfile('wife'));
+      btnSwitchWife.addEventListener('click', () => handleTeacherSwitchClick('wife'));
     }
     if (btnSwitchSisterInLaw) {
-      btnSwitchSisterInLaw.addEventListener('click', () => switchTeacherProfile('sister_in_law'));
+      btnSwitchSisterInLaw.addEventListener('click', () => handleTeacherSwitchClick('sister_in_law'));
     }
     if (btnSwitchSandbox) {
-      btnSwitchSandbox.addEventListener('click', () => switchTeacherProfile('sandbox'));
+      btnSwitchSandbox.addEventListener('click', () => handleTeacherSwitchClick('sandbox'));
     }
 
     // ❓ 선생님 맞춤 사용 가이드 모달 열기/닫기
@@ -1198,6 +1298,8 @@ document.addEventListener('DOMContentLoaded', () => {
           const presetData = PERSONA_PRESETS[presetKey];
           if (presetData) {
             state.persona = { ...presetData };
+            setTeacherPersona(state.activeTeacherKey, state.persona);
+            setTeacherStyle(state.activeTeacherKey, presetData.name);
             updatePersonaUI();
             showToast(`🎭 '${presetData.name}' 프리셋이 적용되었습니다.`);
           }
@@ -1208,15 +1310,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 페르소나 및 우리 반 설정 저장
     saveSettingsBtn.addEventListener('click', () => {
       // 1. 담당 반 및 선생님 호칭 저장
-      const newClassName = settingClassNameInput ? settingClassNameInput.value.trim() || '햇살반' : '햇살반';
-      const newTeacherName = settingTeacherNameInput ? settingTeacherNameInput.value.trim() || '김선생님' : '김선생님';
+      const newClassName = settingClassNameInput ? settingClassNameInput.value.trim() || state.className : state.className;
+      const newTeacherName = settingTeacherNameInput ? settingTeacherNameInput.value.trim() || state.teacherName : state.teacherName;
       const classChanged = state.className !== newClassName;
       state.className = newClassName;
       state.teacherName = newTeacherName;
       localStorage.setItem('daycare_class_name', newClassName);
       localStorage.setItem('daycare_teacher_name', newTeacherName);
 
-      // 2. 페르소나 문체 저장
+      // 2. 페르소나 문체 저장 (교사별 독립 저장소)
       state.persona = {
         preset: state.persona.preset || 'custom',
         name: state.persona.name || '맞춤 페르소나',
@@ -1226,13 +1328,14 @@ document.addEventListener('DOMContentLoaded', () => {
         closingGreeting: personaClosingGreeting ? personaClosingGreeting.value.trim() : ''
       };
 
-      localStorage.setItem('daycare_persona', JSON.stringify(state.persona));
+      setTeacherPersona(state.activeTeacherKey, state.persona);
+      setTeacherStyle(state.activeTeacherKey, state.persona.name);
       updatePersonaUI();
       if (classChanged) {
-        renderChildrenChips();
+        loadChildren();
       }
       settingsModal.style.display = 'none';
-      showToast(`🌱 '${newClassName}' (${newTeacherName}) 설정이 성공적으로 저장되었습니다!`);
+      showToast(`🌱 '${newClassName}' (${newTeacherName}) 맞춤 설정이 성공적으로 저장되었습니다!`);
     });
 
     // 📝 관찰 메모 실시간 자동 저장 (Autosave on typing)
@@ -1360,7 +1463,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   // 7. 원아 목록 불러오기 (/api/children)
   // ============================================================================
+  // ============================================================================
+  // 7. 원아 목록 불러오기 (/api/children) - 🔒 담당 학급 100% 철통 격리
+  // ============================================================================
   async function loadChildren(selectedId = null) {
+    const currentTeacherKey = state.activeTeacherKey || 'wife';
+    const currentClass = state.className || '사랑반';
+
     // 1. 브라우저에서 minmin-notion 직접 쿼리 (Cloudflare 1042 회피 1순위)
     try {
       const data = await directNotionCall(`/databases/${NOTION_CONFIG.CHILD_DB_ID}/query`, 'POST', {
@@ -1368,7 +1477,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sorts: [{ property: '아동명', direction: 'ascending' }]
       });
 
-      const children = (data.results || []).map(page => {
+      const allChildren = (data.results || []).map(page => {
         const props = page.properties;
         const name = props['아동명']?.title?.[0]?.plain_text || '이름 없음';
         const rawAge = props['생년월일/연령']?.rich_text?.[0]?.plain_text || '만 4세';
@@ -1386,7 +1495,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return { id: page.id, name, age: rawAge, traits, allergies, childClass, parentStyle };
       });
 
-      state.children = children;
+      // 🔒 교사/학급별 원아 & 학부모 성향 데이터 철통 격리 필터!
+      const isolatedChildren = allChildren.filter(c => {
+        if (currentTeacherKey === 'wife') {
+          return c.childClass === '사랑반' || c.age.includes('사랑반') || c.age.includes('0세');
+        } else if (currentTeacherKey === 'sister_in_law') {
+          return c.childClass === '소망반' || c.age.includes('소망반') || c.age.includes('2세');
+        } else { // sandbox
+          return c.childClass === '연구반' || c.name.includes('민수') || c.name.includes('민서') || !c.childClass;
+        }
+      });
+
+      state.children = isolatedChildren;
       notionStatusBadge.className = 'badge badge-connected';
       notionStatusText.textContent = '노션 연동됨';
       renderChildrenChips(selectedId);
@@ -1399,9 +1519,19 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch('/api/children');
       const data = await res.json();
-      state.children = data.children || [];
+      const rawList = data.children || [];
 
-      // 노션 연동 여부 뱃지 업데이트
+      // 🔒 워커 응답도 동일하게 학급별 엄격 격리 필터 적용
+      state.children = rawList.filter(c => {
+        if (currentTeacherKey === 'wife') {
+          return c.childClass === '사랑반' || (c.age && (c.age.includes('사랑반') || c.age.includes('0세')));
+        } else if (currentTeacherKey === 'sister_in_law') {
+          return c.childClass === '소망반' || (c.age && (c.age.includes('소망반') || c.age.includes('2세')));
+        } else {
+          return c.childClass === '연구반' || c.name.includes('민수') || c.name.includes('민서') || !c.childClass;
+        }
+      });
+
       if (data.source === 'notion') {
         notionStatusBadge.className = 'badge badge-connected';
         notionStatusText.textContent = '노션 연동됨';
@@ -1409,12 +1539,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderChildrenChips(selectedId);
     } catch (err) {
-      console.warn('원아 목록 불러오기 실패, 기본 샘플 사용:', err);
-      // 오프라인 폴백 샘플
-      state.children = [
-        { id: 'mock-child-1', name: '김민서', age: '만 4세', childClass: '햇살반', traits: '블록 및 조작 놀이 즐김, 소근육 발달 중', parentStyle: '안심 서술형 (식사량, 낮잠 세심 안내 선호)', allergies: '우유 주의' },
-        { id: 'mock-child-2', name: '이민수', age: '만 4세', childClass: '바다반', traits: '또래 협동 놀이, 언어 표현력 우수', parentStyle: '스피디 요약형 (바쁜 맞벌이 부모님, 3줄 핵심 요약 선호)', allergies: '' }
-      ];
+      console.warn('원아 목록 불러오기 실패, 담당 반 전용 샘플 사용:', err);
+      // 오프라인 폴백 샘플도 현재 반에 맞춤 격리
+      if (currentTeacherKey === 'wife') {
+        state.children = [
+          { id: 'mock-child-w1', name: '이도윤', age: '만 0세 (사랑반)', childClass: '사랑반', traits: '오감 자극 딸랑이 및 촉감 놀이 선호', parentStyle: '안심 서술형 (수면 및 이유식 세심 안내 선호)', allergies: '' }
+        ];
+      } else if (currentTeacherKey === 'sister_in_law') {
+        state.children = [
+          { id: 'mock-child-s1', name: '박서준', age: '만 2세 (소망반)', childClass: '소망반', traits: '탈것 및 블록 기차 놀이 몰입', parentStyle: '발달 관찰형 (조작력 성장 중심 선호)', allergies: '' }
+        ];
+      } else {
+        state.children = [
+          { id: 'mock-child-sb1', name: '김민수', age: '만 5세', childClass: '연구반', traits: '블록 동물원 울타리 만들기 몰입', parentStyle: '자유 소통형', allergies: '' }
+        ];
+      }
       renderChildrenChips(selectedId);
     }
   }
@@ -1422,40 +1561,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderChildrenChips(selectedId = null) {
     childScrollContainer.innerHTML = '';
 
-    // 1. 반 필터 토글 UI 업데이트
-    if (classFilterToggleBtn) {
-      if (state.filterOnlyMyClass) {
-        classFilterToggleBtn.classList.remove('show-all');
-        if (classFilterIcon) classFilterIcon.textContent = '🌱';
-        if (classFilterText) classFilterText.textContent = `${state.className}만`;
-      } else {
-        classFilterToggleBtn.classList.add('show-all');
-        if (classFilterIcon) classFilterIcon.textContent = '🌐';
-        if (classFilterText) classFilterText.textContent = '전체 보기';
-      }
+    // 1. 학급 철통 격리 뱃지 업데이트
+    const classFilterText = document.getElementById('classFilterText');
+    if (classFilterText) {
+      classFilterText.textContent = `${state.className} 전용`;
     }
 
-    if (state.children.length === 0) {
-      const emptyChip = document.createElement('div');
-      emptyChip.className = 'child-chip child-chip-add';
-      emptyChip.innerHTML = '<span>➕ 첫 원아 등록하기</span>';
-      emptyChip.addEventListener('click', () => openChildModal('add'));
-      childScrollContainer.appendChild(emptyChip);
-      
-      state.selectedChild = null;
-      selectedChildAge.textContent = '-';
-      childTraitsText.textContent = '💡 아직 등록된 원아가 없습니다. [+ 원아 등록] 버튼을 눌러 아이를 추가해 주세요!';
-      if (childParentText) childParentText.style.display = 'none';
-      childAlertText.style.display = 'none';
-      return;
-    }
-
-    // 2. 현재 선택된 필터에 따라 노출할 원아 목록 계산
-    const currentClass = state.className || '햇살반';
+    const currentClass = state.className || '사랑반';
     let displayList = state.children;
-    if (state.filterOnlyMyClass) {
-      displayList = state.children.filter(c => !c.childClass || c.childClass === currentClass);
-    }
 
     // 👨‍💻 체험·연구반일 때 등록된 아이가 없으면 노션에 등록된 실제 연구반 아이들(김민수, 김민서) 자동 매핑
     if (currentClass === '연구반' && displayList.length === 0) {
@@ -1483,31 +1596,26 @@ document.addEventListener('DOMContentLoaded', () => {
           allergies: '계란 알레르기 주의'
         }
       ];
+      state.children = displayList;
     }
 
-    // 만약 현재 반에 원아가 한 명도 없으면
     if (displayList.length === 0) {
       const noticeChip = document.createElement('div');
       noticeChip.className = 'child-chip';
       noticeChip.style.background = '#FEF3C7';
       noticeChip.style.borderColor = '#F59E0B';
       noticeChip.style.color = '#92400E';
-      noticeChip.innerHTML = `<span>🌱 ${currentClass} 원아가 없습니다</span>`;
-      noticeChip.addEventListener('click', () => {
-        state.filterOnlyMyClass = false;
-        renderChildrenChips();
-      });
+      noticeChip.innerHTML = `<span>🌱 ${currentClass} 등록 원아가 없습니다</span>`;
       childScrollContainer.appendChild(noticeChip);
 
       const addChip = document.createElement('div');
       addChip.className = 'child-chip child-chip-add';
-      addChip.innerHTML = `<span>➕ ${currentClass} 원아 등록</span>`;
+      addChip.innerHTML = `<span>➕ ${currentClass} 새 원아 등록</span>`;
       addChip.addEventListener('click', () => openChildModal('add'));
       childScrollContainer.appendChild(addChip);
 
       state.selectedChild = null;
       selectedChildAge.textContent = '-';
-      childTraitsText.textContent = `💡 현재 '${currentClass}'으로 등록된 원아가 없습니다. [+ 원아 등록]으로 추가하거나 [전체 보기]를 눌러주세요.`;
       if (childParentText) childParentText.style.display = 'none';
       childAlertText.style.display = 'none';
       return;
@@ -1678,18 +1786,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!child.childClass) extractedClass = parts[1].replace(')', '').trim();
       }
       manageChildAge.value = rawAge;
-      if (manageChildClass) manageChildClass.value = extractedClass;
+      if (manageChildClass) {
+        manageChildClass.value = extractedClass;
+        manageChildClass.disabled = true;
+      }
 
       manageChildTraits.value = child.traits || '';
       if (manageChildParentStyle) manageChildParentStyle.value = child.parentStyle || '';
       manageChildAllergies.value = child.allergies || '';
       saveChildBtn.innerHTML = '<span>💾</span> <span>원아 정보 수정 저장</span>';
     } else {
-      childModalTitle.textContent = '👶 새 원아 등록 (노션 자동 연동)';
+      childModalTitle.textContent = `👶 새 원아 등록 (${state.className} 전용)`;
       manageChildId.value = '';
       manageChildName.value = '';
-      manageChildAge.value = '만 4세';
-      if (manageChildClass) manageChildClass.value = state.className || '햇살반';
+      manageChildAge.value = state.className === '사랑반' ? '만 0세' : (state.className === '소망반' ? '만 2세' : '만 4세');
+      if (manageChildClass) {
+        manageChildClass.value = state.className || '사랑반';
+        manageChildClass.disabled = true;
+      }
       manageChildTraits.value = '';
       if (manageChildParentStyle) manageChildParentStyle.value = '';
       manageChildAllergies.value = '';
@@ -1710,7 +1824,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const id = manageChildId.value;
     const baseAge = manageChildAge.value;
-    const childClass = manageChildClass ? manageChildClass.value.trim() || state.className : state.className;
+    const childClass = state.className || (manageChildClass ? manageChildClass.value.trim() : '사랑반');
     const age = childClass ? `${baseAge} (${childClass})` : baseAge;
     const traits = manageChildTraits.value.trim();
     const parentStyle = manageChildParentStyle ? manageChildParentStyle.value.trim() : '';
@@ -3006,15 +3120,11 @@ document.addEventListener('DOMContentLoaded', () => {
     historyModal.style.display = 'flex';
 
     try {
-      // 현재 활성화된 교사 프로필에 맞춰 기본 반 선택
+      // 🔒 현재 활성화된 교사 프로필에 맞춰 학급 강제 고정 및 타 반 선택 원천 차단
       if (historyClassSelect) {
-        if (state.className && (state.className === '소망반' || state.className.includes('소망'))) {
-          historyClassSelect.value = '소망반';
-        } else if (state.className && (state.className === '사랑반' || state.className.includes('사랑'))) {
-          historyClassSelect.value = '사랑반';
-        } else {
-          historyClassSelect.value = 'all';
-        }
+        const clsName = state.className || '사랑반';
+        historyClassSelect.innerHTML = `<option value="${clsName}" selected>🔒 ${clsName} (${state.teacherName}) 전용</option>`;
+        historyClassSelect.disabled = true;
       }
 
       populateHistoryChildOptions();

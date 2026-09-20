@@ -12,17 +12,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json?v=20260920_v7">
-  <link rel="stylesheet" href="./style.css?v=20260920_v7">
+  <link rel="manifest" href="./manifest.json?v=20260920_v8">
+  <link rel="stylesheet" href="./style.css?v=20260920_v8">
 </head>
 <body>
   <div class="app-container">
-    <!-- 🏰 고정 상단 헤더 -->
+    <!-- 🧸 상단 미니멀 헤더 -->
     <header class="app-header">
       <div class="brand-area">
         <span class="brand-logo">🧸</span>
         <div>
-          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v2.7</span></div>
+          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v2.8</span></div>
           <div class="brand-sub" id="headerDateText">오늘의 보육 기록</div>
         </div>
       </div>
@@ -98,10 +98,11 @@
         <div style="display: flex; align-items: center; gap: 8px;">
           <span>원아 선택</span>
           <span id="selectedChildAge" style="font-weight: 500; margin-left: 2px;">만 4세</span>
-          <button type="button" id="classFilterToggleBtn" class="class-filter-chip" title="우리 반 아이들만 보기 / 전체 원아 보기 전환">
+          <div id="classIsolationBadge" class="class-isolation-badge" title="담당 학급 원아만 100% 안전 격리 보호 중">
             <span id="classFilterIcon">🌱</span>
-            <span id="classFilterText">햇살반만</span>
-          </button>
+            <span id="classFilterText">사랑반 전용</span>
+            <span class="isolation-lock-icon">🔒</span>
+          </div>
         </div>
         <button type="button" id="addChildBtn" class="add-child-header-btn" title="새 원아 등록">
           <span>➕</span> <span>원아 등록</span>
@@ -960,6 +961,31 @@
           <p class="auth-gate-subtitle">선생님을 위한 안심 스마트 보육 환경</p>
         </div>
 
+        <!-- 👩‍🏫 선생님 프로필 선택기 (프로필별 PIN 및 학급 완전 격리) -->
+        <div class="auth-teacher-selector" id="authTeacherSelector">
+          <button type="button" class="auth-teacher-chip active" data-teacher-key="wife">
+            <span class="auth-chip-icon">🌸</span>
+            <div class="auth-chip-info">
+              <div class="auth-chip-name">공가영 선생님</div>
+              <div class="auth-chip-class">사랑반 (만 0세)</div>
+            </div>
+          </button>
+          <button type="button" class="auth-teacher-chip" data-teacher-key="sister_in_law">
+            <span class="auth-chip-icon">🌿</span>
+            <div class="auth-chip-info">
+              <div class="auth-chip-name">공가희 주임님 ⭐</div>
+              <div class="auth-chip-class">소망반 (만 2세)</div>
+            </div>
+          </button>
+          <button type="button" class="auth-teacher-chip" data-teacher-key="sandbox">
+            <span class="auth-chip-icon">🧪</span>
+            <div class="auth-chip-info">
+              <div class="auth-chip-name">체험 · 연구반</div>
+              <div class="auth-chip-class">자유 테스트 구역</div>
+            </div>
+          </button>
+        </div>
+
         <!-- 2-Way 탭 스위처 -->
         <div class="auth-tabs">
           <button type="button" class="auth-tab-btn active" id="tabPinBtn">
@@ -972,7 +998,9 @@
 
         <!-- 패널 1: 4자리 PIN 입력 -->
         <div class="auth-panel" id="pinPanel">
-          <div class="pin-guide-text">4자리 비밀번호를 입력해 주세요</div>
+          <div class="pin-guide-text">
+            <span id="pinTargetTeacherName" style="color: var(--primary); font-weight: 700;">공가영 선생님</span>의 4자리 PIN을 입력하세요
+          </div>
           
           <!-- 4자리 도트 -->
           <div class="pin-dots-container" id="pinDotsContainer">
@@ -1207,7 +1235,7 @@
     <div class="toast" id="toastMessage">클립보드에 복사되었습니다.</div>
   </div>
 
-  <script src="./gemini-client.js?v=20260920_v7"></script>
-  <script src="./app.js?v=20260920_v7"></script>
+  <script src="./gemini-client.js?v=20260920_v8"></script>
+  <script src="./app.js?v=20260920_v8"></script>
 </body>
 </html>
