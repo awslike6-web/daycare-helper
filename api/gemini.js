@@ -213,11 +213,14 @@ ${isPlayStory ? `
     "development_feature": "놀이 몰입도 및 신체/언어 발달 강점",
     "counseling_opinion": "가정 연계 및 학부모 상담 시 안내할 종합 조언"
   },
-  "play_support_plan": {
-    "extension_idea": "아이들의 관심사에 맞춘 심화 확장 놀이 아이디어",
-    "recommended_materials": "추가 배치할 놀이 교구 및 환경구성 자료",
-    "interaction_tips": "아이의 사고 확장을 돕는 교사의 추천 발문 팁"
-  },
+  "individual_observations": [
+    {
+      "child_name": "원아 실명 (메모에 언급된 아이, 예: 김민수)",
+      "activity": "놀이 활동명 (예: 블록 기차놀이)",
+      "standard_area": "표준보육 영역 (신체운동/의사소통/사회관계/예술경험/자연탐구)",
+      "summary": "해당 아이의 실제 행동과 배움을 객관적으로 요약한 1줄 관찰문 (40~70자)"
+    }
+  ],
   "citation": {
     "has_citation": true,
     "summary": "📌 참고한 과거 기록: [2026-09-05] 대비 성장 요약"

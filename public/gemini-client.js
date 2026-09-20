@@ -303,17 +303,23 @@ ${maskedMemo}
     "development_feature": "놀이 몰입도 및 신체/언어 발달 강점",
     "counseling_opinion": "가정 연계 및 학부모 상담 시 안내할 종합 조언"
   },
-  "play_support_plan": {
-    "extension_idea": "아이들의 관심사에 맞춘 심화 확장 놀이 아이디어",
-    "recommended_materials": "추가 배치할 놀이 교구 및 환경구성 자료",
-    "interaction_tips": "아이의 사고 확장을 돕는 교사의 추천 발문 팁"
-  },
   "observation_summary": "오늘 아이의 행동양식과 놀이 몰입을 30자 내외로 압축한 핵심 1줄 요약 (노션 관찰 요약 속성 연동용)",
+  "individual_observations": [
+    {
+      "child_name": "원아 실명 (메모에 언급된 아이 이름, 예: 김민수)",
+      "activity": "놀이 활동명 (예: 블록 기차놀이)",
+      "standard_area": "표준보육 영역 (신체운동/의사소통/사회관계/예술경험/자연탐구)",
+      "summary": "해당 아이의 실제 행동과 배움을 객관적으로 요약한 1줄 관찰문 (40~70자)"
+    }
+  ],
   "citation": {
     "has_citation": true,
     "summary": "📌 참고한 과거 기록: 이전 관찰 대비 성장점 한 줄 요약"
   }
-}`;
+}
+[🧩 개별 원아 놀이 발췌 지침 (individual_observations)]:
+- 메모나 사진 속에서 특정 아이(예: 민수, 민서 등)의 이름이나 뚜렷한 개별 놀이 모습이 언급된 경우에만 정확히 발췌하라.
+- 🚨 절대 메모에 없는 아이를 임의로 지어내지 말 것. 언급된 아이가 없으면 빈 배열 []로 응답하라.`;
 
     // 3. 파트 구성 (텍스트 프롬프트 + 놀이 사진 멀티모달 파트)
     const parts = [{ text: prompt }];
