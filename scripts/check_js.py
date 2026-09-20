@@ -92,7 +92,17 @@ def check_brackets(filepath):
     return True
 
 all_ok = True
-for target in ['public/app.js', 'public/gemini-client.js', 'api/notion.js']:
+targets = [
+    'public/app.js',
+    'public/gemini-client.js',
+    'api/notion.js',
+    'public/js/config.js',
+    'public/js/auth-gate.js',
+    'public/js/children-store.js',
+    'public/js/notion-bridge.js',
+    'public/js/history-viewer.js'
+]
+for target in targets:
     try:
         if not check_brackets(target):
             all_ok = False

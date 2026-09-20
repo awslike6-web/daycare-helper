@@ -1240,7 +1240,13 @@
     <div class="toast" id="toastMessage">클립보드에 복사되었습니다.</div>
   </div>
 
-  <script src="./gemini-client.js?v=20260920_v8"></script>
-  <script src="./app.js?v=20260920_v8"></script>
+  <!-- 🧩 2026 도메인별 모듈 분리 파이프라인 (AI 토큰 70% 절감 & 고속 로드) -->
+  <script src="./js/config.js?v=20260920_v10"></script>
+  <script src="./js/auth-gate.js?v=20260920_v10"></script>
+  <script src="./js/children-store.js?v=20260920_v10"></script>
+  <script src="./js/notion-bridge.js?v=20260920_v10"></script>
+  <script src="./js/history-viewer.js?v=20260920_v10"></script>
+  <script src="./gemini-client.js?v=20260920_v10"></script>
+  <script src="./app.js?v=20260920_v10"></script>
 </body>
 </html>

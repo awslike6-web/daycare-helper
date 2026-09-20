@@ -28,5 +28,10 @@ jobs:
           node --check worker.js
           node --check public/app.js
           node --check public/gemini-client.js
+          node --check public/js/config.js
+          node --check public/js/auth-gate.js
+          node --check public/js/children-store.js
+          node --check public/js/notion-bridge.js
+          node --check public/js/history-viewer.js
           echo "✅ 모든 코드가 오류 없이 완벽하게 검증되었습니다!"
           echo "🚀 Cloudflare 자동 배포가 정상 진행됩니다."
