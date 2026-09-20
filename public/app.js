@@ -849,6 +849,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!state.isRecording) voiceMicBtn.click();
           }, 500);
         }
+
+        if (actionParam === 'history') {
+          setTimeout(() => {
+            if (typeof openHistoryModal === 'function') {
+              openHistoryModal();
+              showToast('📂 [지난 기록 보관함]을 열었습니다.');
+            }
+          }, 400);
+        }
       } catch (err) {
         console.warn('URL params check error:', err);
       }

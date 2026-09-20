@@ -35,10 +35,10 @@
       ]
     },
     {
-      "name": "🧸 월간 관찰일지 작성",
-      "short_name": "관찰일지",
-      "description": "보건복지부 평가제 맞춤 월 2회 연속 관찰기록부 작성 모드로 진입합니다.",
-      "url": "./?mode=observation",
+      "name": "📂 지난 기록 보관함",
+      "short_name": "기록 보관함",
+      "description": "지난 보육일지 및 알림장을 1초 만에 검색하고 복사합니다.",
+      "url": "./?action=history",
       "icons": [
         {
           "src": "./icon-192.png",
