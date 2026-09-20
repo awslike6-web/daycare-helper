@@ -69,6 +69,7 @@ async function handleSaveClassReportNotion() {
 
   try {
     const todayStr = state.selectedDate || new Date().toISOString().split('T')[0];
+    const rep = state.lastResult.class_daily_report || {};
     const ageText = state.selectedChild?.age || (state.className && state.className.includes('사랑') ? '만 0세' : '만 2세');
     
     let actText = '';
@@ -362,18 +363,20 @@ async function handleSaveNotion() {
   let standardAreaName = state.lastResult.observation_log?.standard_area || '의사소통';
 
   if (isObsMode && mob) {
+    const playData = mob.play_obs || mob.obs_1 || {};
+    const dailyData = mob.daily_obs || mob.obs_2 || {};
     pageTitle = `[관찰일지] ${targetMonthStr} ${childName} 발달 관찰기록부 (월 2회)`;
-    standardAreaName = mob.obs_1?.area || '의사소통';
-    obsFullText = `[${targetMonthStr} 영유아 발달 관찰기록부 - ${childName}]\n반명: ${state.className} / 담임: ${state.teacherName}\n\n` +
-      `■ 1차 관찰 (${mob.obs_1?.date || ''} / ${mob.obs_1?.area || ''})\n` +
-      `- 활동명: ${mob.obs_1?.activity_title || ''}\n` +
-      `- 행동 관찰: ${mob.obs_1?.behavior || ''}\n` +
-      `- 교사 지원: ${mob.obs_1?.teacher_support || ''}\n\n` +
-      `■ 2차 관찰 (${mob.obs_2?.date || ''} / ${mob.obs_2?.area || ''} - 발전적 변화 연계)\n` +
-      `- 활동명: ${mob.obs_2?.activity_title || ''}\n` +
-      `- 행동 관찰: ${mob.obs_2?.behavior || ''}\n` +
-      `- 교사 지원: ${mob.obs_2?.teacher_support || ''}\n` +
-      `- 발달 성장점: ${mob.obs_2?.growth_continuity || ''}\n\n` +
+    standardAreaName = playData.area || '신체운동';
+    obsFullText = `[${targetMonthStr} 한그루 ERP 월간 관찰일지 (월 2회) - ${childName}]\n반명: ${state.className} / 담임: ${state.teacherName}\n\n` +
+      `■ 1회차: [놀이] 관찰 (${playData.date || ''} / ${playData.area || '놀이'})\n` +
+      `- 활동명: ${playData.activity_title || playData.activity || ''}\n` +
+      `- 행동 관찰: ${playData.behavior || playData.content || ''}\n` +
+      `- 교사 지원: ${playData.teacher_support || ''}\n\n` +
+      `■ 2회차: [일상생활] 관찰 (${dailyData.date || ''} / ${dailyData.area || '일상생활'} - 발전적 변화 연계)\n` +
+      `- 활동명: ${dailyData.activity_title || dailyData.activity || ''}\n` +
+      `- 행동 관찰: ${dailyData.behavior || dailyData.content || ''}\n` +
+      `- 교사 지원: ${dailyData.teacher_support || ''}\n` +
+      `- 발달 성장점: ${dailyData.growth_continuity || ''}\n\n` +
       `■ 월말 발달 종합 총평\n` +
       `- 종합 발달: ${mob.monthly_summary?.development_summary || ''}\n` +
       `- 다음 달 지원 계획: ${mob.monthly_summary?.next_month_plan || ''}`;
@@ -382,7 +385,9 @@ async function handleSaveNotion() {
   try {
     let obsSummaryText = '';
     if (isObsMode && mob) {
-      obsSummaryText = `${mob.obs_1?.area || '관찰'}: ${mob.obs_2?.growth_continuity || mob.obs_2?.behavior || ''}`.trim().substring(0, 100);
+      const playData = mob.play_obs || mob.obs_1 || {};
+      const dailyData = mob.daily_obs || mob.obs_2 || {};
+      obsSummaryText = `${playData.area || '놀이'}: ${dailyData.growth_continuity || dailyData.behavior || playData.behavior || ''}`.trim().substring(0, 100);
     } else if (state.lastResult?.observation_summary) {
       obsSummaryText = state.lastResult.observation_summary.trim().substring(0, 100);
     } else if (obsBehaviorContent && obsBehaviorContent.value) {
