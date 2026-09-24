@@ -238,6 +238,20 @@
 
       <!-- 🎁 5대 보육 표준 서식 결과 섹션 -->
       <section class="results-section" id="resultsSection">
+        <!-- ⚡ 원클릭 통합 누적 배너: 어떤 서식이든 오늘 기록 전체를 노션 아카이브에 1초 누적 -->
+        <div class="unified-save-banner" id="unifiedSaveBanner" style="display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #EEF2FF, #E0E7FF); border: 1.5px solid #C7D2FE; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; gap: 8px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.2rem;">⚡</span>
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: #3730A3;">오늘의 원아 일과 & 관찰 전체 누적하기</div>
+              <div style="font-size: 11px; color: #4F46E5;">메모, 알림장, 관찰 요약을 묶어 노션 발달 타임라인에 한 번에 저장합니다.</div>
+            </div>
+          </div>
+          <button type="button" id="saveAllUnifiedNotionBtn" class="action-btn" style="background: #4F46E5; color: white; border: none; font-weight: 700; padding: 8px 14px; border-radius: 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);">
+            <span>💾</span> <span>노션에 1초 일괄 누적</span>
+          </button>
+        </div>
+
         <!-- 5대 서식 가로 스크롤 탭 스위처 -->
         <div class="result-tabs-scroll">
           <div class="result-tabs" id="resultTabs">
@@ -432,6 +446,9 @@
             </button>
             <button type="button" id="shareKidsnoteBtn" class="action-btn action-btn-share">
               <span>🚀</span> <span>키즈노트 앱 열기/공유</span>
+            </button>
+            <button type="button" id="saveKidsnoteNotionBtn" class="action-btn action-btn-save" style="background: #059669; color: white; border: none; font-weight: 700;">
+              <span>💾</span> <span>노션에 일과·알림장 저장</span>
             </button>
           </div>
         </div>
@@ -721,8 +738,11 @@
           </div>
 
           <div class="action-btn-row">
-            <button type="button" id="copyCounselingBtn" class="action-btn action-btn-copy" style="grid-column: span 2;">
+            <button type="button" id="copyCounselingBtn" class="action-btn action-btn-copy">
               <span>📋</span> <span>학부모 상담 일지 전체 복사</span>
+            </button>
+            <button type="button" id="saveCounselingNotionBtn" class="action-btn action-btn-save" style="background: #059669; color: white; border: none; font-weight: 700;">
+              <span>💾</span> <span>노션에 상담일지 저장</span>
             </button>
           </div>
         </div>
@@ -746,8 +766,11 @@
           </div>
 
           <div class="action-btn-row">
-            <button type="button" id="copyPlaySupportBtn" class="action-btn action-btn-copy" style="grid-column: span 2;">
+            <button type="button" id="copyPlaySupportBtn" class="action-btn action-btn-copy">
               <span>📋</span> <span>놀이 지원 및 환경구성안 복사</span>
+            </button>
+            <button type="button" id="savePlaySupportNotionBtn" class="action-btn action-btn-save" style="background: #059669; color: white; border: none; font-weight: 700;">
+              <span>💾</span> <span>노션에 놀이지원안 저장</span>
             </button>
           </div>
         </div>

@@ -168,6 +168,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const citationSummaryText = document.getElementById('citationSummaryText');
   const copyObservationBtn = document.getElementById('copyObservationBtn');
   const saveNotionBtn = document.getElementById('saveNotionBtn');
+  const saveAllUnifiedNotionBtn = document.getElementById('saveAllUnifiedNotionBtn');
+  const saveKidsnoteNotionBtn = document.getElementById('saveKidsnoteNotionBtn');
+  const saveCounselingNotionBtn = document.getElementById('saveCounselingNotionBtn');
+  const savePlaySupportNotionBtn = document.getElementById('savePlaySupportNotionBtn');
 
   // 📄 처형분 실무 정규 보육일지 공문서 요소들
   const tabClassDailyReport = document.getElementById('tabClassDailyReport');
@@ -731,13 +735,57 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // 노션 저장
+    // 노션 저장 (관찰일지)
     if (saveNotionBtn) {
       saveNotionBtn.addEventListener('click', () => {
         if (typeof handleSaveNotion === 'function') {
           handleSaveNotion();
         } else if (typeof window.handleSaveNotion === 'function') {
           window.handleSaveNotion();
+        }
+      });
+    }
+
+    // 1-B. 키즈노트 알림장 노션 발달 타임라인 누적 저장
+    if (saveKidsnoteNotionBtn) {
+      saveKidsnoteNotionBtn.addEventListener('click', () => {
+        if (typeof handleSaveKidsnoteNotion === 'function') {
+          handleSaveKidsnoteNotion();
+        } else if (typeof window.handleSaveKidsnoteNotion === 'function') {
+          window.handleSaveKidsnoteNotion();
+        }
+      });
+    }
+
+    // 4-B. 학부모 상담일지 노션 저장
+    if (saveCounselingNotionBtn) {
+      saveCounselingNotionBtn.addEventListener('click', () => {
+        if (typeof handleSaveCounselingNotion === 'function') {
+          handleSaveCounselingNotion();
+        } else if (typeof window.handleSaveCounselingNotion === 'function') {
+          window.handleSaveCounselingNotion();
+        }
+      });
+    }
+
+    // 5-B. 놀이 지원안 노션 저장
+    if (savePlaySupportNotionBtn) {
+      savePlaySupportNotionBtn.addEventListener('click', () => {
+        if (typeof handleSavePlaySupportNotion === 'function') {
+          handleSavePlaySupportNotion();
+        } else if (typeof window.handleSavePlaySupportNotion === 'function') {
+          window.handleSavePlaySupportNotion();
+        }
+      });
+    }
+
+    // 6. 오늘 일과 & 관찰 전체 1초 일괄 누적 저장
+    if (saveAllUnifiedNotionBtn) {
+      saveAllUnifiedNotionBtn.addEventListener('click', () => {
+        if (typeof handleSaveAllUnifiedNotion === 'function') {
+          handleSaveAllUnifiedNotion();
+        } else if (typeof window.handleSaveAllUnifiedNotion === 'function') {
+          window.handleSaveAllUnifiedNotion();
         }
       });
     }

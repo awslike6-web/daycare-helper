@@ -603,6 +603,422 @@ async function handleSaveHangrooEvalNotion() {
       saveHangrooEvalNotionBtn.innerHTML = '<span>💾</span> <span>노션 DAILY_LOG_DB에 발달평가 저장</span>';
     }
   }
+// 💌 1. 키즈노트 알림장 & 일과 기록 노션 DAILY_LOG_DB 저장
+async function handleSaveKidsnoteNotion() {
+  const state = window.state || {};
+  const notionConfig = window.NOTION_CONFIG || {};
+  const saveKidsnoteNotionBtn = document.getElementById('saveKidsnoteNotionBtn');
+  const kidsnoteContent = document.getElementById('kidsnoteContent');
+  const rawMemoInput = document.getElementById('rawMemoInput');
+
+  if (!kidsnoteContent || !kidsnoteContent.value.trim()) {
+    if (typeof showToast === 'function') showToast('저장할 알림장 내용이 없습니다. 먼저 생성해주세요.');
+    return;
+  }
+
+  if (saveKidsnoteNotionBtn) {
+    saveKidsnoteNotionBtn.disabled = true;
+    saveKidsnoteNotionBtn.innerHTML = '<span>⏳</span> <span>노션에 저장 중...</span>';
+  }
+
+  const today = state.selectedDate || new Date().toISOString().split('T')[0];
+  const childName = state.selectedChild?.name || '원아';
+  const activityArea = state.activityArea || '자유놀이';
+  const pageTitle = `[알림장] ${today} ${childName} - ${activityArea}`;
+  const noteText = kidsnoteContent.value.trim();
+  const rawMemo = rawMemoInput ? rawMemoInput.value.trim() : '';
+  const firstSentence = noteText.split(/[.!\n]/)[0].trim();
+  const obsSummaryText = (firstSentence ? firstSentence : (rawMemo || '일일 알림장')).slice(0, 80);
+
+  try {
+    let targetChildId = state.selectedChild?.id;
+    if (!targetChildId || targetChildId.startsWith('mock-') || targetChildId.startsWith('sandbox_')) {
+      const matched = state.children?.find(c => c.name === childName && !c.id.startsWith('mock-') && !c.id.startsWith('sandbox_'));
+      if (matched) targetChildId = matched.id;
+    }
+
+    const teacherMap = window.TEACHER_PAGE_MAP || {};
+    const currentTeacherKey = localStorage.getItem('daycare_active_teacher') || (state.className === '소망반' ? 'sister_in_law' : (state.className === '연구반' ? 'sandbox' : 'wife'));
+    const teacherPageId = teacherMap[currentTeacherKey];
+
+    const props = {
+      '기록명/식별자': { title: [{ text: { content: pageTitle } }] },
+      '작성일자': { date: { start: today } },
+      '활동 구분': { select: { name: '알림장' } },
+      '표준보육 영역': { multi_select: [{ name: '기본생활' }] },
+      '원시 메모/키워드': { rich_text: [{ text: { content: rawMemo } }] },
+      '알림장 최종본': { rich_text: [{ text: { content: noteText } }] },
+      '관찰일지 최종본': { rich_text: [{ text: { content: `[${today} 알림장 발송본]\n\n${noteText}` } }] },
+      '참조 출처 요약': { rich_text: [{ text: { content: `키즈노트 일일 알림장 (${state.className})` } }] },
+      '관찰 요약': { rich_text: [{ text: { content: obsSummaryText } }] }
+    };
+
+    if (targetChildId && !targetChildId.startsWith('mock-') && !targetChildId.startsWith('sandbox_')) {
+      props['원아'] = { relation: [{ id: targetChildId }] };
+    }
+    if (teacherPageId) {
+      props['작성교사'] = { relation: [{ id: teacherPageId }] };
+    }
+
+    try {
+      await directNotionCall('/pages', 'POST', {
+        parent: { database_id: notionConfig.DAILY_LOG_DB_ID },
+        properties: props
+      });
+      state.isHistoryLoaded = false;
+      if (typeof showToast === 'function') showToast(`🎉 ${childName} 알림장이 노션 일지 DB에 안전하게 저장되었습니다!`);
+      return;
+    } catch (directErr) {
+      console.warn('Direct save failed, using worker fallback:', directErr);
+    }
+
+    const fallbackPayload = {
+      date: today,
+      childId: targetChildId,
+      childName,
+      activityArea: '알림장',
+      standardArea: '기본생활',
+      rawMemo,
+      kidsnoteText: noteText,
+      observationText: `[${today} 알림장 발송본]\n\n${noteText}`,
+      citationSummary: `키즈노트 일일 알림장 (${state.className})`,
+      obsSummary: obsSummaryText,
+      referencedLogId: null
+    };
+
+    const fbRes = await fetch('/api/logs/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fallbackPayload)
+    });
+    if (!fbRes.ok) throw new Error('노션 저장에 실패했습니다.');
+
+    state.isHistoryLoaded = false;
+    if (typeof showToast === 'function') showToast(`🎉 ${childName} 알림장이 노션 일지 DB에 안전하게 저장되었습니다!`);
+  } catch (err) {
+    console.error('Save Kidsnote Error:', err);
+    if (typeof showToast === 'function') showToast(`저장 오류: ${err.message}`);
+  } finally {
+    if (saveKidsnoteNotionBtn) {
+      saveKidsnoteNotionBtn.disabled = false;
+      saveKidsnoteNotionBtn.innerHTML = '<span>💾</span> <span>노션에 일과·알림장 저장</span>';
+    }
+  }
+}
+
+// 🗣️ 2. 학부모 상담 면담일지 노션 DAILY_LOG_DB 저장
+async function handleSaveCounselingNotion() {
+  const state = window.state || {};
+  const notionConfig = window.NOTION_CONFIG || {};
+  const saveCounselingNotionBtn = document.getElementById('saveCounselingNotionBtn');
+  const counselRoutine = document.getElementById('counselRoutine');
+  const counselSocial = document.getElementById('counselSocial');
+  const counselDev = document.getElementById('counselDev');
+  const counselOpinion = document.getElementById('counselOpinion');
+  const rawMemoInput = document.getElementById('rawMemoInput');
+
+  const fullText = `[기본생활습관]\n${counselRoutine ? counselRoutine.value : ''}\n\n` +
+    `[대인관계 및 사회성]\n${counselSocial ? counselSocial.value : ''}\n\n` +
+    `[발달 특성]\n${counselDev ? counselDev.value : ''}\n\n` +
+    `[교사 종합 상담 의견]\n${counselOpinion ? counselOpinion.value : ''}`;
+
+  if (!fullText.trim()) {
+    if (typeof showToast === 'function') showToast('저장할 상담일지 내용이 없습니다.');
+    return;
+  }
+
+  if (saveCounselingNotionBtn) {
+    saveCounselingNotionBtn.disabled = true;
+    saveCounselingNotionBtn.innerHTML = '<span>⏳</span> <span>노션에 저장 중...</span>';
+  }
+
+  const today = state.selectedDate || new Date().toISOString().split('T')[0];
+  const childName = state.selectedChild?.name || '원아';
+  const pageTitle = `[상담일지] ${today} ${childName} 학부모 면담일지`;
+  const obsSummary = (counselOpinion?.value?.trim() || `${childName} 학부모 정기 면담`).slice(0, 80);
+
+  try {
+    let targetChildId = state.selectedChild?.id;
+    if (!targetChildId || targetChildId.startsWith('mock-') || targetChildId.startsWith('sandbox_')) {
+      const matched = state.children?.find(c => c.name === childName && !c.id.startsWith('mock-') && !c.id.startsWith('sandbox_'));
+      if (matched) targetChildId = matched.id;
+    }
+
+    const teacherMap = window.TEACHER_PAGE_MAP || {};
+    const currentTeacherKey = localStorage.getItem('daycare_active_teacher') || (state.className === '소망반' ? 'sister_in_law' : (state.className === '연구반' ? 'sandbox' : 'wife'));
+    const teacherPageId = teacherMap[currentTeacherKey];
+
+    const props = {
+      '기록명/식별자': { title: [{ text: { content: pageTitle } }] },
+      '작성일자': { date: { start: today } },
+      '활동 구분': { select: { name: '상담일지' } },
+      '표준보육 영역': { multi_select: [{ name: '사회관계' }] },
+      '원시 메모/키워드': { rich_text: [{ text: { content: rawMemoInput ? rawMemoInput.value.trim() : '' } }] },
+      '관찰일지 최종본': { rich_text: [{ text: { content: fullText } }] },
+      '참조 출처 요약': { rich_text: [{ text: { content: `학부모 상담 면담 (${state.className})` } }] },
+      '관찰 요약': { rich_text: [{ text: { content: obsSummary } }] }
+    };
+
+    if (targetChildId && !targetChildId.startsWith('mock-') && !targetChildId.startsWith('sandbox_')) {
+      props['원아'] = { relation: [{ id: targetChildId }] };
+    }
+    if (teacherPageId) {
+      props['작성교사'] = { relation: [{ id: teacherPageId }] };
+    }
+
+    try {
+      await directNotionCall('/pages', 'POST', {
+        parent: { database_id: notionConfig.DAILY_LOG_DB_ID },
+        properties: props
+      });
+      state.isHistoryLoaded = false;
+      if (typeof showToast === 'function') showToast(`🎉 ${childName} 학부모 상담일지가 노션에 안전하게 저장되었습니다!`);
+      return;
+    } catch (directErr) {
+      console.warn('Direct counseling save failed, using worker fallback:', directErr);
+    }
+
+    const fbRes = await fetch('/api/logs/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: today,
+        childId: targetChildId,
+        childName,
+        activityArea: '상담일지',
+        standardArea: '사회관계',
+        rawMemo: rawMemoInput ? rawMemoInput.value.trim() : '',
+        observationText: fullText,
+        citationSummary: `학부모 상담 면담 (${state.className})`,
+        obsSummary
+      })
+    });
+    if (!fbRes.ok) throw new Error('노션 저장에 실패했습니다.');
+
+    state.isHistoryLoaded = false;
+    if (typeof showToast === 'function') showToast(`🎉 ${childName} 학부모 상담일지가 노션에 안전하게 저장되었습니다!`);
+  } catch (err) {
+    console.error('Save Counseling Error:', err);
+    if (typeof showToast === 'function') showToast(`저장 오류: ${err.message}`);
+  } finally {
+    if (saveCounselingNotionBtn) {
+      saveCounselingNotionBtn.disabled = false;
+      saveCounselingNotionBtn.innerHTML = '<span>💾</span> <span>노션에 상담일지 저장</span>';
+    }
+  }
+}
+
+// 🎯 3. 놀이 지원 & 환경구성안 노션 DAILY_LOG_DB 저장
+async function handleSavePlaySupportNotion() {
+  const state = window.state || {};
+  const notionConfig = window.NOTION_CONFIG || {};
+  const savePlaySupportNotionBtn = document.getElementById('savePlaySupportNotionBtn');
+  const playExtension = document.getElementById('playExtension');
+  const playMaterials = document.getElementById('playMaterials');
+  const playTips = document.getElementById('playTips');
+  const rawMemoInput = document.getElementById('rawMemoInput');
+
+  const fullText = `[유아 흥미 기반 확장 놀이 아이디어]\n${playExtension ? playExtension.value : ''}\n\n` +
+    `[추천 준비 교구 및 환경구성 자료]\n${playMaterials ? playMaterials.value : ''}\n\n` +
+    `[교사 추천 발문 팁]\n${playTips ? playTips.value : ''}`;
+
+  if (!fullText.trim()) {
+    if (typeof showToast === 'function') showToast('저장할 놀이지원안 내용이 없습니다.');
+    return;
+  }
+
+  if (savePlaySupportNotionBtn) {
+    savePlaySupportNotionBtn.disabled = true;
+    savePlaySupportNotionBtn.innerHTML = '<span>⏳</span> <span>노션에 저장 중...</span>';
+  }
+
+  const today = state.selectedDate || new Date().toISOString().split('T')[0];
+  const childName = state.selectedChild?.name || '원아';
+  const pageTitle = `[놀이지원] ${today} ${childName} 놀이 지원 및 환경구성안`;
+  const obsSummary = (playExtension?.value?.trim() || `${childName} 놀이 확장 지원`).slice(0, 80);
+
+  try {
+    let targetChildId = state.selectedChild?.id;
+    if (!targetChildId || targetChildId.startsWith('mock-') || targetChildId.startsWith('sandbox_')) {
+      const matched = state.children?.find(c => c.name === childName && !c.id.startsWith('mock-') && !c.id.startsWith('sandbox_'));
+      if (matched) targetChildId = matched.id;
+    }
+
+    const teacherMap = window.TEACHER_PAGE_MAP || {};
+    const currentTeacherKey = localStorage.getItem('daycare_active_teacher') || (state.className === '소망반' ? 'sister_in_law' : (state.className === '연구반' ? 'sandbox' : 'wife'));
+    const teacherPageId = teacherMap[currentTeacherKey];
+
+    const props = {
+      '기록명/식별자': { title: [{ text: { content: pageTitle } }] },
+      '작성일자': { date: { start: today } },
+      '활동 구분': { select: { name: '놀이지원' } },
+      '표준보육 영역': { multi_select: [{ name: '자연탐구' }] },
+      '원시 메모/키워드': { rich_text: [{ text: { content: rawMemoInput ? rawMemoInput.value.trim() : '' } }] },
+      '관찰일지 최종본': { rich_text: [{ text: { content: fullText } }] },
+      '참조 출처 요약': { rich_text: [{ text: { content: `놀이 지원 및 환경구성안 (${state.className})` } }] },
+      '관찰 요약': { rich_text: [{ text: { content: obsSummary } }] }
+    };
+
+    if (targetChildId && !targetChildId.startsWith('mock-') && !targetChildId.startsWith('sandbox_')) {
+      props['원아'] = { relation: [{ id: targetChildId }] };
+    }
+    if (teacherPageId) {
+      props['작성교사'] = { relation: [{ id: teacherPageId }] };
+    }
+
+    try {
+      await directNotionCall('/pages', 'POST', {
+        parent: { database_id: notionConfig.DAILY_LOG_DB_ID },
+        properties: props
+      });
+      state.isHistoryLoaded = false;
+      if (typeof showToast === 'function') showToast(`🎉 ${childName} 놀이지원안이 노션에 안전하게 저장되었습니다!`);
+      return;
+    } catch (directErr) {
+      console.warn('Direct play support save failed, using worker fallback:', directErr);
+    }
+
+    const fbRes = await fetch('/api/logs/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: today,
+        childId: targetChildId,
+        childName,
+        activityArea: '놀이지원',
+        standardArea: '자연탐구',
+        rawMemo: rawMemoInput ? rawMemoInput.value.trim() : '',
+        observationText: fullText,
+        citationSummary: `놀이 지원 및 환경구성안 (${state.className})`,
+        obsSummary
+      })
+    });
+    if (!fbRes.ok) throw new Error('노션 저장에 실패했습니다.');
+
+    state.isHistoryLoaded = false;
+    if (typeof showToast === 'function') showToast(`🎉 ${childName} 놀이지원안이 노션에 안전하게 저장되었습니다!`);
+  } catch (err) {
+    console.error('Save Play Support Error:', err);
+    if (typeof showToast === 'function') showToast(`저장 오류: ${err.message}`);
+  } finally {
+    if (savePlaySupportNotionBtn) {
+      savePlaySupportNotionBtn.disabled = false;
+      savePlaySupportNotionBtn.innerHTML = '<span>💾</span> <span>노션에 놀이지원안 저장</span>';
+    }
+  }
+}
+
+// ⚡ 4. 오늘의 원아 일과 & 관찰 전체 1초 일괄 누적 저장 (All-in-One Save)
+async function handleSaveAllUnifiedNotion() {
+  const state = window.state || {};
+  const notionConfig = window.NOTION_CONFIG || {};
+  const saveAllUnifiedNotionBtn = document.getElementById('saveAllUnifiedNotionBtn');
+  const kidsnoteContent = document.getElementById('kidsnoteContent');
+  const obsBehaviorContent = document.getElementById('obsBehaviorContent');
+  const obsEvaluationContent = document.getElementById('obsEvaluationContent');
+  const rawMemoInput = document.getElementById('rawMemoInput');
+
+  if (!state.lastResult) {
+    if (typeof showToast === 'function') showToast('저장할 일지 데이터가 없습니다. 먼저 생성해주세요.');
+    return;
+  }
+
+  if (saveAllUnifiedNotionBtn) {
+    saveAllUnifiedNotionBtn.disabled = true;
+    saveAllUnifiedNotionBtn.innerHTML = '<span>⏳</span> <span>노션 일괄 누적 중...</span>';
+  }
+
+  const today = state.selectedDate || new Date().toISOString().split('T')[0];
+  const childName = state.selectedChild?.name || '원아';
+  const activityArea = state.activityArea || '자유놀이';
+  const pageTitle = `[통합일지] ${today} ${childName} - 일과·알림장 & 관찰 종합`;
+
+  const rawMemo = rawMemoInput ? rawMemoInput.value.trim() : '';
+  const noteText = kidsnoteContent ? kidsnoteContent.value.trim() : (state.lastResult.kidsnote?.content || '');
+  
+  // 관찰 및 보육 기록 조합
+  let obsText = '';
+  if (obsBehaviorContent && obsBehaviorContent.value) {
+    obsText = `[행동 관찰]\n${obsBehaviorContent.value}\n\n[지원 및 평가]\n${obsEvaluationContent ? obsEvaluationContent.value : ''}`;
+  } else if (state.lastResult.class_daily_report) {
+    obsText = `[놀이 실행]\n${state.lastResult.class_daily_report.play_activity || state.lastResult.class_daily_report.play_theme || ''}\n\n` +
+      `[성찰 및 지원]\n${state.lastResult.class_daily_report.reflection || ''}`;
+  }
+
+  const firstSentence = noteText.split(/[.!\n]/)[0].trim();
+  const obsSummaryText = (firstSentence ? firstSentence : (rawMemo || '일일 종합 일과')).slice(0, 80);
+
+  try {
+    let targetChildId = state.selectedChild?.id;
+    if (!targetChildId || targetChildId.startsWith('mock-') || targetChildId.startsWith('sandbox_')) {
+      const matched = state.children?.find(c => c.name === childName && !c.id.startsWith('mock-') && !c.id.startsWith('sandbox_'));
+      if (matched) targetChildId = matched.id;
+    }
+
+    const teacherMap = window.TEACHER_PAGE_MAP || {};
+    const currentTeacherKey = localStorage.getItem('daycare_active_teacher') || (state.className === '소망반' ? 'sister_in_law' : (state.className === '연구반' ? 'sandbox' : 'wife'));
+    const teacherPageId = teacherMap[currentTeacherKey];
+
+    const props = {
+      '기록명/식별자': { title: [{ text: { content: pageTitle } }] },
+      '작성일자': { date: { start: today } },
+      '활동 구분': { select: { name: activityArea } },
+      '표준보육 영역': { multi_select: [{ name: state.lastResult.observation_log?.standard_area || '신체운동' }] },
+      '원시 메모/키워드': { rich_text: [{ text: { content: rawMemo } }] },
+      '알림장 최종본': { rich_text: [{ text: { content: noteText } }] },
+      '관찰일지 최종본': { rich_text: [{ text: { content: obsText || noteText } }] },
+      '참조 출처 요약': { rich_text: [{ text: { content: `원아 일과 종합 누적 (${state.className})` } }] },
+      '관찰 요약': { rich_text: [{ text: { content: obsSummaryText } }] }
+    };
+
+    if (targetChildId && !targetChildId.startsWith('mock-') && !targetChildId.startsWith('sandbox_')) {
+      props['원아'] = { relation: [{ id: targetChildId }] };
+    }
+    if (teacherPageId) {
+      props['작성교사'] = { relation: [{ id: teacherPageId }] };
+    }
+
+    try {
+      await directNotionCall('/pages', 'POST', {
+        parent: { database_id: notionConfig.DAILY_LOG_DB_ID },
+        properties: props
+      });
+      state.isHistoryLoaded = false;
+      if (typeof showToast === 'function') showToast(`🎉 ${childName}의 오늘 일과와 관찰 기록 전체가 노션에 일괄 누적되었습니다!`);
+      return;
+    } catch (directErr) {
+      console.warn('Direct unified save failed, using worker fallback:', directErr);
+    }
+
+    const fbRes = await fetch('/api/logs/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: today,
+        childId: targetChildId,
+        childName,
+        activityArea,
+        standardArea: state.lastResult.observation_log?.standard_area || '신체운동',
+        rawMemo,
+        kidsnoteText: noteText,
+        observationText: obsText || noteText,
+        citationSummary: `원아 일과 종합 누적 (${state.className})`,
+        obsSummary: obsSummaryText
+      })
+    });
+    if (!fbRes.ok) throw new Error('노션 저장에 실패했습니다.');
+
+    state.isHistoryLoaded = false;
+    if (typeof showToast === 'function') showToast(`🎉 ${childName}의 오늘 일과와 관찰 기록 전체가 노션에 일괄 누적되었습니다!`);
+  } catch (err) {
+    console.error('Save Unified Error:', err);
+    if (typeof showToast === 'function') showToast(`일괄 누적 오류: ${err.message}`);
+  } finally {
+    if (saveAllUnifiedNotionBtn) {
+      saveAllUnifiedNotionBtn.disabled = false;
+      saveAllUnifiedNotionBtn.innerHTML = '<span>💾</span> <span>노션에 1초 일괄 누적</span>';
+    }
+  }
 }
 
 // 🌐 전역 네임스페이스 및 하위 호환성 등록
@@ -613,6 +1029,10 @@ window.updateSelectedIndivObsCount = updateSelectedIndivObsCount;
 window.handleSaveIndividualObs = handleSaveIndividualObs;
 window.handleSaveNotion = handleSaveNotion;
 window.handleSaveHangrooEvalNotion = handleSaveHangrooEvalNotion;
+window.handleSaveKidsnoteNotion = handleSaveKidsnoteNotion;
+window.handleSaveCounselingNotion = handleSaveCounselingNotion;
+window.handleSavePlaySupportNotion = handleSavePlaySupportNotion;
+window.handleSaveAllUnifiedNotion = handleSaveAllUnifiedNotion;
 
 window.DaycareNotion = {
   directNotionCall,
@@ -621,5 +1041,10 @@ window.DaycareNotion = {
   updateSelectedIndivObsCount,
   handleSaveIndividualObs,
   handleSaveNotion,
-  handleSaveHangrooEvalNotion
+  handleSaveHangrooEvalNotion,
+  handleSaveKidsnoteNotion,
+  handleSaveCounselingNotion,
+  handleSavePlaySupportNotion,
+  handleSaveAllUnifiedNotion
 };
+
