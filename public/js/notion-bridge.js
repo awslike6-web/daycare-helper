@@ -603,6 +603,8 @@ async function handleSaveHangrooEvalNotion() {
       saveHangrooEvalNotionBtn.innerHTML = '<span>💾</span> <span>노션 DAILY_LOG_DB에 발달평가 저장</span>';
     }
   }
+}
+
 // 💌 1. 키즈노트 알림장 & 일과 기록 노션 DAILY_LOG_DB 저장
 async function handleSaveKidsnoteNotion() {
   const state = window.state || {};
