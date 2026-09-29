@@ -7,27 +7,33 @@
  *  - 단일 공통 전송 디스패처(sendDailyLogToNotion)를 통한 중복 상용구 70% 슬림화
  */
 
-// 🌐 1. 노션 REST API 직접 호출 헬퍼
+// 🌐 1. 노션 REST API 직접 호출 헬퍼 (minmin-notion 프록시 또는 공식 API)
 async function directNotionCall(endpoint, method = 'GET', body = null) {
   const notionConfig = window.NOTION_CONFIG || {};
+  const proxyUrl = (notionConfig.PROXY_URL || '').replace(/\/$/, '');
   const token = notionConfig.INTERNAL_TOKEN;
 
-  if (!token) {
-    throw new Error('노션 인테그레이션 토큰이 설정되지 않았습니다.');
+  if (!proxyUrl && !token) {
+    throw new Error('노션 프록시 URL 또는 인테그레이션 토큰이 설정되지 않았습니다.');
   }
 
+  const targetUrl = proxyUrl ? `${proxyUrl}/v1${endpoint}` : `https://api.notion.com/v1${endpoint}`;
+
   const headers = {
-    'Authorization': `Bearer ${token}`,
     'Notion-Version': notionConfig.NOTION_VERSION || '2022-06-28',
     'Content-Type': 'application/json'
   };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   const options = { method, headers };
   if (body) {
     options.body = JSON.stringify(body);
   }
 
-  const res = await fetch(`https://api.notion.com/v1${endpoint}`, options);
+  const res = await fetch(targetUrl, options);
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.message || `Notion API Error: ${res.status}`);

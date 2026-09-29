@@ -8,16 +8,145 @@
  * - 노션 TEACHER_DB 교사 프로필 동기화
  */
 
-async function loadChildren(selectedId = null) {
+// 📋 노션 CHILD_DB 실제 원아 마스터 데이터베이스 (오프라인/캐시 100% 보장 기본셋)
+const DEFAULT_MASTER_CHILDREN = [
+  // 🌸 사랑반 (공가영 선생님 / 아내분 - 만 0세)
+  {
+    id: '3e0a2711-5b68-81c6-a415-cd9c81fbfa72',
+    name: '김태리',
+    age: '만 0세',
+    childClass: '사랑반',
+    traits: '여아, 눈맞춤과 옹알이 반응이 좋으며 감각 탐색 놀이에 반응함',
+    parentStyle: '안심 서술형 (식사/수유, 낮잠, 정서적 안정감 중심 안내 선호)',
+    allergies: '없음'
+  },
+  {
+    id: '3e0a2711-5b68-8179-a7ee-d12f0224c47c',
+    name: '인우진',
+    age: '만 0세',
+    childClass: '사랑반',
+    traits: '남아, 오감 감각 놀이 및 교사와의 따뜻한 애착 형성 중',
+    parentStyle: '안심 서술형 (수유량, 낮잠 시간, 작은 컨디션 변화 세심 안내 선호)',
+    allergies: '없음'
+  },
+
+  // 🌿 소망반 (공가희 주임교사 / 처형분 - 만 2세)
+  {
+    id: '3e0a2711-5b68-8186-b889-e52f2acac412',
+    name: '김건하',
+    age: '만 2세',
+    childClass: '소망반',
+    traits: '남아, 교사의 말을 귀 기울여 따라 하려는 모방 발화가 나타남, 활발한 대근육 신체활동을 무척 즐김',
+    parentStyle: '담백한 일상 서술형 (아이가 즐거워한 놀이와 활동 중심의 자연스러운 소통)',
+    allergies: '없음'
+  },
+  {
+    id: '3e0a2711-5b68-8177-ab06-cdba836d50b1',
+    name: '나화음',
+    age: '만 2세',
+    childClass: '소망반',
+    traits: '여아, 춤과 노래, 아기자기한 소꿉놀이를 좋아함. 약속을 잘 지키며, 낯선 환경에서는 긴장하는 조심스러운 성격',
+    parentStyle: '안정 지지형 (아이가 교실에서 편안하게 적응하고 성취한 따뜻한 순간 안내 선호)',
+    allergies: '낯선 환경 방문 시 따뜻하게 손잡아주며 안심 유도'
+  },
+  {
+    id: '3e0a2711-5b68-817d-ace4-c7baa9155114',
+    name: '서은호',
+    age: '만 2세',
+    childClass: '소망반',
+    traits: '남아, 또래 친구들과 어울리는 것을 좋아하며, 신체놀이보다는 차분한 미술 및 조작 놀이에 깊이 몰입함',
+    parentStyle: '관심사 존중 및 성장 격려형 (손끝 조작 성취 칭찬 및 즐거운 신체놀이 점진적 확장)',
+    allergies: '없음'
+  },
+  {
+    id: '3e0a2711-5b68-8186-8e7f-fdfc96f4aafa',
+    name: '임아윤',
+    age: '만 2세',
+    childClass: '소망반',
+    traits: '여아, 친구들의 놀이를 관찰한 뒤 관심 있는 곳으로 이동해 탐색함. 노래와 춤추기를 좋아하며, 놀이 방해 시 싫다는 표현을 명확히 함',
+    parentStyle: '자율 탐색 격려형 (호기심 많은 다양한 놀이 이동과 즐거운 음악 놀이 소통 선호)',
+    allergies: '한 가지 놀이 지속 시간이 짧으므로 다양한 놀이 코너 순차 지원'
+  },
+  {
+    id: '3e0a2711-5b68-810a-8fcd-de34a2b9c1b5',
+    name: '김도준',
+    age: '만 2세',
+    childClass: '소망반',
+    traits: '남아, 신체놀이를 좋아하여 에너지 넘침(교실 내 안전 규칙 지도 중), 친구를 잘 챙기며 놀잇감을 잘 나누어 줌',
+    parentStyle: '교우관계 및 긍정 격려형 (친구와의 배려/나눔 일화 및 규칙 성장 칭찬 선호)',
+    allergies: '없음'
+  },
+  {
+    id: '3e0a2711-5b68-8116-b826-ead833777772',
+    name: '김하율',
+    age: '만 2세',
+    childClass: '소망반',
+    traits: '여아, 흥이 많고 노래와 춤을 매우 좋아함. 발음이 아직 미숙하여 언어 표현보다 표정과 신체 표현을 많이 사용함',
+    parentStyle: '따뜻한 정서 공감형 (아이의 흥겨운 감정과 또래 상호작용 지지 선호)',
+    allergies: '⚠️ 아토피가 심함 (피부 긁음 및 실내 보습/온도 세심 관찰)'
+  },
+  {
+    id: '3e0a2711-5b68-81f7-b404-ce36a83b05f2',
+    name: '이제하',
+    age: '만 2세',
+    childClass: '소망반',
+    traits: '남아, 신체 놀이와 뛰기를 매우 좋아함(교실 내 걷기 약속 지도 중). 블록 창의 만들기와 역할놀이 분담을 잘함',
+    parentStyle: '창의력 칭찬형 (뛰어난 블록 만들기 및 친구와의 협동 놀이 성과 공유 선호)',
+    allergies: '⚠️ 놀이를 방해받으면 말보다 울음으로 표현함 (친구 중재 및 감정 언어화 지도)'
+  },
+
+  // 🧪 연구반 (연구 선생님 - 샌드박스)
+  {
+    id: '3e0a2711-5b68-81ec-b2a1-f1d6ac1e0184',
+    name: '김민수',
+    age: '만 2세 (연구반)',
+    childClass: '연구반',
+    traits: '블록 놀이와 탈것을 좋아하며 집중력이 높고 호기심이 많음.',
+    parentStyle: '칭찬과 격려를 좋아하시고 오늘의 특별한 놀이 활동을 궁금해하심',
+    allergies: '없음'
+  },
+  {
+    id: '3e0a2711-5b68-81a1-95e2-dfda7a74750f',
+    name: '김민서',
+    age: '만 2세 (연구반)',
+    childClass: '연구반',
+    traits: '방긋방긋 잘 웃고 음악에 맞춰 몸을 흔드는 것을 좋아함.',
+    parentStyle: '따뜻한 일상 소통을 선호하시고 수면 및 이유식 섭취 상태를 세심하게 챙기심',
+    allergies: '없음'
+  }
+];
+
+// 원아 목록 학급별 격리 필터링 헬퍼
+function filterChildrenByTeacherClass(allList) {
   const state = window.state || {};
   const currentTeacherKey = state.activeTeacherKey || 'wife';
-  const currentClass = state.className || '사랑반';
+  const currentClass = state.className || (currentTeacherKey === 'sister_in_law' ? '소망반' : (currentTeacherKey === 'sandbox' ? '연구반' : '사랑반'));
+
+  if (!state.filterOnlyMyClass) {
+    return allList;
+  }
+
+  return allList.filter(c => {
+    const cls = c.childClass || '';
+    const age = c.age || '';
+    if (currentTeacherKey === 'wife' || currentClass === '사랑반') {
+      return cls === '사랑반' || cls.includes('사랑') || age.includes('사랑반') || age.includes('0세');
+    } else if (currentTeacherKey === 'sister_in_law' || currentClass === '소망반') {
+      return cls === '소망반' || cls.includes('소망') || age.includes('소망반') || age.includes('2세');
+    } else {
+      return cls === '연구반' || cls.includes('연구') || c.name.includes('민수') || c.name.includes('민서') || !cls;
+    }
+  });
+}
+
+async function loadChildren(selectedId = null) {
+  const state = window.state || {};
   const notionConfig = window.NOTION_CONFIG || {};
 
   const notionStatusBadge = document.getElementById('notionStatusBadge');
   const notionStatusText = document.getElementById('notionStatusText');
 
-  // 1. 브라우저에서 minmin-notion 직접 쿼리 (Cloudflare 1042 회피 1순위)
+  // 1. 브라우저에서 minmin-notion 프록시 직접 쿼리 (Cloudflare 1042 회피 1순위)
   try {
     if (typeof directNotionCall === 'function' && notionConfig.CHILD_DB_ID) {
       const data = await directNotionCall(`/databases/${notionConfig.CHILD_DB_ID}/query`, 'POST', {
@@ -25,83 +154,79 @@ async function loadChildren(selectedId = null) {
         sorts: [{ property: '아동명', direction: 'ascending' }]
       });
 
-      const allChildren = (data.results || []).map(page => {
-        const props = page.properties;
-        const name = props['아동명']?.title?.[0]?.plain_text || '이름 없음';
-        const rawAge = props['생년월일/연령']?.rich_text?.[0]?.plain_text || '만 4세';
-        const traits = props['성향 및 특이사항']?.rich_text?.[0]?.plain_text || '';
-        const parentStyle = props['학부모 성향 & 알림장 스타일']?.rich_text?.[0]?.plain_text || '';
-        const allergies = props['알레르기/주의사항']?.rich_text?.[0]?.plain_text || '';
-        
-        let childClass = props['소속 반']?.select?.name || '';
-        if (!childClass && rawAge.includes('(')) {
-          const match = rawAge.match(/\((.*?)\)/);
-          if (match && match[1]) childClass = match[1].trim();
-        }
+      if (data && Array.isArray(data.results) && data.results.length > 0) {
+        const parsedChildren = data.results.map(page => {
+          const props = page.properties || {};
+          const name = props['아동명']?.title?.[0]?.plain_text || props['이름']?.title?.[0]?.plain_text || '이름 없음';
+          const rawAge = props['생년월일/연령']?.rich_text?.[0]?.plain_text || props['생년월일/연령']?.date?.start || '만 2세';
+          const traits = props['성향 및 특이사항']?.rich_text?.[0]?.plain_text || '';
+          const parentStyle = props['학부모 성향 & 알림장 스타일']?.rich_text?.[0]?.plain_text || '';
+          const allergies = props['알레르기/주의사항']?.rich_text?.[0]?.plain_text || '';
+          
+          let childClass = props['소속 반']?.select?.name || '';
+          if (!childClass && rawAge.includes('(')) {
+            const match = rawAge.match(/\((.*?)\)/);
+            if (match && match[1]) childClass = match[1].trim();
+          }
 
-        return { id: page.id, name, age: rawAge, traits, allergies, childClass, parentStyle };
-      });
+          return { id: page.id, name, age: rawAge, traits, allergies, childClass, parentStyle };
+        });
 
-      // 🔒 교사/학급별 원아 & 학부모 성향 데이터 철통 격리 필터!
-      const isolatedChildren = allChildren.filter(c => {
-        if (currentTeacherKey === 'wife') {
-          return c.childClass === '사랑반' || c.age.includes('사랑반') || c.age.includes('0세');
-        } else if (currentTeacherKey === 'sister_in_law') {
-          return c.childClass === '소망반' || c.age.includes('소망반') || c.age.includes('2세');
-        } else { // sandbox
-          return c.childClass === '연구반' || c.name.includes('민수') || c.name.includes('민서') || !c.childClass;
-        }
-      });
+        state.allChildren = parsedChildren;
+        state.children = filterChildrenByTeacherClass(parsedChildren);
 
-      state.children = isolatedChildren;
-      if (notionStatusBadge) notionStatusBadge.className = 'badge badge-connected';
-      if (notionStatusText) notionStatusText.textContent = '노션 연동됨';
-      renderChildrenChips(selectedId);
-      return;
+        try {
+          localStorage.setItem('daycare_cached_all_children', JSON.stringify(parsedChildren));
+        } catch (e) {}
+
+        if (notionStatusBadge) notionStatusBadge.className = 'badge badge-connected';
+        if (notionStatusText) notionStatusText.textContent = '노션 연동됨';
+        renderChildrenChips(selectedId);
+        return;
+      }
     }
   } catch (directErr) {
-    console.warn('Direct notion query failed, trying worker endpoint:', directErr);
+    console.warn('Direct notion query failed, checking cache or worker:', directErr);
   }
 
-  // 2. 워커 /api/children 폴백
+  // 2. 워커 /api/children 엔드포인트 폴백
   try {
     const res = await fetch('/api/children');
-    const data = await res.json();
-    const rawList = data.children || [];
+    if (res.ok) {
+      const data = await res.json();
+      const rawList = data.children || [];
+      if (rawList.length > 0 && data.source === 'notion') {
+        state.allChildren = rawList;
+        state.children = filterChildrenByTeacherClass(rawList);
 
-    state.children = rawList.filter(c => {
-      if (currentTeacherKey === 'wife') {
-        return c.childClass === '사랑반' || (c.age && (c.age.includes('사랑반') || c.age.includes('0세')));
-      } else if (currentTeacherKey === 'sister_in_law') {
-        return c.childClass === '소망반' || (c.age && (c.age.includes('소망반') || c.age.includes('2세')));
-      } else {
-        return c.childClass === '연구반' || c.name.includes('민수') || c.name.includes('민서') || !c.childClass;
+        if (notionStatusBadge) notionStatusBadge.className = 'badge badge-connected';
+        if (notionStatusText) notionStatusText.textContent = '노션 연동됨';
+        renderChildrenChips(selectedId);
+        return;
       }
-    });
-
-    if (data.source === 'notion') {
-      if (notionStatusBadge) notionStatusBadge.className = 'badge badge-connected';
-      if (notionStatusText) notionStatusText.textContent = '노션 연동됨';
     }
-
-    renderChildrenChips(selectedId);
   } catch (err) {
-    console.warn('원아 목록 불러오기 실패, 담당 반 전용 샘플 사용:', err);
-    if (currentTeacherKey === 'wife') {
-      state.children = [
-        { id: 'mock-child-w1', name: '이도윤', age: '만 0세 (사랑반)', childClass: '사랑반', traits: '오감 자극 딸랑이 및 촉감 놀이 선호', parentStyle: '안심 서술형 (수면 및 이유식 세심 안내 선호)', allergies: '' }
-      ];
-    } else if (currentTeacherKey === 'sister_in_law') {
-      state.children = [
-        { id: 'mock-child-s1', name: '박서준', age: '만 2세 (소망반)', childClass: '소망반', traits: '탈것 및 블록 기차 놀이 몰입', parentStyle: '발달 관찰형 (조작력 성장 중심 선호)', allergies: '' }
-      ];
-    } else {
-      state.children = [
-        { id: 'mock-child-sb1', name: '김민수', age: '만 5세', childClass: '연구반', traits: '블록 동물원 울타리 만들기 몰입', parentStyle: '자유 소통형', allergies: '' }
-      ];
-    }
-    renderChildrenChips(selectedId);
+    console.warn('Worker /api/children fallback failed:', err);
   }
+
+  // 3. 로컬스토리지 캐시 검사
+  try {
+    const cached = localStorage.getItem('daycare_cached_all_children');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        state.allChildren = parsed;
+        state.children = filterChildrenByTeacherClass(parsed);
+        renderChildrenChips(selectedId);
+        return;
+      }
+    }
+  } catch (e) {}
+
+  // 4. 최종 마스터 데이터셋 자동 주입 (오프라인에서도 11명 전원 100% 정상 작동)
+  state.allChildren = [...DEFAULT_MASTER_CHILDREN];
+  state.children = filterChildrenByTeacherClass(DEFAULT_MASTER_CHILDREN);
+  renderChildrenChips(selectedId);
 }
 
 function renderChildrenChips(selectedId = null) {
@@ -117,39 +242,11 @@ function renderChildrenChips(selectedId = null) {
 
   const classFilterText = document.getElementById('classFilterText');
   if (classFilterText) {
-    classFilterText.textContent = `${state.className} 전용`;
+    classFilterText.textContent = state.filterOnlyMyClass ? `${state.className} 전용` : '전체 원아';
   }
 
   const currentClass = state.className || '사랑반';
-  let displayList = state.children || [];
-
-  if (currentClass === '연구반' && displayList.length === 0) {
-    displayList = [
-      {
-        id: '3e0a2711-5b68-81ec-b2a1-f1d6ac1e0184',
-        name: '김민수',
-        childClass: '연구반',
-        age: '만 5세',
-        birthDate: '2021-05-15',
-        gender: '남',
-        traits: '블록 놀이와 탈것을 좋아하며 집중력이 높고 호기심이 많음.',
-        parentStyle: '칭찬과 격려를 좋아하시고 오늘의 특별한 놀이 활동을 궁금해하심',
-        allergies: '없음'
-      },
-      {
-        id: '3e0a2711-5b68-81a1-95e2-dfda7a74750f',
-        name: '김민서',
-        childClass: '연구반',
-        age: '만 1세',
-        birthDate: '2025-02-10',
-        gender: '여',
-        traits: '방긋방긋 잘 웃고 음악에 맞춰 몸을 흔드는 것을 좋아함.',
-        parentStyle: '따뜻한 일상 소통을 선호하시고 수면 및 이유식 섭취 상태를 세심하게 챙기심',
-        allergies: '계란 알레르기 주의'
-      }
-    ];
-    state.children = displayList;
-  }
+  const displayList = state.children || [];
 
   if (displayList.length === 0) {
     const noticeChip = document.createElement('div');
