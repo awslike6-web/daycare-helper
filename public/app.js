@@ -1307,7 +1307,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="indiv-obs-top-row">
               <div class="indiv-obs-meta">
                 <label class="indiv-obs-check-label">
-                  <input type="checkbox" class="indiv-obs-checkbox" checked data-idx="${idx}" data-child-name="${childName}">
+                  <input type="checkbox" class="indiv-obs-checkbox indiv-obs-check" checked 
+                         data-idx="${idx}" 
+                         data-child-name="${childName}"
+                         data-area="${standardArea}"
+                         data-standard-area="${standardArea}"
+                         data-activity="${activityName}"
+                         data-play-text="${summary.replace(/"/g, '&quot;')}">
                   <span class="indiv-obs-name">👶 ${childName}</span>
                 </label>
                 <div class="indiv-obs-badges">
@@ -1315,7 +1321,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   <span class="indiv-obs-badge-activity">${activityName}</span>
                 </div>
               </div>
-              <span class="indiv-obs-status-tag" id="indiv-obs-status-${idx}" style="display: none;">
+              <span class="indiv-obs-status-tag" id="indiv-obs-status-${idx}" style="display: none; background: #DEF7EC; color: #03543F; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">
                 ✓ 저장됨
               </span>
             </div>
@@ -1329,14 +1335,18 @@ document.addEventListener('DOMContentLoaded', () => {
           if (chk) {
             chk.addEventListener('change', (e) => {
               itemEl.classList.toggle('active', e.target.checked);
-              updateSelectedIndivObsCount();
+              if (typeof updateSelectedIndivObsCount === 'function') {
+                updateSelectedIndivObsCount();
+              }
             });
           }
 
           individualObsList.appendChild(itemEl);
         });
 
-        updateSelectedIndivObsCount();
+        if (typeof updateSelectedIndivObsCount === 'function') {
+          updateSelectedIndivObsCount();
+        }
       } else {
         individualObsCard.style.display = 'none';
       }

@@ -148,6 +148,15 @@ const MOCK_PAST_LOGS = {
 };
 
 /**
+ * Notion 32자리/36자리 Hex UUID 검증
+ */
+function isValidNotionId(id) {
+  if (!id || typeof id !== 'string') return false;
+  const clean = id.replace(/-/g, '');
+  return /^[0-9a-fA-F]{32}$/.test(clean);
+}
+
+/**
  * Notion API 공통 호출 래퍼
  */
 async function callNotionApi({ endpoint, method = 'GET', body = null, token, proxyUrl = null }) {
@@ -418,22 +427,22 @@ export async function saveDailyLogToNotion({
     }
   };
 
-  // 원아 관계형 연결 (실제 노션 페이지 ID인 경우)
-  if (childId && !childId.startsWith('mock-')) {
+  // 원아 관계형 연결 (실제 유효한 32/36자리 노션 페이지 UUID인 경우만)
+  if (childId && isValidNotionId(childId)) {
     properties['원아'] = {
       relation: [{ id: childId }]
     };
   }
 
   // 교사 관계형 연결
-  if (teacherId && !teacherId.startsWith('mock-')) {
+  if (teacherId && isValidNotionId(teacherId)) {
     properties['작성교사'] = {
       relation: [{ id: teacherId }]
     };
   }
 
   // 참조한 과거 일지 관계형 연결
-  if (referencedLogId && !referencedLogId.startsWith('mock-')) {
+  if (referencedLogId && isValidNotionId(referencedLogId)) {
     properties['참조한 과거 일지'] = {
       relation: [{ id: referencedLogId }]
     };
