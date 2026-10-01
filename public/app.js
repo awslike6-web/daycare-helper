@@ -305,30 +305,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // 3-A. 🧸 2-Way 보안 잠금 게이트 및 교사 스위처 (auth-gate.js에서 자동 처리)
   // ============================================================================
 
-  // 📅 소급 작성 날짜 변경 및 UI 갱신 함수
+  // 📅 소급 작성 날짜 변경 및 UI 갱신 함수 (settings-controller.js 연동)
   function updateRecordDate(dateStr) {
-    if (!dateStr) return;
-    state.selectedDate = dateStr;
-    if (recordDatePicker) recordDatePicker.value = dateStr;
-    const dt = new Date(dateStr + 'T00:00:00');
-    const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
-    if (headerDateText) headerDateText.textContent = dt.toLocaleDateString('ko-KR', options);
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const isRetro = (dateStr !== todayStr);
-    if (retroDateBadge) {
-      retroDateBadge.style.display = isRetro ? 'inline-block' : 'none';
-    }
-    if (headerDateWrapper) {
-      if (isRetro) {
-        headerDateWrapper.title = `소급 작성 중 (${dateStr}) - 클릭하여 날짜 변경`;
-        headerDateWrapper.style.borderColor = '#EF4444';
-        headerDateWrapper.style.background = '#FEF2F2';
-      } else {
-        headerDateWrapper.title = '클릭하여 소급 작성 날짜 변경';
-        headerDateWrapper.style.borderColor = '#CBD5E1';
-        headerDateWrapper.style.background = '#F8FAFC';
-      }
+    if (window.SettingsController && typeof window.SettingsController.updateRecordDate === 'function') {
+      window.SettingsController.updateRecordDate(dateStr);
     }
   }
 
@@ -376,92 +356,28 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================================
-  // 3-B. 🛡️ 안심 임시보관 및 복원 (Crash Guard & Auto-Draft)
+  // 3-B. 🛡️ 안심 임시보관 및 복원 (auto-draft.js 모듈 위임)
   // ============================================================================
   function saveAutoDraft() {
-    if (!state.lastResult && (!rawMemoInput || !rawMemoInput.value.trim())) return;
-    try {
-      const draftData = {
-        timestamp: Date.now(),
-        date: state.selectedDate || new Date().toISOString().split('T')[0],
-        childId: state.selectedChild?.id || null,
-        childName: state.selectedChild?.name || '원아',
-        className: state.className || '',
-        rawMemo: rawMemoInput ? rawMemoInput.value : '',
-        lastResult: state.lastResult || null,
-        originalResult: state.originalResult || null,
-        selectedFormats: state.selectedFormats || []
-      };
-      localStorage.setItem('daycare_auto_draft', JSON.stringify(draftData));
-    } catch (e) {
-      console.warn('[saveAutoDraft] 저장 오류:', e);
+    if (window.AutoDraft && typeof window.AutoDraft.save === 'function') {
+      window.AutoDraft.save(state);
     }
   }
 
   function clearAutoDraft() {
-    try {
-      localStorage.removeItem('daycare_auto_draft');
-      const banner = document.getElementById('autoDraftRestoreBanner');
-      if (banner) banner.style.display = 'none';
-    } catch (e) {}
+    if (window.AutoDraft && typeof window.AutoDraft.clear === 'function') {
+      window.AutoDraft.clear();
+    }
   }
   window.clearAutoDraft = clearAutoDraft;
 
   function checkAndRestoreAutoDraft() {
-    try {
-      const saved = localStorage.getItem('daycare_auto_draft');
-      if (!saved) return;
-      const draft = JSON.parse(saved);
-      if (!draft || (!draft.lastResult && !draft.rawMemo)) return;
-
-      const today = new Date().toISOString().split('T')[0];
-      const isRecent = (draft.date === today) || ((Date.now() - (draft.timestamp || 0)) < 24 * 3600 * 1000);
-      if (!isRecent) return;
-
-      const banner = document.getElementById('autoDraftRestoreBanner');
-      const metaEl = document.getElementById('autoDraftRestoreMeta');
-      const btnRestore = document.getElementById('btnRestoreAutoDraft');
-      const btnDiscard = document.getElementById('btnDiscardAutoDraft');
-
-      if (banner) {
-        if (metaEl) {
-          metaEl.textContent = `${draft.date} [${draft.childName || '원아'}] 작성본이 안전하게 보관되어 있습니다.`;
-        }
-        banner.style.display = 'flex';
-
-        if (btnRestore) {
-          btnRestore.onclick = (e) => {
-            e.preventDefault();
-            // 1. 메모 복원
-            if (rawMemoInput && draft.rawMemo) {
-              rawMemoInput.value = draft.rawMemo;
-            }
-            // 2. 결과물 복원
-            if (draft.lastResult) {
-              state.lastResult = draft.lastResult;
-              state.originalResult = draft.originalResult || draft.lastResult;
-              renderResults(draft.lastResult);
-            }
-            // 3. 서식 칩 복원
-            if (Array.isArray(draft.selectedFormats) && draft.selectedFormats.length > 0) {
-              state.selectedFormats = draft.selectedFormats;
-              initFormatSelector();
-            }
-            banner.style.display = 'none';
-            if (typeof showToast === 'function') showToast('🎉 작성 중이던 일지 내용이 성공적으로 복원되었습니다!');
-          };
-        }
-
-        if (btnDiscard) {
-          btnDiscard.onclick = (e) => {
-            e.preventDefault();
-            clearAutoDraft();
-            if (typeof showToast === 'function') showToast('임시 저장본이 삭제되었습니다.');
-          };
-        }
-      }
-    } catch (e) {
-      console.warn('[checkAndRestoreAutoDraft] 오류:', e);
+    if (window.AutoDraft && typeof window.AutoDraft.checkAndRestore === 'function') {
+      window.AutoDraft.checkAndRestore({
+        renderResults,
+        initFormatSelector,
+        showToast
+      });
     }
   }
 
@@ -535,51 +451,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // 4. 이벤트 리스너 등록
   // ============================================================================
   function setupEventListeners() {
-    // 👩‍🏫 교사 프로필 1초 원터치 스위처 이벤트 (보안 PIN 인증 게이트 거침)
-    if (btnSwitchWife) {
-      btnSwitchWife.addEventListener('click', () => handleTeacherSwitchClick('wife'));
-    }
-    if (btnSwitchSisterInLaw) {
-      btnSwitchSisterInLaw.addEventListener('click', () => handleTeacherSwitchClick('sister_in_law'));
-    }
-    if (btnSwitchSandbox) {
-      btnSwitchSandbox.addEventListener('click', () => handleTeacherSwitchClick('sandbox'));
-    }
-
-    // 📅 소급 작성용 캘린더 날짜 변경 이벤트
-    if (recordDatePicker) {
-      recordDatePicker.addEventListener('change', (e) => {
-        const newDate = e.target.value;
-        if (newDate) {
-          updateRecordDate(newDate);
-          const todayStr = new Date().toISOString().split('T')[0];
-          showToast(`📅 작성 날짜가 [${newDate}]로 설정되었습니다.${newDate !== todayStr ? ' (소급 작성)' : ''}`);
-        }
-      });
-    }
-
-    // ❓ 선생님 맞춤 사용 가이드 모달 열기/닫기
-    if (headerGuideBtn && teacherGuideModal) {
-      headerGuideBtn.addEventListener('click', () => {
-        teacherGuideModal.style.display = 'flex';
-      });
-    }
-    if (btnCloseGuideModal && teacherGuideModal) {
-      btnCloseGuideModal.addEventListener('click', () => {
-        teacherGuideModal.style.display = 'none';
-      });
-    }
-    if (btnConfirmGuideModal && teacherGuideModal) {
-      btnConfirmGuideModal.addEventListener('click', () => {
-        teacherGuideModal.style.display = 'none';
-      });
-    }
-    if (teacherGuideModal) {
-      teacherGuideModal.addEventListener('click', (e) => {
-        if (e.target === teacherGuideModal) {
-          teacherGuideModal.style.display = 'none';
-        }
-      });
+    // ⚙️ 교사 스위처, 소급 캘린더, 가이드/설정/원아 모달, 메모 2-Tap (settings-controller.js 연동)
+    if (window.SettingsController && typeof window.SettingsController.setupSettingsListeners === 'function') {
+      window.SettingsController.setupSettingsListeners({ showToast });
     }
 
     // 모드 스위처 클릭 (숨김 상태여도 null-safe)
@@ -802,234 +676,13 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // 페르소나 및 설정 모달 열기
-    if (headerClassNameBtn) {
-      headerClassNameBtn.addEventListener('click', () => {
-        updatePersonaUI();
-        if (settingsModal) settingsModal.style.display = 'flex';
-        if (settingClassNameInput) {
-          setTimeout(() => {
-            settingClassNameInput.focus();
-            settingClassNameInput.select();
-          }, 100);
-        }
-      });
-    }
-    if (headerPersonaBtn) {
-      headerPersonaBtn.addEventListener('click', () => {
-        updatePersonaUI();
-        if (settingsModal) settingsModal.style.display = 'flex';
-      });
-    }
-    if (settingsBtn) {
-      settingsBtn.addEventListener('click', () => {
-        updatePersonaUI();
-        if (settingsModal) settingsModal.style.display = 'flex';
-      });
-    }
-    if (closeSettingsBtn) {
-      closeSettingsBtn.addEventListener('click', () => {
-        if (settingsModal) settingsModal.style.display = 'none';
-      });
-    }
+    // 🎭 페르소나 설정 및 🔐 보안 세션 배너 (settings-controller.js에서 처리)
 
-    // 🔐 보안 세션 배너 관련 이벤트 리스너
-    if (dismissSessionBannerBtn) {
-      dismissSessionBannerBtn.addEventListener('click', () => {
-        if (currentSessionData && currentSessionData.exp) {
-          localStorage.setItem('daycare_dismissed_session_exp', currentSessionData.exp.toString());
-        } else {
-          localStorage.setItem('daycare_dismissed_session_exp', 'test_dismissed');
-        }
-        hideSessionBanner();
-        showToast('✅ 보안 세션 알림을 확인 완료했습니다. 이번 만료 시점까지 다시 표시되지 않아요.');
-      });
-    }
+    // 👶 원아 관리 모달 및 🎭 페르소나/우리 반 저장 (settings-controller.js에서 처리)
 
-    if (closeSessionBannerBtn) {
-      closeSessionBannerBtn.addEventListener('click', () => {
-        hideSessionBanner();
-      });
-    }
+    // 📝 관찰 메모 실시간 자동 저장은 settings-controller.js에서 처리
 
-    if (testBannerToggleBtn) {
-      testBannerToggleBtn.addEventListener('click', () => {
-        if (sessionExpiryBanner && sessionExpiryBanner.style.display === 'none') {
-          showSessionBanner(6, Math.floor(Date.now() / 1000) + 6 * 86400);
-          showToast('🧪 만료 D-6 사전 안내 배너를 화면에 표시했습니다.');
-        } else {
-          hideSessionBanner();
-          showToast('테스트 배너를 닫았습니다.');
-        }
-      });
-    }
-
-    // 👶 원아 관리 (등록/수정) 모달 이벤트
-    if (addChildBtn) {
-      addChildBtn.addEventListener('click', () => openChildModal('add'));
-    }
-    if (editChildBtn) {
-      editChildBtn.addEventListener('click', () => {
-        if (state.selectedChild) {
-          openChildModal('edit', state.selectedChild);
-        } else {
-          showToast('수정할 원아를 먼저 선택해주세요.');
-        }
-      });
-    }
-    if (closeChildModalBtn) {
-      closeChildModalBtn.addEventListener('click', () => {
-        childManageModal.style.display = 'none';
-      });
-    }
-    if (childManageForm) {
-      childManageForm.addEventListener('submit', handleChildFormSubmit);
-    }
-
-    // 🌱 우리 반만 보기 ↔ 전체 원아 보기 토글 이벤트
-    if (classFilterToggleBtn) {
-      classFilterToggleBtn.addEventListener('click', () => {
-        state.filterOnlyMyClass = !state.filterOnlyMyClass;
-        renderChildrenChips();
-        showToast(state.filterOnlyMyClass ? `🌱 '${state.className}' 원아들만 표시합니다.` : '🌐 전체 원아를 표시합니다.');
-      });
-    }
-
-    // 👪 원아 모달: 학부모 4대 프리셋 클릭 시 자동 입력
-    if (parentPresetGrid) {
-      parentPresetGrid.querySelectorAll('.parent-preset-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          parentPresetGrid.querySelectorAll('.parent-preset-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          const presetKey = btn.dataset.preset;
-          const text = PARENT_PRESETS[presetKey];
-          if (text && manageChildParentStyle) {
-            manageChildParentStyle.value = text;
-            manageChildParentStyle.focus();
-          }
-        });
-      });
-    }
-
-    // ☁️ 설정 모달: 노션에서 내 교사 프로필 불러오기 동기화 버튼
-    if (syncTeacherFromNotionBtn) {
-      syncTeacherFromNotionBtn.addEventListener('click', handleSyncTeacherProfile);
-    }
-
-    // 프리셋 칩 클릭 시 해당 프리셋 데이터 폼에 자동 주입
-    if (personaPresetGrid) {
-      personaPresetGrid.querySelectorAll('.persona-preset-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const presetKey = chip.dataset.preset;
-          const presetData = PERSONA_PRESETS[presetKey];
-          if (presetData) {
-            state.persona = { ...presetData };
-            setTeacherPersona(state.activeTeacherKey, state.persona);
-            setTeacherStyle(state.activeTeacherKey, presetData.name);
-            updatePersonaUI();
-            showToast(`🎭 '${presetData.name}' 프리셋이 적용되었습니다.`);
-          }
-        });
-      });
-    }
-
-    // 페르소나 및 우리 반 설정 저장
-    saveSettingsBtn.addEventListener('click', () => {
-      // 1. 담당 반 및 선생님 호칭 저장
-      const newClassName = settingClassNameInput ? settingClassNameInput.value.trim() || state.className : state.className;
-      const newTeacherName = settingTeacherNameInput ? settingTeacherNameInput.value.trim() || state.teacherName : state.teacherName;
-      const classChanged = state.className !== newClassName;
-      state.className = newClassName;
-      state.teacherName = newTeacherName;
-      localStorage.setItem('daycare_class_name', newClassName);
-      localStorage.setItem('daycare_teacher_name', newTeacherName);
-
-      // 2. 페르소나 문체 저장 (교사별 독립 저장소)
-      state.persona = {
-        preset: state.persona.preset || 'custom',
-        name: state.persona.name || '맞춤 페르소나',
-        sampleNote: personaSampleNote ? personaSampleNote.value.trim() : '',
-        callStyle: personaCallStyle ? personaCallStyle.value : '우리 [아동A]',
-        emojiLevel: personaEmojiLevel ? personaEmojiLevel.value : 'moderate',
-        closingGreeting: personaClosingGreeting ? personaClosingGreeting.value.trim() : ''
-      };
-
-      setTeacherPersona(state.activeTeacherKey, state.persona);
-      setTeacherStyle(state.activeTeacherKey, state.persona.name);
-      updatePersonaUI();
-      if (classChanged) {
-        loadChildren();
-      }
-      settingsModal.style.display = 'none';
-      showToast(`🌱 '${newClassName}' (${newTeacherName}) 맞춤 설정이 성공적으로 저장되었습니다!`);
-    });
-
-    // 📝 관찰 메모 실시간 자동 저장 (Autosave on typing)
-    if (rawMemoInput) {
-      rawMemoInput.addEventListener('input', () => {
-        try {
-          localStorage.setItem('daycare_draft_memo', rawMemoInput.value);
-          saveAutoDraft();
-        } catch (e) {}
-      });
-    }
-
-    // 🗑️ 작성 중인 메모 2-Tap 안전 비우기 (PWA 모바일 confirm 차단 버그 완전 해결)
-    if (btnClearMemoBtn && rawMemoInput) {
-      let clearConfirmTimeout = null;
-      let isWaitingClearConfirm = false;
-
-      function resetClearBtn() {
-        isWaitingClearConfirm = false;
-        if (clearConfirmTimeout) {
-          clearTimeout(clearConfirmTimeout);
-          clearConfirmTimeout = null;
-        }
-        btnClearMemoBtn.innerHTML = '<span>🗑️</span> <span>비우기</span>';
-        btnClearMemoBtn.style.background = '#F1F5F9';
-        btnClearMemoBtn.style.color = '#64748B';
-        btnClearMemoBtn.style.borderColor = '#CBD5E1';
-      }
-
-      btnClearMemoBtn.addEventListener('click', () => {
-        const hasMemo = rawMemoInput.value.trim().length > 0;
-        const hasPhotos = state.photos && state.photos.length > 0;
-        if (!hasMemo && !hasPhotos) {
-          showToast('비울 메모나 사진이 없습니다.');
-          resetClearBtn();
-          return;
-        }
-
-        if (!isWaitingClearConfirm) {
-          // 1단계 터치: 붉은색 경고 버튼으로 전환 및 안내
-          isWaitingClearConfirm = true;
-          btnClearMemoBtn.innerHTML = '<span>⚠️</span> <span>정말 비울까요?</span>';
-          btnClearMemoBtn.style.background = '#FEE2E2';
-          btnClearMemoBtn.style.color = '#DC2626';
-          btnClearMemoBtn.style.borderColor = '#FCA5A5';
-          showToast('🗑️ 3초 안에 한 번 더 누르면 메모와 사진이 완전히 비워집니다.');
-
-          clearConfirmTimeout = setTimeout(() => {
-            resetClearBtn();
-          }, 3000);
-        } else {
-          // 2단계 터치: 실제 초기화 실행
-          resetClearBtn();
-          rawMemoInput.value = '';
-          state.photos = [];
-          const photoPreviews = document.getElementById('photoPreviews');
-          if (photoPreviews) photoPreviews.innerHTML = '';
-          const photoFileInput = document.getElementById('photoFileInput');
-          if (photoFileInput) photoFileInput.value = '';
-          try {
-            localStorage.removeItem('daycare_draft_memo');
-          } catch (e) {}
-          showToast('🗑️ 메모와 첨부 사진이 모두 깨끗하게 비워졌습니다.');
-          rawMemoInput.focus();
-        }
-      });
-    }
-
+    // 🗑️ 작성 중인 메모 2-Tap 안전 비우기는 settings-controller.js에서 처리 완료
     // ⏹️ AI 생성 중단 버튼 이벤트 리스너
     if (btnCancelAiGenerate) {
       btnCancelAiGenerate.addEventListener('click', () => {
@@ -1311,297 +964,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // 11. 생성 결과 렌더링
   // ============================================================================
   function renderResults(data) {
-    if (!data) return;
-
-    // 0. 처형분 정규 놀이중심 보육일지 공문서 채우기
-    const rep = data.class_daily_report;
-    const kn = data.kidsnote || {};
-    const obs = data.observation_log || {};
-    const dc = data.daily_care_log || {};
-
-    if (rep || state.mode === 'class_report') {
-      if (tabClassDailyReport) tabClassDailyReport.style.display = 'inline-flex';
-
-      const ageText = state.selectedChild?.age || (state.className && state.className.includes('사랑') ? '만 0세' : '만 2세');
-      const targetDateObj = state.selectedDate ? new Date(state.selectedDate + 'T00:00:00') : new Date();
-      const todayFormatted = targetDateObj.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
-
-      if (repDocTitle) repDocTitle.textContent = rep?.title || `1. ${ageText} 놀이중심 보육일지`;
-      if (repHdrClass) repHdrClass.textContent = `${state.className} (${ageText})`;
-      if (repHdrDate) repHdrDate.textContent = rep?.date || todayFormatted;
-      if (repHdrTheme) repHdrTheme.textContent = rep?.play_theme || `${state.activityArea} & 놀이 활동`;
-
-      if (reportCurriculumTbody) {
-        reportCurriculumTbody.innerHTML = '';
-        const activities = (rep && Array.isArray(rep.activities) && rep.activities.length > 0)
-          ? rep.activities
-          : [
-              {
-                photo_ref: '[사진 1, 2 참조]',
-                activity_title: state.activityArea || '놀이 활동',
-                observation: `[관찰 내용] ${kn.content ? kn.content.slice(0, 180) + '...' : '유아들은 놀잇감을 탐색하며 즐겁게 몰입한다.'}`,
-                learning_content: `[배움 읽기: ${obs.standard_area || '신체운동'}] - ${obs.evaluation || '놀이를 통해 기본 운동 능력을 기른다.'}`
-              }
-            ];
-
-        activities.forEach(act => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="rep-td">
-              <div style="font-weight: 700; color: #1E293B; margin-bottom: 4px;">${act.photo_ref || '[사진 참조]'} ${act.activity_title || ''}</div>
-              <div style="font-size: 12px; line-height: 1.5; color: #334155;">${act.observation || ''}</div>
-            </td>
-            <td class="rep-td">
-              <div style="font-size: 12px; line-height: 1.5; color: #1E293B;">${act.learning_content || ''}</div>
-            </td>
-          `;
-          reportCurriculumTbody.appendChild(tr);
-        });
-      }
-
-      if (repReflectionText) {
-        repReflectionText.textContent = rep?.reflection ? rep.reflection.replace(/^●\s*성찰:\s*/, '') : (rep?.weekly_evaluation || dc.play_evaluation || '유아들의 흥미를 반영한 놀이 연계로 높은 몰입도를 보였다.');
-      }
-      if (repSupportEnvText) {
-        repSupportEnvText.textContent = rep?.support?.environment ? rep.support.environment.replace(/^○\s*환경\s*지원:\s*/, '') : (dc.next_support_plan || '안전한 공간 확보 및 충분한 놀이 교구 배치 지원.');
-      }
-      if (repSupportSafetyText) {
-        if (rep?.outdoor_play) {
-          const outdoorStatus = rep.outdoor_check || '진행(O)';
-          const outdoorNote = rep.outdoor_note ? ` (사유: ${rep.outdoor_note})` : '';
-          const safetyText = rep.safety_nutrition ? ` / [안전·영양교육] ${rep.safety_nutrition}` : '';
-          repSupportSafetyText.textContent = `<바깥놀이: ${outdoorStatus}${outdoorNote}> ${rep.outdoor_play}${safetyText}`;
-        } else {
-          repSupportSafetyText.textContent = rep?.support?.safety ? rep.support.safety.replace(/^○\s*바깥놀이\s*안전\s*관리:\s*/, '').replace(/^○\s*상호작용\s*지원:\s*/, '') : '짧은 산책 시 보행 안전선을 지키고 상호작용 간 안전거리를 유지하도록 지도함.';
-        }
-      }
+    if (window.ResultsRenderer && typeof window.ResultsRenderer.renderResults === 'function') {
+      window.ResultsRenderer.renderResults(data);
     }
-
-    // 0-B. 🧩 감지된 원아별 놀이 요약 (Human-in-the-Loop 교사 1초 눈 검수 목록) 채우기
-    const indivObs = data.individual_observations;
-    if (individualObsCard && individualObsList) {
-      if (Array.isArray(indivObs) && indivObs.length > 0) {
-        individualObsCard.style.display = 'block';
-        if (individualObsCountBadge) {
-          individualObsCountBadge.textContent = `${indivObs.length}명 감지됨`;
-        }
-        individualObsList.innerHTML = '';
-
-        indivObs.forEach((item, idx) => {
-          const itemEl = document.createElement('div');
-          itemEl.className = 'individual-obs-item active';
-          itemEl.id = `indiv-obs-item-${idx}`;
-
-          const childName = item.child_name || `원아 ${idx + 1}`;
-          const standardArea = item.standard_area || '신체운동';
-          const activityName = item.activity || item.activity_name || state.activityArea || '놀이 활동';
-          const summary = item.summary || item.observation_summary || '';
-
-          itemEl.innerHTML = `
-            <div class="indiv-obs-top-row">
-              <div class="indiv-obs-meta">
-                <label class="indiv-obs-check-label">
-                  <input type="checkbox" class="indiv-obs-checkbox indiv-obs-check" checked 
-                         data-idx="${idx}" 
-                         data-child-name="${childName}"
-                         data-area="${standardArea}"
-                         data-standard-area="${standardArea}"
-                         data-activity="${activityName}"
-                         data-play-text="${summary.replace(/"/g, '&quot;')}">
-                  <span class="indiv-obs-name">👶 ${childName}</span>
-                </label>
-                <div class="indiv-obs-badges">
-                  <span class="indiv-obs-badge-area">${standardArea}</span>
-                  <span class="indiv-obs-badge-activity">${activityName}</span>
-                </div>
-              </div>
-              <span class="indiv-obs-status-tag" id="indiv-obs-status-${idx}" style="display: none; background: #DEF7EC; color: #03543F; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">
-                ✓ 저장됨
-              </span>
-            </div>
-            <div class="indiv-obs-input-row">
-              <input type="text" class="indiv-obs-input" id="indiv-obs-input-${idx}" value="${summary.replace(/"/g, '&quot;')}" placeholder="원아의 관찰 요약 (1초 수정 가능)" data-original="${summary.replace(/"/g, '&quot;')}">
-            </div>
-          `;
-
-          // 체크박스 토글 시 스타일 및 버튼 텍스트 카운트 갱신
-          const chk = itemEl.querySelector('.indiv-obs-checkbox');
-          if (chk) {
-            chk.addEventListener('change', (e) => {
-              itemEl.classList.toggle('active', e.target.checked);
-              if (typeof updateSelectedIndivObsCount === 'function') {
-                updateSelectedIndivObsCount();
-              }
-            });
-          }
-
-          individualObsList.appendChild(itemEl);
-        });
-
-        if (typeof updateSelectedIndivObsCount === 'function') {
-          updateSelectedIndivObsCount();
-        }
-      } else {
-        individualObsCard.style.display = 'none';
-      }
-    }
-
-    // 1. 키즈노트 알림장 채우기
-    kidsnoteTitle.textContent = kn.title || '오늘의 알림장';
-    kidsnoteContent.value = kn.content || '';
-
-    kidsnoteTags.innerHTML = '';
-    (kn.tags || []).forEach(tag => {
-      const span = document.createElement('span');
-      span.className = 'tag-badge';
-      span.textContent = tag.startsWith('#') ? tag : `#${tag}`;
-      kidsnoteTags.appendChild(span);
-    });
-
-    // 2. 🧸 평가제 영유아 월간 발달 관찰기록부 (A4 정규 양식) 채우기
-    const mob = data.monthly_observation;
-    const targetMonthStr = mob?.target_month || (monthlyObsTargetMonth?.value ? `${monthlyObsTargetMonth.value.split('-')[0]}년 ${parseInt(monthlyObsTargetMonth.value.split('-')[1])}월` : '2026년 9월');
-    const childDisplayName = state.selectedChild ? `${state.selectedChild.name} (${state.selectedChild.age || '만 2세'})` : '원아 (만 2세)';
-    const teacherDisplayName = `${state.className || '소망반'} / ${state.teacherName || '공가희 주임교사'}`;
-
-    if (monthlyObsDocTitle) monthlyObsDocTitle.textContent = mob?.title || `[${targetMonthStr}] 영유아 발달 관찰기록부`;
-    if (monthlyObsChildName) monthlyObsChildName.textContent = childDisplayName;
-    if (monthlyObsTeacherName) monthlyObsTeacherName.textContent = teacherDisplayName;
-    if (monthlyObsPeriod) monthlyObsPeriod.textContent = `${targetMonthStr} (상순 1회 + 하순 1회 연속 관찰)`;
-
-    // 1차 관찰 바인딩 (한그루 [놀이] 또는 obs_1)
-    const playObs = mob?.play_obs || mob?.obs_1 || {};
-    const obs1Date = playObs.date || (monthlyObsDate1?.value || '2026-09-08');
-    const obs1Area = playObs.area || (mob?.play_obs ? '놀이' : (monthlyObsArea1?.value || obs.standard_area || '의사소통'));
-    if (obs1DateMeta) obs1DateMeta.textContent = `${obs1Date} (${getDayOfWeekName(obs1Date)})`;
-    if (obs1AreaBadge) obs1AreaBadge.textContent = obs1Area;
-    if (obs1ActivityTitle) obs1ActivityTitle.textContent = playObs.activity_title || obs.activity_name || state.activityArea;
-    if (obs1BehaviorText) obs1BehaviorText.textContent = playObs.behavior || obs.behavior || '';
-    if (obs1SupportText) obs1SupportText.textContent = playObs.teacher_support || obs.evaluation || '';
-
-    // 2차 관찰 바인딩 (한그루 [일상생활] 또는 obs_2)
-    const dailyObs = mob?.daily_obs || mob?.obs_2 || {};
-    const obs2Date = dailyObs.date || (monthlyObsDate2?.value || '2026-09-22');
-    const obs2Area = dailyObs.area || (mob?.daily_obs ? '일상생활' : (monthlyObsArea2?.value || '사회관계'));
-    if (obs2DateMeta) obs2DateMeta.textContent = `${obs2Date} (${getDayOfWeekName(obs2Date)})`;
-    if (obs2AreaBadge) obs2AreaBadge.textContent = obs2Area;
-    if (obs2ActivityTitle) obs2ActivityTitle.textContent = dailyObs.activity_title || state.activityArea;
-    if (obs2BehaviorText) obs2BehaviorText.textContent = dailyObs.behavior || (obs.behavior ? `1차 지도 이후 ${obs.behavior}` : '');
-    if (obs2SupportText) obs2SupportText.textContent = dailyObs.teacher_support || (obs.evaluation || '');
-    if (obs2GrowthText) obs2GrowthText.textContent = dailyObs.growth_continuity || mob?.obs_2?.growth_continuity || '1차 상호작용 지원 이후 상황을 수용하고 긍정적으로 반응하는 발전적 행동 변화를 보임.';
-
-    // 월말 종합 총평 바인딩
-    if (monthlySummaryDevText) {
-      monthlySummaryDevText.textContent = mob?.monthly_summary?.development_summary || `${obs1Area} 및 ${obs2Area} 영역에서 또래 및 교사와의 상호작용에 적극적으로 참여하며 전반적인 발달 과업을 원활히 수행함.`;
-    }
-    if (monthlySummaryPlanText) {
-      monthlySummaryPlanText.textContent = mob?.monthly_summary?.next_month_plan || '다음 달에는 유아의 자율적 탐색을 격려하고 성공 경험을 누적할 수 있도록 칭찬과 비계를 지속 지원할 계획임.';
-    }
-
-    // 기존 단일 폼 필드 채우기 (하위 호환)
-    if (obsStandardArea) obsStandardArea.textContent = `표준보육 영역: ${obs1Area}`;
-    if (obsActivityName) obsActivityName.textContent = `활동: ${playObs.activity_title || obs.activity_name || state.activityArea}`;
-    if (obsBehaviorContent) obsBehaviorContent.value = playObs.behavior || obs.behavior || '';
-    if (obsEvaluationContent) obsEvaluationContent.value = playObs.teacher_support || obs.evaluation || '';
-
-    // 2-B. 📊 한그루 ERP 발달평가 (아동발달종합평가 3문단 + 차기 지원계획 2문단) 채우기
-    const he = data.hangroo_eval;
-    if (he || (state.selectedFormats && state.selectedFormats.includes('hangroo_eval'))) {
-      if (tabHangrooEval) tabHangrooEval.style.display = 'inline-flex';
-      const evalChildName = state.selectedChild ? `${state.selectedChild.name} (${state.selectedChild.age || '만 2세'})` : '원아 (만 2세)';
-      if (hangrooEvalDocTitle) hangrooEvalDocTitle.textContent = `${evalChildName} 1학기 발달평가서 (한그루 ERP 규격)`;
-      if (hangrooEvalSummaryText) {
-        hangrooEvalSummaryText.value = he?.development_summary || (mob?.monthly_summary?.development_summary ? `${mob.monthly_summary.development_summary}\n\n신체운동 및 기본생활 영역에서 능동적인 태도를 보이며 고른 발달을 나타냄.` : '');
-      }
-      if (hangrooEvalSupportText) {
-        hangrooEvalSupportText.value = he?.support_plan || (mob?.monthly_summary?.next_month_plan ? `${mob.monthly_summary.next_month_plan}\n\n또래 간 긍정적인 상호작용과 언어 표현 확장을 돕기 위한 모델링 및 환경 구성을 지속 지원함.` : '');
-      }
-    }
-
-    // 3. 일일 보육일지 (놀이 평가 및 내일 지원) 채우기
-    if (dailyPlaySummary) dailyPlaySummary.value = dc.play_summary || '';
-    if (dailyPlayEval) dailyPlayEval.value = dc.play_evaluation || '';
-    if (dailyNextPlan) dailyNextPlan.value = dc.next_support_plan || '';
-
-    // 4. 학부모 상담 면담일지 채우기
-    const pc = data.parent_counseling || {};
-    if (counselRoutine) counselRoutine.value = pc.daily_routine || '';
-    if (counselSocial) counselSocial.value = pc.social_relations || '';
-    if (counselDev) counselDev.value = pc.development_feature || '';
-    if (counselOpinion) counselOpinion.value = pc.counseling_opinion || '';
-
-    // 5. 놀이 지원 & 환경구성안 채우기
-    const ps = data.play_support_plan || {};
-    if (playExtension) playExtension.value = ps.extension_idea || '';
-    if (playMaterials) playMaterials.value = ps.recommended_materials || '';
-    if (playTips) playTips.value = ps.interaction_tips || '';
-
-    // 6. 과거 기록 출처 (Citation) 표기
-    const cit = data.citation || {};
-    if (citationBox) {
-      if (cit.has_citation && cit.summary) {
-        citationBox.style.display = 'flex';
-        if (citationSummaryText) citationSummaryText.textContent = cit.summary;
-      } else {
-        citationBox.style.display = 'none';
-      }
-    }
-
-    // 7. 선택된 서식만 탭 바에 표시하고, 선택되지 않은 서식은 깔끔하게 숨김 (시인성 극대화)
-    const validFormats = (state.selectedFormats && state.selectedFormats.length > 0)
-      ? state.selectedFormats
-      : ['class_daily_report', 'kidsnote'];
-
-    resultTabBtns.forEach(b => {
-      const tab = b.dataset.tab;
-      if (validFormats.includes(tab)) {
-        b.style.display = 'inline-flex';
-      } else {
-        b.style.display = 'none';
-      }
-    });
-
-    // 기본 활성화 탭 결정 (선택된 서식 중 가장 적절한 탭 우선)
-    const isClassAll = state.selectedChild && (
-      state.selectedChild.id === 'class-all' ||
-      state.selectedChild.name?.includes('학급') ||
-      state.selectedChild.name?.includes('전체') ||
-      state.selectedChild.name?.includes('우리 반')
-    );
-
-    let targetTab = 'kidsnote';
-    if (isClassAll && validFormats.includes('class_daily_report')) {
-      targetTab = 'class_daily_report';
-    } else if (validFormats.includes('class_daily_report') && !validFormats.includes('kidsnote') && !validFormats.includes('observation')) {
-      targetTab = 'class_daily_report';
-    } else if (validFormats.includes('hangroo_eval') && !validFormats.includes('kidsnote') && !validFormats.includes('class_daily_report')) {
-      targetTab = 'hangroo_eval';
-    } else if (validFormats.includes('kidsnote')) {
-      targetTab = 'kidsnote';
-    } else {
-      targetTab = validFormats[0] || 'class_daily_report';
-    }
-
-    resultTabBtns.forEach(b => {
-      b.classList.toggle('active', b.dataset.tab === targetTab);
-    });
-    if (classDailyReportCard) classDailyReportCard.style.display = targetTab === 'class_daily_report' ? 'block' : 'none';
-    if (kidsnoteCard) kidsnoteCard.style.display = targetTab === 'kidsnote' ? 'flex' : 'none';
-    if (observationCard) observationCard.style.display = targetTab === 'observation' ? 'block' : 'none';
-    if (hangrooEvalCard) hangrooEvalCard.style.display = targetTab === 'hangroo_eval' ? 'block' : 'none';
-    if (dailyCareCard) dailyCareCard.style.display = targetTab === 'daily_care' ? 'flex' : 'none';
-    if (counselingCard) counselingCard.style.display = targetTab === 'counseling' ? 'flex' : 'none';
-    if (playSupportCard) playSupportCard.style.display = targetTab === 'play_support' ? 'flex' : 'none';
-
-    // 결과 섹션 노출 및 스크롤
-    resultsSection.style.display = 'flex';
-    resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    // 🛡️ 생성 완료 즉시 로컬 임시보관 (Crash Guard)
-    saveAutoDraft();
   }
-
-  // ============================================================================
+  window.renderResults = renderResults;
   // 11-B. 처형분 실무 공문서 버튼 핸들러 (한글 HWP 표 복사, 텍스트 복사, 노션 저장)
   // ============================================================================
   // ============================================================================
