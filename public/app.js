@@ -49,188 +49,55 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   // 2. DOM 요소 참조
   // ============================================================================
-  const headerDateWrapper = document.getElementById('headerDateWrapper');
-  const headerDateText = document.getElementById('headerDateText');
-  const recordDatePicker = document.getElementById('recordDatePicker');
-  const retroDateBadge = document.getElementById('retroDateBadge');
-  const headerHistoryBtn = document.getElementById('headerHistoryBtn');
-  const headerClassNameBtn = document.getElementById('headerClassNameBtn');
-  const headerClassNameText = document.getElementById('headerClassNameText');
-  const notionStatusBadge = document.getElementById('notionStatusBadge');
-  const notionStatusText = document.getElementById('notionStatusText');
-  const childScrollContainer = document.getElementById('childScrollContainer');
-  const selectedChildAge = document.getElementById('selectedChildAge');
-  const classFilterToggleBtn = document.getElementById('classFilterToggleBtn');
-  const classFilterIcon = document.getElementById('classFilterIcon');
-  const classFilterText = document.getElementById('classFilterText');
-  const childTraitsText = document.getElementById('childTraitsText');
-  const childParentText = document.getElementById('childParentText');
-  const childAlertText = document.getElementById('childAlertText');
-  const addChildBtn = document.getElementById('addChildBtn');
-  const editChildBtn = document.getElementById('editChildBtn');
-  const childManageModal = document.getElementById('childManageModal');
-  const childModalTitle = document.getElementById('childModalTitle');
-  const closeChildModalBtn = document.getElementById('closeChildModalBtn');
-  const childManageForm = document.getElementById('childManageForm');
-  const manageChildId = document.getElementById('manageChildId');
-  const manageChildName = document.getElementById('manageChildName');
-  const manageChildAge = document.getElementById('manageChildAge');
-  const manageChildClass = document.getElementById('manageChildClass');
-  const manageChildTraits = document.getElementById('manageChildTraits');
-  const manageChildParentStyle = document.getElementById('manageChildParentStyle');
-  const parentPresetGrid = document.getElementById('parentPresetGrid');
-  const manageChildAllergies = document.getElementById('manageChildAllergies');
-  const saveChildBtn = document.getElementById('saveChildBtn');
-  const syncTeacherFromNotionBtn = document.getElementById('syncTeacherFromNotionBtn');
-
-  // 👩‍🏫 교사 프로필 1초 원터치 스위처 버튼
-  const btnSwitchWife = document.getElementById('btnSwitchWife');
-  const btnSwitchSisterInLaw = document.getElementById('btnSwitchSisterInLaw');
-  const btnSwitchSandbox = document.getElementById('btnSwitchSandbox');
-
-  // ❓ 선생님 맞춤 사용 가이드 모달 요소
-  const headerGuideBtn = document.getElementById('headerGuideBtn');
-  const teacherGuideModal = document.getElementById('teacherGuideModal');
-  const btnCloseGuideModal = document.getElementById('btnCloseGuideModal');
-  const btnConfirmGuideModal = document.getElementById('btnConfirmGuideModal');
 
   const modeSwitcher = document.getElementById('modeSwitcher');
-  const areaSection = document.getElementById('areaSection');
   const areaGrid = document.getElementById('areaGrid');
   const voiceMicBtn = document.getElementById('voiceMicBtn');
-  const micIcon = document.getElementById('micIcon');
-  const micStatusText = document.getElementById('micStatusText');
   const rawMemoInput = document.getElementById('rawMemoInput');
-  const btnClearMemoBtn = document.getElementById('btnClearMemoBtn');
   const photoFileInput = document.getElementById('photoFileInput');
-  const photoPreviews = document.getElementById('photoPreviews');
   const generateBtn = document.getElementById('generateBtn');
-  const loadingBox = document.getElementById('loadingBox');
-  const loadingStepText = document.getElementById('loadingStepText');
   const btnCancelAiGenerate = document.getElementById('btnCancelAiGenerate');
 
-  // 결과 영역 요소들
-  const resultsSection = document.getElementById('resultsSection');
-  const resultTabs = document.getElementById('resultTabs');
-  const resultTabBtns = document.querySelectorAll('.result-tab-btn');
   const kidsnoteCard = document.getElementById('kidsnoteCard');
   const observationCard = document.getElementById('observationCard');
   const dailyCareCard = document.getElementById('dailyCareCard');
   const counselingCard = document.getElementById('counselingCard');
   const playSupportCard = document.getElementById('playSupportCard');
-  const kidsnoteTitle = document.getElementById('kidsnoteTitle');
-  const kidsnoteContent = document.getElementById('kidsnoteContent');
-  const kidsnoteTags = document.getElementById('kidsnoteTags');
   const copyKidsnoteBtn = document.getElementById('copyKidsnoteBtn');
   const shareKidsnoteBtn = document.getElementById('shareKidsnoteBtn');
 
-  // 🪄 AI 실시간 다듬기 (Quick Refine) 요소들
   const kidsnoteRefineBox = document.getElementById('kidsnoteRefineBox');
-  const refiningSpinner = document.getElementById('refiningSpinner');
   const resetKidsnoteBtn = document.getElementById('resetKidsnoteBtn');
   const customRefineInput = document.getElementById('customRefineInput');
   const customRefineBtn = document.getElementById('customRefineBtn');
 
-  // 🧸 평가제 월간 연속 관찰일지 DOM 요소들
-  const monthlyObsPanel = document.getElementById('monthlyObsPanel');
   const btnAutoDistributeDates = document.getElementById('btnAutoDistributeDates');
   const monthlyObsTargetMonth = document.getElementById('monthlyObsTargetMonth');
-  const monthlyObsDate1 = document.getElementById('monthlyObsDate1');
-  const monthlyObsArea1 = document.getElementById('monthlyObsArea1');
-  const monthlyObsDate2 = document.getElementById('monthlyObsDate2');
-  const monthlyObsArea2 = document.getElementById('monthlyObsArea2');
 
   const copyMonthlyObsHwpBtn = document.getElementById('copyMonthlyObsHwpBtn');
   const printMonthlyObsBtn = document.getElementById('printMonthlyObsBtn');
-  const monthlyObsDocTitle = document.getElementById('monthlyObsDocTitle');
-  const monthlyObsChildName = document.getElementById('monthlyObsChildName');
-  const monthlyObsTeacherName = document.getElementById('monthlyObsTeacherName');
-  const monthlyObsPeriod = document.getElementById('monthlyObsPeriod');
-  const obs1DateMeta = document.getElementById('obs1DateMeta');
-  const obs1AreaBadge = document.getElementById('obs1AreaBadge');
-  const obs1ActivityTitle = document.getElementById('obs1ActivityTitle');
-  const obs1BehaviorText = document.getElementById('obs1BehaviorText');
-  const obs1SupportText = document.getElementById('obs1SupportText');
-  const obs2DateMeta = document.getElementById('obs2DateMeta');
-  const obs2AreaBadge = document.getElementById('obs2AreaBadge');
-  const obs2ActivityTitle = document.getElementById('obs2ActivityTitle');
-  const obs2BehaviorText = document.getElementById('obs2BehaviorText');
-  const obs2SupportText = document.getElementById('obs2SupportText');
-  const obs2GrowthText = document.getElementById('obs2GrowthText');
-  const monthlySummaryDevText = document.getElementById('monthlySummaryDevText');
-  const monthlySummaryPlanText = document.getElementById('monthlySummaryPlanText');
 
   const obsStandardArea = document.getElementById('obsStandardArea');
   const obsActivityName = document.getElementById('obsActivityName');
   const obsBehaviorContent = document.getElementById('obsBehaviorContent');
   const obsEvaluationContent = document.getElementById('obsEvaluationContent');
-  const citationBox = document.getElementById('citationBox');
-  const citationSummaryText = document.getElementById('citationSummaryText');
   const copyObservationBtn = document.getElementById('copyObservationBtn');
-  const saveNotionBtn = document.getElementById('saveNotionBtn');
-  const saveAllUnifiedNotionBtn = document.getElementById('saveAllUnifiedNotionBtn');
-  const saveKidsnoteNotionBtn = document.getElementById('saveKidsnoteNotionBtn');
-  const saveCounselingNotionBtn = document.getElementById('saveCounselingNotionBtn');
-  const savePlaySupportNotionBtn = document.getElementById('savePlaySupportNotionBtn');
 
-  // 📄 처형분 실무 정규 보육일지 공문서 요소들
-  const tabClassDailyReport = document.getElementById('tabClassDailyReport');
   const classDailyReportCard = document.getElementById('classDailyReportCard');
-  const repDocTitle = document.getElementById('repDocTitle');
-  const repHdrClass = document.getElementById('repHdrClass');
-  const repHdrDate = document.getElementById('repHdrDate');
-  const repHdrTheme = document.getElementById('repHdrTheme');
-  const repHdrSignTeacher = document.getElementById('repHdrSignTeacher');
-  const repHdrSignDirector = document.getElementById('repHdrSignDirector');
-  const reportCurriculumTbody = document.getElementById('reportCurriculumTbody');
-  const repReflectionText = document.getElementById('repReflectionText');
-  const repSupportEnvText = document.getElementById('repSupportEnvText');
-  const repSupportSafetyText = document.getElementById('repSupportSafetyText');
   const copyHangrooReportBtn = document.getElementById('copyHangrooReportBtn');
   const copyHwpTableBtn = document.getElementById('copyHwpTableBtn');
   const printReportBtn = document.getElementById('printReportBtn');
   const copyFullReportTextBtn = document.getElementById('copyFullReportTextBtn');
   const saveClassReportNotionBtn = document.getElementById('saveClassReportNotionBtn');
 
-  // 📊 한그루 ERP 발달평가 요소들
-  const tabHangrooEval = document.getElementById('tabHangrooEval');
   const hangrooEvalCard = document.getElementById('hangrooEvalCard');
-  const hangrooEvalDocTitle = document.getElementById('hangrooEvalDocTitle');
-  const hangrooEvalSummaryText = document.getElementById('hangrooEvalSummaryText');
-  const hangrooEvalSupportText = document.getElementById('hangrooEvalSupportText');
   const copyHangrooEvalBtn = document.getElementById('copyHangrooEvalBtn');
   const copyHangrooEvalHwpBtn = document.getElementById('copyHangrooEvalHwpBtn');
   const saveHangrooEvalNotionBtn = document.getElementById('saveHangrooEvalNotionBtn');
   const copyHangrooObsBtn = document.getElementById('copyHangrooObsBtn');
 
-  // 🧩 감지된 원아별 놀이 요약 (교사 1초 눈 검수 & 개별 저장) 요소들
-  const individualObsCard = document.getElementById('individualObsCard');
-  const individualObsCountBadge = document.getElementById('individualObsCountBadge');
-  const individualObsList = document.getElementById('individualObsList');
   const btnSaveIndividualObs = document.getElementById('btnSaveIndividualObs');
-  const btnSaveIndividualObsText = document.getElementById('btnSaveIndividualObsText');
 
-  // 📂 지난 보육 기록 보관함 DOM 요소들
-  const historyModal = document.getElementById('historyModal');
-  const btnCloseHistoryModal = document.getElementById('btnCloseHistoryModal');
-  const btnRefreshHistory = document.getElementById('btnRefreshHistory');
-  const historyClassSelect = document.getElementById('historyClassSelect');
-  const historyChildSelect = document.getElementById('historyChildSelect');
-  const historyTypeSelect = document.getElementById('historyTypeSelect');
-  const historySearchInput = document.getElementById('historySearchInput');
-  const historyListContainer = document.getElementById('historyListContainer');
-
-  // 📖 기록 상세 보기 모달 DOM 요소들
-  const historyDetailModal = document.getElementById('historyDetailModal');
-  const btnCloseHistoryDetailModal = document.getElementById('btnCloseHistoryDetailModal');
-  const historyDetailTitle = document.getElementById('historyDetailTitle');
-  const historyDetailMeta = document.getElementById('historyDetailMeta');
-  const historyDetailBody = document.getElementById('historyDetailBody');
-  const btnCopyHistoryText = document.getElementById('btnCopyHistoryText');
-  const btnCopyHistoryHwp = document.getElementById('btnCopyHistoryHwp');
-  const btnPrintHistory = document.getElementById('btnPrintHistory');
-
-  // 3대 추가 서식 필드 및 복사 버튼
   const dailyPlaySummary = document.getElementById('dailyPlaySummary');
   const dailyPlayEval = document.getElementById('dailyPlayEval');
   const dailyNextPlan = document.getElementById('dailyNextPlan');
@@ -248,58 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const copyPlaySupportBtn = document.getElementById('copyPlaySupportBtn');
 
   const toastMessage = document.getElementById('toastMessage');
-  const settingsBtn = document.getElementById('settingsBtn');
-  const settingsModal = document.getElementById('settingsModal');
-  const closeSettingsBtn = document.getElementById('closeSettingsBtn');
-  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-  const headerPersonaBtn = document.getElementById('headerPersonaBtn');
-  const headerPersonaText = document.getElementById('headerPersonaText');
-  const personaPresetGrid = document.getElementById('personaPresetGrid');
-  const personaSampleNote = document.getElementById('personaSampleNote');
-  const personaCallStyle = document.getElementById('personaCallStyle');
-  const personaEmojiLevel = document.getElementById('personaEmojiLevel');
-  const personaClosingGreeting = document.getElementById('personaClosingGreeting');
-  const settingClassNameInput = document.getElementById('settingClassNameInput');
-  const settingTeacherNameInput = document.getElementById('settingTeacherNameInput');
-
-  // 🔐 Cloudflare Access 보안 세션 배너 및 모달 요소
-  const sessionExpiryBanner = document.getElementById('sessionExpiryBanner');
-  const sessionDdayBadge = document.getElementById('sessionDdayBadge');
-  const sessionDescText = document.getElementById('sessionDescText');
-  const dismissSessionBannerBtn = document.getElementById('dismissSessionBannerBtn');
-  const closeSessionBannerBtn = document.getElementById('closeSessionBannerBtn');
-  const sessionStatusTag = document.getElementById('sessionStatusTag');
-  const sessionUserEmailText = document.getElementById('sessionUserEmailText');
-  const sessionExpiryDateText = document.getElementById('sessionExpiryDateText');
-  const sessionDaysLeftText = document.getElementById('sessionDaysLeftText');
-  const testBannerToggleBtn = document.getElementById('testBannerToggleBtn');
-
-  // 🧸 2-Way 보안 잠금 게이트 (Auth Gate) 요소
-  const authGateModal = document.getElementById('authGateModal');
-  const tabPinBtn = document.getElementById('tabPinBtn');
-  const tabEmailBtn = document.getElementById('tabEmailBtn');
-  const pinPanel = document.getElementById('pinPanel');
-  const emailPanel = document.getElementById('emailPanel');
-  const pinDotsContainer = document.getElementById('pinDotsContainer');
-  const pinDots = pinDotsContainer ? pinDotsContainer.querySelectorAll('.pin-dot') : [];
-  const pinErrorMsg = document.getElementById('pinErrorMsg');
-  const keypadButtons = document.querySelectorAll('.keypad-btn');
-  const keypadClearBtn = document.getElementById('keypadClearBtn');
-  const keypadBackspaceBtn = document.getElementById('keypadBackspaceBtn');
-  const emailLoginForm = document.getElementById('emailLoginForm');
-  const authEmailInput = document.getElementById('authEmailInput');
-  const emailErrorMsg = document.getElementById('emailErrorMsg');
-  const rememberAuthCheck = document.getElementById('rememberAuthCheck');
-  const headerLogoutBtn = document.getElementById('headerLogoutBtn');
-  const modalLogoutBtn = document.getElementById('modalLogoutBtn');
-  const openChangePinBtn = document.getElementById('openChangePinBtn');
-  const pinChangeBox = document.getElementById('pinChangeBox');
-  const newPinInput = document.getElementById('newPinInput');
-  const saveNewPinBtn = document.getElementById('saveNewPinBtn');
-  const cancelNewPinBtn = document.getElementById('cancelNewPinBtn');
-
-  let currentSessionData = null;
-  let pinBuffer = '';
 
   // ============================================================================
   // 3-A. 🧸 2-Way 보안 잠금 게이트 및 교사 스위처 (auth-gate.js에서 자동 처리)
@@ -445,7 +260,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   // 3-F. 🧸 평가제 월간 관찰일지 날짜 자동 분산 헬퍼 (daycare-date-utils.js 모듈로 분리 완료)
   // ============================================================================
-
 
   // ============================================================================
   // 4. 이벤트 리스너 등록
@@ -621,60 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // 노션 저장 (관찰일지)
-    if (saveNotionBtn) {
-      saveNotionBtn.addEventListener('click', () => {
-        if (typeof handleSaveNotion === 'function') {
-          handleSaveNotion();
-        } else if (typeof window.handleSaveNotion === 'function') {
-          window.handleSaveNotion();
-        }
-      });
-    }
-
-    // 1-B. 키즈노트 알림장 노션 발달 타임라인 누적 저장
-    if (saveKidsnoteNotionBtn) {
-      saveKidsnoteNotionBtn.addEventListener('click', () => {
-        if (typeof handleSaveKidsnoteNotion === 'function') {
-          handleSaveKidsnoteNotion();
-        } else if (typeof window.handleSaveKidsnoteNotion === 'function') {
-          window.handleSaveKidsnoteNotion();
-        }
-      });
-    }
-
-    // 4-B. 학부모 상담일지 노션 저장
-    if (saveCounselingNotionBtn) {
-      saveCounselingNotionBtn.addEventListener('click', () => {
-        if (typeof handleSaveCounselingNotion === 'function') {
-          handleSaveCounselingNotion();
-        } else if (typeof window.handleSaveCounselingNotion === 'function') {
-          window.handleSaveCounselingNotion();
-        }
-      });
-    }
-
-    // 5-B. 놀이 지원안 노션 저장
-    if (savePlaySupportNotionBtn) {
-      savePlaySupportNotionBtn.addEventListener('click', () => {
-        if (typeof handleSavePlaySupportNotion === 'function') {
-          handleSavePlaySupportNotion();
-        } else if (typeof window.handleSavePlaySupportNotion === 'function') {
-          window.handleSavePlaySupportNotion();
-        }
-      });
-    }
-
-    // 6. 오늘 일과 & 관찰 전체 1초 일괄 누적 저장
-    if (saveAllUnifiedNotionBtn) {
-      saveAllUnifiedNotionBtn.addEventListener('click', () => {
-        if (typeof handleSaveAllUnifiedNotion === 'function') {
-          handleSaveAllUnifiedNotion();
-        } else if (typeof window.handleSaveAllUnifiedNotion === 'function') {
-          window.handleSaveAllUnifiedNotion();
-        }
-      });
-    }
+    // (노션 저장 버튼 리스너들은 export-formatters.js에서 바인딩 완료)
 
     // 🎭 페르소나 설정 및 🔐 보안 세션 배너 (settings-controller.js에서 처리)
 
@@ -762,205 +523,29 @@ document.addEventListener('DOMContentLoaded', () => {
   // 6 & 7. 노션 직결 브릿지 & 원아 목록 관리 (notion-bridge.js & children-store.js에서 처리)
   // ============================================================================
 
-
   // ============================================================================
   // 8 & 9. Web Speech API 및 사진 업로드 핸들러 (media-assistant.js 모듈로 분리 완료)
   // ============================================================================
 
-
   // ============================================================================
   // 9-B. 원아의 노션 실제 과거 관찰 기록 스캔 (시계열 팩트 기반 검증)
   // ============================================================================
+  // ============================================================================
+  // 9-B & 10. 과거 관찰 기록 스캔 및 AI 생성 (ai-generator.js 위임)
+  // ============================================================================
   async function fetchChildPastLogs(childId, childName) {
-    if (!childId && !childName) return [];
-
-    let targetChildId = childId;
-    if (!targetChildId || targetChildId.startsWith('mock-') || targetChildId.startsWith('sandbox_')) {
-      const matched = state.children.find(c => c.name === childName && !c.id.startsWith('mock-') && !c.id.startsWith('sandbox_'));
-      if (matched) targetChildId = matched.id;
+    if (window.AiGenerator && typeof window.AiGenerator.fetchChildPastLogs === 'function') {
+      return window.AiGenerator.fetchChildPastLogs(childId, childName);
     }
-
-    try {
-      let filter = null;
-      if (targetChildId && !targetChildId.startsWith('mock-') && !targetChildId.startsWith('sandbox_')) {
-        filter = {
-          property: '원아',
-          relation: { contains: targetChildId }
-        };
-      } else if (childName) {
-        filter = {
-          property: '기록명/식별자',
-          title: { contains: childName }
-        };
-      }
-
-      if (!filter) return [];
-
-      const queryRes = await directNotionCall(`/databases/${NOTION_CONFIG.DAILY_LOG_DB_ID}/query`, 'POST', {
-        filter,
-        page_size: 10,
-        sorts: [{ property: '작성일자', direction: 'descending' }]
-      });
-
-      const pages = queryRes.results || [];
-      const pastLogs = pages.map(p => {
-        const props = p.properties || {};
-        const date = props['작성일자']?.date?.start || (p.created_time ? p.created_time.split('T')[0] : '');
-        const area = props['활동 구분']?.select?.name || (props['표준보육 영역']?.multi_select?.[0]?.name || '자유놀이');
-        const summary = props['관찰 요약']?.rich_text?.[0]?.plain_text ||
-                        props['원시 메모/키워드']?.rich_text?.[0]?.plain_text ||
-                        props['알림장 최종본']?.rich_text?.[0]?.plain_text?.slice(0, 120) || '';
-        return { date, activity: area, behavior: summary };
-      }).filter(log => log.date && log.behavior);
-
-      return pastLogs;
-    } catch (err) {
-      console.warn('원아 과거 관찰 기록 조회 실패:', err);
-      return [];
-    }
+    return [];
   }
 
-  // ============================================================================
-  // 10. AI 생성 핸들러 (Gemini 3.8 Flash)
-  // ============================================================================
   async function handleGenerate() {
-    if (!state.selectedChild) {
-      showToast('원아를 먼저 선택해주세요.');
-      return;
-    }
-
-    const memoText = rawMemoInput.value.trim();
-    if (!memoText && state.photos.length === 0) {
-      showToast('관찰 메모를 입력하거나 활동 사진을 첨부해주세요.');
-      rawMemoInput.focus();
-      return;
-    }
-
-    // 로딩 시작
-    generateBtn.disabled = true;
-    loadingBox.style.display = 'block';
-    resultsSection.style.display = 'none';
-
-    // ⏹️ AbortController 초기화 (언제든 안전 중단 가능)
-    const abortController = new AbortController();
-    state.currentAbortController = abortController;
-    state.isGenerationAborted = false;
-
-    // 단계별 메시지 애니메이션
-    const steps = [
-      '🛡️ 원아 실명 마스킹 가드 적용 중...',
-      '🤖 Gemini 3.8 Flash 멀티모달 보육 맥락 분석 중...',
-      '📌 과거 관찰일지 연계 및 성장점 추출 중...',
-      '✨ 실명 안전 복원 및 알림장/일지 조립 중...'
-    ];
-    let stepIndex = 0;
-    loadingStepText.textContent = steps[0];
-    const stepInterval = setInterval(() => {
-      stepIndex = (stepIndex + 1) % steps.length;
-      loadingStepText.textContent = steps[stepIndex];
-    }, 1200);
-
-    try {
-      // 원아의 과거 실제 관찰 기록 스캔 (노션 DAILY_LOG_DB)
-      let pastLogs = [];
-      try {
-        pastLogs = await fetchChildPastLogs(state.selectedChild.id, state.selectedChild.name);
-      } catch (pastErr) {
-        console.warn('과거 기록 스캔 실패:', pastErr);
-      }
-
-      const payload = {
-        childId: state.selectedChild.id,
-        childName: state.selectedChild.name,
-        childAge: state.selectedChild.age,
-        childTraits: state.selectedChild.traits,
-        parentStyle: state.selectedChild.parentStyle || '',
-        allergies: state.selectedChild.allergies,
-        rawMemo: memoText,
-        images: state.photos,
-        mode: state.mode,
-        activityArea: state.activityArea,
-        teacherStyle: state.teacherStyle,
-        className: state.className || '햇살반',
-        teacherName: state.teacherName || '김선생님',
-        persona: state.persona,
-        pastLogs: pastLogs,
-        selectedFormats: state.selectedFormats // 📑 선택된 서식만 스마트 생성
-      };
-
-      if (monthlyObsTargetMonth) {
-        payload.monthlyObsOptions = {
-          targetMonth: monthlyObsTargetMonth.value || '2026-09',
-          date1: monthlyObsDate1 ? monthlyObsDate1.value : '',
-          area1: monthlyObsArea1 ? monthlyObsArea1.value : '의사소통',
-          date2: monthlyObsDate2 ? monthlyObsDate2.value : '',
-          area2: monthlyObsArea2 ? monthlyObsArea2.value : '사회관계'
-        };
-      }
-
-      let resultData = null;
-
-      // 1. 한국 브라우저 IP 직통 호출 시도 (Cloudflare 유럽 노드 지역 제한 400 원천 회피)
-      if (window.GeminiClient && typeof window.GeminiClient.generate === 'function') {
-        try {
-          const clientRes = await window.GeminiClient.generate(payload, { signal: abortController.signal });
-          if (clientRes && clientRes.success) {
-            resultData = clientRes.data;
-          }
-        } catch (clientErr) {
-          if (clientErr.name === 'AbortError' || state.isGenerationAborted) {
-            throw clientErr;
-          }
-          console.warn('클라이언트 직통 호출 실패, 서버 엔드포인트로 폴백:', clientErr);
-        }
-      }
-
-      // 2. 서버 폴백 (/api/generate)
-      if (!resultData && !state.isGenerationAborted) {
-        const res = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: abortController.signal,
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.error || '생성 중 오류가 발생했습니다.');
-        }
-
-        const json = await res.json();
-        resultData = json.data;
-      }
-
-      state.lastResult = resultData;
-      state.originalResult = JSON.parse(JSON.stringify(resultData)); // ↺ 최초 생성 원본 백업 (원래대로 복원용)
-      renderResults(resultData);
-      showToast('🎉 맞춤 보육 기록이 완성되었습니다!');
-    } catch (err) {
-      if (err.name === 'AbortError' || state.isGenerationAborted) {
-        console.log('AI 작성이 교사에 의해 안전하게 취소되었습니다.');
-        showToast('⏹️ AI 생성이 안전하게 중단되었습니다. 메모를 수정해보세요.');
-        if (rawMemoInput) rawMemoInput.focus();
-      } else {
-        console.error('Generate Error:', err);
-        showToast(`오류: ${err.message}`);
-      }
-    } finally {
-      clearInterval(stepInterval);
-      generateBtn.disabled = false;
-      loadingBox.style.display = 'none';
-      state.currentAbortController = null;
-      state.isGenerationAborted = false;
+    if (window.AiGenerator && typeof window.AiGenerator.handleGenerate === 'function') {
+      return window.AiGenerator.handleGenerate();
     }
   }
 
-  // ============================================================================
-  // 10-B. AI 실시간 알림장 다듬기 (media-assistant.js 모듈로 분리 완료)
-  // ============================================================================
-
-
-  // ============================================================================
   // 11. 생성 결과 렌더링
   // ============================================================================
   function renderResults(data) {
@@ -975,83 +560,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // 11-B. 처형분 실무 공문서 및 한그루 ERP 복사 핸들러 (export-formatters.js 모듈로 분리 완료)
   // ============================================================================
 
-
-  // 5. 📊 한그루 ERP 발달평가서 노션 저장 핸들러
-  async function handleSaveHangrooEvalNotion() {
-    if (typeof window.handleSaveHangrooEvalNotion === 'function') {
-      return window.handleSaveHangrooEvalNotion();
-    } else if (window.DaycareNotion && typeof window.DaycareNotion.handleSaveHangrooEvalNotion === 'function') {
-      return window.DaycareNotion.handleSaveHangrooEvalNotion();
-    } else {
-      showToast('노션 연동 모듈이 준비되지 않았습니다.');
-    }
-  }
-
-  // 6. 📄 보육일지 노션 저장 래퍼
-  async function handleSaveClassReportNotion() {
-    if (typeof window.handleSaveClassReportNotion === 'function') {
-      return window.handleSaveClassReportNotion();
-    } else if (window.DaycareNotion && typeof window.DaycareNotion.handleSaveClassReportNotion === 'function') {
-      return window.DaycareNotion.handleSaveClassReportNotion();
-    } else {
-      showToast('노션 연동 모듈이 준비되지 않았습니다.');
-    }
-  }
-
-  // 7. 🧩 원아별 개별 관찰일지 노션 분할 저장 래퍼
-  async function handleSaveIndividualObs() {
-    if (typeof window.handleSaveIndividualObs === 'function') {
-      return window.handleSaveIndividualObs();
-    } else if (window.DaycareNotion && typeof window.DaycareNotion.handleSaveIndividualObs === 'function') {
-      return window.DaycareNotion.handleSaveIndividualObs();
-    } else {
-      showToast('노션 연동 모듈이 준비되지 않았습니다.');
-    }
-  }
+  // 5, 6, 7. 노션 저장 래퍼 (notion-bridge.js 연동)
+  const handleSaveHangrooEvalNotion = () => window.DaycareNotion?.handleSaveHangrooEvalNotion?.() || showToast('노션 연동 모듈 준비 중');
+  const handleSaveClassReportNotion = () => window.DaycareNotion?.handleSaveClassReportNotion?.() || showToast('노션 연동 모듈 준비 중');
+  const handleSaveIndividualObs = () => window.DaycareNotion?.handleSaveIndividualObs?.() || showToast('노션 연동 모듈 준비 중');
 
   // ============================================================================
   // 11-C. 키즈노트 알림장 복사 및 공유 핸들러 (export-formatters.js 모듈로 분리 완료)
   // ============================================================================
 
-
   // ============================================================================
   // 9 & 10. 노션 DB 저장 & 지난 기록 보관함 (notion-bridge.js & history-viewer.js 연동)
   // ============================================================================
 
-  // 기록 보관함 이벤트 리스너 등록
-  if (headerHistoryBtn) {
-    headerHistoryBtn.addEventListener('click', openHistoryModal);
-    headerHistoryBtn.onclick = openHistoryModal;
+  // 📂 지난 보육 기록 보관함 리스너 등록 (history-viewer.js 연동)
+  if (typeof setupHistoryListeners === 'function') {
+    setupHistoryListeners();
+  } else if (window.setupHistoryListeners) {
+    window.setupHistoryListeners();
   }
-  if (btnCloseHistoryModal) {
-    btnCloseHistoryModal.addEventListener('click', closeHistoryModal);
-    btnCloseHistoryModal.onclick = closeHistoryModal;
-  }
-  if (btnRefreshHistory) {
-    btnRefreshHistory.addEventListener('click', () => fetchHistoryLogs(true));
-    btnRefreshHistory.onclick = () => fetchHistoryLogs(true);
-  }
-
-  if (historyClassSelect) {
-    historyClassSelect.onchange = () => {
-      populateHistoryChildOptions();
-      renderHistoryList();
-    };
-  }
-  if (historyChildSelect) historyChildSelect.onchange = () => renderHistoryList();
-  if (historyTypeSelect) historyTypeSelect.onchange = () => renderHistoryList();
-  if (historySearchInput) historySearchInput.oninput = () => renderHistoryList();
-
-  if (btnCloseHistoryDetailModal) btnCloseHistoryDetailModal.onclick = closeHistoryDetailModal;
-  if (btnCopyHistoryText) btnCopyHistoryText.onclick = copyCurrentHistoryText;
-  if (btnCopyHistoryHwp) btnCopyHistoryHwp.onclick = copyCurrentHistoryHwp;
-  if (btnPrintHistory) btnPrintHistory.onclick = () => window.print();
-
-  // 모달 바깥 배경 클릭 시 닫기
-  window.addEventListener('click', (e) => {
-    if (e.target === historyModal) closeHistoryModal();
-    if (e.target === historyDetailModal) closeHistoryDetailModal();
-  });
 
   // 애플리케이션 시작
   init();

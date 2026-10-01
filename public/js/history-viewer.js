@@ -389,6 +389,47 @@ async function copyCurrentHistoryHwp() {
   }
 }
 
+function setupHistoryListeners() {
+  const headerHistoryBtn = document.getElementById('headerHistoryBtn');
+  const btnCloseHistoryModal = document.getElementById('btnCloseHistoryModal');
+  const btnRefreshHistory = document.getElementById('btnRefreshHistory');
+  const historyClassSelect = document.getElementById('historyClassSelect');
+  const historyChildSelect = document.getElementById('historyChildSelect');
+  const historyTypeSelect = document.getElementById('historyTypeSelect');
+  const historySearchInput = document.getElementById('historySearchInput');
+  const historyModal = document.getElementById('historyModal');
+  const historyDetailModal = document.getElementById('historyDetailModal');
+
+  const btnCloseHistoryDetailModal = document.getElementById('btnCloseHistoryDetailModal');
+  const btnCopyHistoryText = document.getElementById('btnCopyHistoryText');
+  const btnCopyHistoryHwp = document.getElementById('btnCopyHistoryHwp');
+  const btnPrintHistory = document.getElementById('btnPrintHistory');
+
+  if (headerHistoryBtn) headerHistoryBtn.onclick = openHistoryModal;
+  if (btnCloseHistoryModal) btnCloseHistoryModal.onclick = closeHistoryModal;
+  if (btnRefreshHistory) btnRefreshHistory.onclick = () => fetchHistoryLogs(true);
+
+  if (historyClassSelect) {
+    historyClassSelect.onchange = () => {
+      populateHistoryChildOptions();
+      renderHistoryList();
+    };
+  }
+  if (historyChildSelect) historyChildSelect.onchange = () => renderHistoryList();
+  if (historyTypeSelect) historyTypeSelect.onchange = () => renderHistoryList();
+  if (historySearchInput) historySearchInput.oninput = () => renderHistoryList();
+
+  if (btnCloseHistoryDetailModal) btnCloseHistoryDetailModal.onclick = closeHistoryDetailModal;
+  if (btnCopyHistoryText) btnCopyHistoryText.onclick = copyCurrentHistoryText;
+  if (btnCopyHistoryHwp) btnCopyHistoryHwp.onclick = copyCurrentHistoryHwp;
+  if (btnPrintHistory) btnPrintHistory.onclick = () => window.print();
+
+  window.addEventListener('click', (e) => {
+    if (e.target === historyModal) closeHistoryModal();
+    if (e.target === historyDetailModal) closeHistoryDetailModal();
+  });
+}
+
 // 🌐 전역 네임스페이스 및 하위 호환성 등록
 window.escapeHtml = escapeHtml;
 window.populateHistoryChildOptions = populateHistoryChildOptions;
@@ -401,6 +442,7 @@ window.closeHistoryDetailModal = closeHistoryDetailModal;
 window.copyHistoryQuick = copyHistoryQuick;
 window.copyCurrentHistoryText = copyCurrentHistoryText;
 window.copyCurrentHistoryHwp = copyCurrentHistoryHwp;
+window.setupHistoryListeners = setupHistoryListeners;
 
 window.DaycareHistory = {
   escapeHtml,
@@ -413,5 +455,6 @@ window.DaycareHistory = {
   closeHistoryDetailModal,
   copyHistoryQuick,
   copyCurrentHistoryText,
-  copyCurrentHistoryHwp
+  copyCurrentHistoryHwp,
+  setupHistoryListeners
 };

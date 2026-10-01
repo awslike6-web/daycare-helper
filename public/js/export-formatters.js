@@ -341,6 +341,104 @@ async function handleShareKidsnote() {
 }
 
 // ============================================================================
+// 6-B. 내보내기 및 복사/저장 이벤트 리스너 일괄 바인딩
+// ============================================================================
+function setupExportListeners() {
+  const copyHangrooReportBtn = document.getElementById('copyHangrooReportBtn');
+  const copyHwpTableBtn = document.getElementById('copyHwpTableBtn');
+  const printReportBtn = document.getElementById('printReportBtn');
+  const copyFullReportTextBtn = document.getElementById('copyFullReportTextBtn');
+  const saveClassReportNotionBtn = document.getElementById('saveClassReportNotionBtn');
+  const btnSaveIndividualObs = document.getElementById('btnSaveIndividualObs');
+  const copyHangrooObsBtn = document.getElementById('copyHangrooObsBtn');
+  const copyMonthlyObsHwpBtn = document.getElementById('copyMonthlyObsHwpBtn');
+  const printMonthlyObsBtn = document.getElementById('printMonthlyObsBtn');
+  const copyHangrooEvalBtn = document.getElementById('copyHangrooEvalBtn');
+  const copyHangrooEvalHwpBtn = document.getElementById('copyHangrooEvalHwpBtn');
+  const saveHangrooEvalNotionBtn = document.getElementById('saveHangrooEvalNotionBtn');
+  const copyKidsnoteBtn = document.getElementById('copyKidsnoteBtn');
+  const shareKidsnoteBtn = document.getElementById('shareKidsnoteBtn');
+
+  const copyObservationBtn = document.getElementById('copyObservationBtn');
+  const obsStandardArea = document.getElementById('obsStandardArea');
+  const obsActivityName = document.getElementById('obsActivityName');
+  const obsBehaviorContent = document.getElementById('obsBehaviorContent');
+  const obsEvaluationContent = document.getElementById('obsEvaluationContent');
+
+  const copyDailyCareBtn = document.getElementById('copyDailyCareBtn');
+  const dailyPlaySummary = document.getElementById('dailyPlaySummary');
+  const dailyPlayEval = document.getElementById('dailyPlayEval');
+  const dailyNextPlan = document.getElementById('dailyNextPlan');
+
+  const copyCounselingBtn = document.getElementById('copyCounselingBtn');
+  const counselRoutine = document.getElementById('counselRoutine');
+  const counselSocial = document.getElementById('counselSocial');
+  const counselDev = document.getElementById('counselDev');
+  const counselOpinion = document.getElementById('counselOpinion');
+
+  const copyPlaySupportBtn = document.getElementById('copyPlaySupportBtn');
+  const playExtension = document.getElementById('playExtension');
+  const playMaterials = document.getElementById('playMaterials');
+  const playTips = document.getElementById('playTips');
+
+  const saveNotionBtn = document.getElementById('saveNotionBtn');
+  const saveKidsnoteNotionBtn = document.getElementById('saveKidsnoteNotionBtn');
+  const saveCounselingNotionBtn = document.getElementById('saveCounselingNotionBtn');
+  const savePlaySupportNotionBtn = document.getElementById('savePlaySupportNotionBtn');
+  const saveAllUnifiedNotionBtn = document.getElementById('saveAllUnifiedNotionBtn');
+
+  if (copyHangrooReportBtn) copyHangrooReportBtn.onclick = handleCopyHangrooReport;
+  if (copyHwpTableBtn) copyHwpTableBtn.onclick = handleCopyHwpTable;
+  if (printReportBtn) printReportBtn.onclick = () => window.print();
+  if (copyFullReportTextBtn) copyFullReportTextBtn.onclick = handleCopyFullReportText;
+  if (saveClassReportNotionBtn) saveClassReportNotionBtn.onclick = () => window.handleSaveClassReportNotion?.();
+  if (btnSaveIndividualObs) btnSaveIndividualObs.onclick = () => window.handleSaveIndividualObs?.();
+  if (copyHangrooObsBtn) copyHangrooObsBtn.onclick = handleCopyHangrooObs;
+  if (copyMonthlyObsHwpBtn) copyMonthlyObsHwpBtn.onclick = handleCopyMonthlyObsHwp;
+  if (printMonthlyObsBtn) printMonthlyObsBtn.onclick = () => window.print();
+  if (copyHangrooEvalBtn) copyHangrooEvalBtn.onclick = handleCopyHangrooEval;
+  if (copyHangrooEvalHwpBtn) copyHangrooEvalHwpBtn.onclick = handleCopyHangrooEvalHwp;
+  if (saveHangrooEvalNotionBtn) saveHangrooEvalNotionBtn.onclick = () => window.handleSaveHangrooEvalNotion?.();
+  if (copyKidsnoteBtn) copyKidsnoteBtn.onclick = handleCopyKidsnote;
+  if (shareKidsnoteBtn) shareKidsnoteBtn.onclick = handleShareKidsnote;
+
+  if (copyObservationBtn) {
+    copyObservationBtn.onclick = () => {
+      const text = `[관찰일지 - ${obsStandardArea ? obsStandardArea.textContent : ''} / ${obsActivityName ? obsActivityName.textContent : ''}]\n\n[행동 관찰]\n${obsBehaviorContent ? obsBehaviorContent.value : ''}\n\n[지원 및 평가]\n${obsEvaluationContent ? obsEvaluationContent.value : ''}`;
+      copyTextToClipboard(text, '📋 평가제 관찰일지가 복사되었습니다.');
+    };
+  }
+
+  if (copyDailyCareBtn) {
+    copyDailyCareBtn.onclick = () => {
+      const text = `[일일 보육일지 - 놀이 평가 및 지원 계획]\n\n1. 놀이 흐름 요약:\n${dailyPlaySummary ? dailyPlaySummary.value : ''}\n\n2. 교사 종합 평가:\n${dailyPlayEval ? dailyPlayEval.value : ''}\n\n3. 내일 놀이 연계 및 지원 계획:\n${dailyNextPlan ? dailyNextPlan.value : ''}`;
+      copyTextToClipboard(text, '📋 보육일지 놀이평가 및 지원계획이 복사되었습니다.');
+    };
+  }
+
+  if (copyCounselingBtn) {
+    copyCounselingBtn.onclick = () => {
+      const state = window.state || {};
+      const text = `[학부모 상담 면담일지 요약 - ${state.selectedChild?.name || '원아'}]\n\n1. 기본생활습관: ${counselRoutine ? counselRoutine.value : ''}\n2. 대인관계 및 사회성: ${counselSocial ? counselSocial.value : ''}\n3. 발달 특성: ${counselDev ? counselDev.value : ''}\n4. 종합 상담 의견: ${counselOpinion ? counselOpinion.value : ''}`;
+      copyTextToClipboard(text, '📋 학부모 상담 일지가 복사되었습니다.');
+    };
+  }
+
+  if (copyPlaySupportBtn) {
+    copyPlaySupportBtn.onclick = () => {
+      const text = `[놀이 지원 & 환경구성안]\n\n1. 확장 놀이 아이디어:\n${playExtension ? playExtension.value : ''}\n\n2. 추천 준비 교구:\n${playMaterials ? playMaterials.value : ''}\n\n3. 교사 추천 발문 팁:\n${playTips ? playTips.value : ''}`;
+      copyTextToClipboard(text, '📋 놀이 지원 및 환경구성안이 복사되었습니다.');
+    };
+  }
+
+  if (saveNotionBtn) saveNotionBtn.onclick = () => window.handleSaveNotion?.();
+  if (saveKidsnoteNotionBtn) saveKidsnoteNotionBtn.onclick = () => window.handleSaveKidsnoteNotion?.();
+  if (saveCounselingNotionBtn) saveCounselingNotionBtn.onclick = () => window.handleSaveCounselingNotion?.();
+  if (savePlaySupportNotionBtn) savePlaySupportNotionBtn.onclick = () => window.handleSavePlaySupportNotion?.();
+  if (saveAllUnifiedNotionBtn) saveAllUnifiedNotionBtn.onclick = () => window.handleSaveAllUnifiedNotion?.();
+}
+
+// ============================================================================
 // 7. 글로벌 전역 등록 (Facade 패턴 및 하위 호환성 100% 보존)
 // ============================================================================
 window.copyTextToClipboard = copyTextToClipboard;
@@ -354,6 +452,7 @@ window.handleCopyHangrooEval = handleCopyHangrooEval;
 window.handleCopyHangrooEvalHwp = handleCopyHangrooEvalHwp;
 window.handleCopyKidsnote = handleCopyKidsnote;
 window.handleShareKidsnote = handleShareKidsnote;
+window.setupExportListeners = setupExportListeners;
 
 window.ExportFormatters = {
   copyTextToClipboard,
@@ -366,5 +465,6 @@ window.ExportFormatters = {
   handleCopyHangrooEval,
   handleCopyHangrooEvalHwp,
   handleCopyKidsnote,
-  handleShareKidsnote
+  handleShareKidsnote,
+  setupExportListeners
 };
