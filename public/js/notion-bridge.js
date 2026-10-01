@@ -757,34 +757,35 @@ async function handleSaveAllUnifiedNotion() {
   const rawMemo = rawMemoInput ? rawMemoInput.value.trim() : '';
   const noteText = kidsnoteContent ? kidsnoteContent.value.trim() : (state.lastResult.kidsnote?.content || '');
   
-  let obsText = '';
-  if (obsBehaviorContent && obsBehaviorContent.value) {
-    obsText = `[행동 관찰]\n${obsBehaviorContent.value}\n\n[지원 및 평가]\n${obsEvaluationContent ? obsEvaluationContent.value : ''}`;
-  } else if (state.lastResult.class_daily_report) {
+  let obsSegments = [];
+  if (state.lastResult.class_daily_report) {
     const rep = state.lastResult.class_daily_report;
     const refVal = repReflectionText?.value || repReflectionText?.textContent || rep.reflection || '';
-    obsText = `[놀이 실행]\n${rep.play_activity || rep.play_theme || ''}\n\n` +
-      `[성찰 및 지원]\n${refVal}`;
+    obsSegments.push(`[한그루 보육일지]\n놀이: ${rep.play_activity || rep.play_theme || ''}\n성찰 및 지원: ${refVal}`);
   }
+  if (obsBehaviorContent && obsBehaviorContent.value.trim()) {
+    obsSegments.push(`[영유아 행동 관찰]\n${obsBehaviorContent.value.trim()}\n[교사 지원 및 평가]\n${obsEvaluationContent ? obsEvaluationContent.value.trim() : ''}`);
+  }
+  const obsText = obsSegments.length > 0 ? obsSegments.join('\n\n') : noteText;
 
   const firstSentence = noteText.split(/[.!\n]/)[0].trim();
   const obsSummaryText = (firstSentence ? firstSentence : (rawMemo || '일일 종합 일과')).slice(0, 80);
 
   await sendDailyLogToNotion({
     btn: saveAllUnifiedNotionBtn,
-    loadingHtml: '<span>⏳</span> <span>노션 일괄 누적 중...</span>',
-    defaultHtml: '<span>💾</span> <span>노션에 1초 일괄 누적</span>',
+    loadingHtml: '<span>⏳</span> <span>노션에 저장 중...</span>',
+    defaultHtml: '<span>💾</span> <span>오늘의 기록 노션에 저장</span>',
     pageTitle,
     activityArea,
     standardAreas: [state.lastResult.observation_log?.standard_area || '신체운동'],
     rawMemo,
     kidsnoteText: noteText,
-    obsText: obsText || noteText,
+    obsText: obsText,
     citationSummary: isClassAll ? `학급 보육 일과 종합 누적 (${state.className})` : `원아 일과 종합 누적 (${state.className})`,
     obsSummary: obsSummaryText,
     childId: isClassAll ? 'class-all' : state.selectedChild?.id,
     childName,
-    successToast: `🎉 ${childName}의 오늘 일과와 관찰 기록 전체가 노션에 일괄 누적되었습니다!`
+    successToast: `🎉 ${childName}의 오늘 일과와 일지 전체가 노션에 완벽하게 저장되었습니다!`
   });
 }
 
