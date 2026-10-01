@@ -344,6 +344,7 @@ export async function saveDailyLogToNotion({
   date,
   childId,
   childName,
+  childClass,
   teacherId,
   activityArea,
   standardArea,
@@ -426,6 +427,11 @@ export async function saveDailyLogToNotion({
       ]
     }
   };
+
+  // 학급 Select 속성 연결
+  if (childClass) {
+    properties['학급'] = { select: { name: childClass } };
+  }
 
   // 원아 관계형 연결 (실제 유효한 32/36자리 노션 페이지 UUID인 경우만)
   if (childId && isValidNotionId(childId)) {

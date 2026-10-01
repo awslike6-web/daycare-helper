@@ -231,6 +231,12 @@ async function sendDailyLogToNotion({
       '관찰 요약': { rich_text: [{ text: { content: (obsSummary || '').slice(0, 80) } }] }
     };
 
+    // 🏫 신규 학급(Select) 속성 주입 (SSOT 단일 원천)
+    const currentClassName = state.className || (state.activeTeacherKey === 'sister_in_law' ? '소망반' : (state.activeTeacherKey === 'sandbox' ? '연구반' : '사랑반'));
+    if (currentClassName) {
+      props['학급'] = { select: { name: currentClassName } };
+    }
+
     // 🌟 핵심: 유효한 32/36자리 노션 페이지 UUID일 때만 원아 relation을 연결
     if (isValidNotionId(targetChildId)) {
       props['원아'] = { relation: [{ id: targetChildId }] };

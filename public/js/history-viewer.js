@@ -141,11 +141,16 @@ async function fetchHistoryLogs(forceRefresh = false) {
       const refSummary = props['참조 출처 요약']?.rich_text?.[0]?.plain_text || '';
       const teacherRelId = props['작성교사']?.relation?.[0]?.id || '';
       const childRelId = props['원아']?.relation?.[0]?.id || '';
+      const classSelectVal = props['학급']?.select?.name || '';
 
       let cls = '기타';
 
-      // 1순위: 작성교사 Relation ID 기반 단일 원천 판별 (가장 신뢰도 높음)
-      if (teacherRelId) {
+      // 0순위 (절대 기준 SSOT): 노션 '학급' Select 컬럼에 값이 있으면 즉시 100% 확정
+      if (classSelectVal) {
+        cls = classSelectVal;
+      }
+      // 1순위: 작성교사 Relation ID 기반 단일 원천 판별 (과거 데이터 폴백)
+      else if (teacherRelId) {
         if (teacherRelId === '3e0a2711-5b68-81ea-be6e-ed72a8a12f42' || (window.TEACHER_PAGE_MAP && teacherRelId === window.TEACHER_PAGE_MAP.sandbox)) {
           cls = '연구반';
         } else if (teacherRelId === '3e0a2711-5b68-8102-9fbb-c635637c5b33' || (window.TEACHER_PAGE_MAP && teacherRelId === window.TEACHER_PAGE_MAP.wife)) {
