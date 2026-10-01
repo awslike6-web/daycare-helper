@@ -139,20 +139,53 @@ async function fetchHistoryLogs(forceRefresh = false) {
       const kidsnote = props['알림장 최종본']?.rich_text?.[0]?.plain_text || '';
       const reportOrObs = props['관찰일지 최종본']?.rich_text?.[0]?.plain_text || '';
       const refSummary = props['참조 출처 요약']?.rich_text?.[0]?.plain_text || '';
+      const teacherRelId = props['작성교사']?.relation?.[0]?.id || '';
+      const childRelId = props['원아']?.relation?.[0]?.id || '';
 
       let cls = '기타';
-      const combinedText = `${title} ${refSummary} ${memo} ${kidsnote} ${reportOrObs}`;
-      if (combinedText.includes('소망')) cls = '소망반';
-      else if (combinedText.includes('사랑')) cls = '사랑반';
-      else if (combinedText.includes('햇살')) cls = '햇살반';
-      else if (combinedText.includes('바다')) cls = '바다반';
-      else if (combinedText.includes('연구') || combinedText.includes('테스트') || combinedText.includes('sandbox')) cls = '연구반';
-      else {
-        // 원아 이름으로 소속 학급 역추적 매칭 (예: 하은 -> 소망반, 시우 -> 사랑반)
+
+      // 1순위: 작성교사 Relation ID 기반 단일 원천 판별 (가장 신뢰도 높음)
+      if (teacherRelId) {
+        if (teacherRelId === '3e0a2711-5b68-81ea-be6e-ed72a8a12f42' || (window.TEACHER_PAGE_MAP && teacherRelId === window.TEACHER_PAGE_MAP.sandbox)) {
+          cls = '연구반';
+        } else if (teacherRelId === '3e0a2711-5b68-8102-9fbb-c635637c5b33' || (window.TEACHER_PAGE_MAP && teacherRelId === window.TEACHER_PAGE_MAP.wife)) {
+          cls = '사랑반';
+        } else if (teacherRelId === '3e0a2711-5b68-81a1-ba8e-d05d1f5e9631' || (window.TEACHER_PAGE_MAP && teacherRelId === window.TEACHER_PAGE_MAP.sister_in_law)) {
+          cls = '소망반';
+        }
+      }
+
+      // 2순위: 원아 Relation ID 기반 소속 학급 판별
+      if (cls === '기타' && childRelId) {
         const pool = (state.allChildren && state.allChildren.length > 0) ? state.allChildren : (state.children || []);
-        const foundChild = pool.find(c => c.name && c.name.length >= 2 && combinedText.includes(c.name));
-        if (foundChild && foundChild.childClass) {
-          cls = foundChild.childClass;
+        const matchedChild = pool.find(c => c.id === childRelId);
+        if (matchedChild && matchedChild.childClass) {
+          cls = matchedChild.childClass;
+        }
+      }
+
+      // 3순위: 참조 출처 요약 태그 매핑 (예: "키즈노트 발송 알림장 (연구반)")
+      if (cls === '기타' && refSummary) {
+        if (refSummary.includes('연구반') || refSummary.includes('연구') || refSummary.includes('sandbox')) cls = '연구반';
+        else if (refSummary.includes('소망반') || refSummary.includes('소망')) cls = '소망반';
+        else if (refSummary.includes('사랑반') || refSummary.includes('사랑')) cls = '사랑반';
+        else if (refSummary.includes('햇살')) cls = '햇살반';
+        else if (refSummary.includes('바다')) cls = '바다반';
+      }
+
+      // 4순위: 제목(title)의 명시적 학급명 또는 원아 이름 매칭 (본문 '사랑스러웠어요' 등 오염 원천 배제)
+      if (cls === '기타' && title) {
+        if (title.includes('연구반')) cls = '연구반';
+        else if (title.includes('소망반')) cls = '소망반';
+        else if (title.includes('사랑반')) cls = '사랑반';
+        else if (title.includes('햇살반')) cls = '햇살반';
+        else if (title.includes('바다반')) cls = '바다반';
+        else {
+          const pool = (state.allChildren && state.allChildren.length > 0) ? state.allChildren : (state.children || []);
+          const foundChild = pool.find(c => c.name && c.name.length >= 2 && title.includes(c.name));
+          if (foundChild && foundChild.childClass) {
+            cls = foundChild.childClass;
+          }
         }
       }
 
