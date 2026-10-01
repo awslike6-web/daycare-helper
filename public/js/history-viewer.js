@@ -26,7 +26,8 @@ function populateHistoryChildOptions() {
   historyChildSelect.innerHTML = '<option value="all">전체 원아</option>';
 
   const targetClass = historyClassSelect ? historyClassSelect.value : 'all';
-  const filtered = (state.children || []).filter(c => {
+  const pool = (state.allChildren && state.allChildren.length > 0) ? state.allChildren : (state.children || []);
+  const filtered = pool.filter(c => {
     if (targetClass === 'all') return true;
     return (c.childClass || '').includes(targetClass);
   });
@@ -34,7 +35,7 @@ function populateHistoryChildOptions() {
   filtered.forEach(c => {
     const opt = document.createElement('option');
     opt.value = c.name;
-    opt.textContent = `${c.name} (${c.childClass || state.className})`;
+    opt.textContent = `${c.name} (${c.childClass || state.className || ''})`;
     historyChildSelect.appendChild(opt);
   });
 
@@ -58,8 +59,21 @@ async function openHistoryModal(e) {
   try {
     if (historyClassSelect) {
       const clsName = state.className || '사랑반';
-      historyClassSelect.innerHTML = `<option value="${clsName}" selected>🔒 ${clsName} (${state.teacherName}) 전용</option>`;
-      historyClassSelect.disabled = true;
+      const isSandbox = (state.activeTeacherKey === 'sandbox' || clsName.includes('연구'));
+
+      if (isSandbox) {
+        historyClassSelect.innerHTML = `
+          <option value="all" selected>🌐 전체 학급 (연구/테스트)</option>
+          <option value="연구반">🔬 연구반</option>
+          <option value="사랑반">💖 사랑반 (만 0세)</option>
+          <option value="소망반">🌱 소망반 (만 2세)</option>
+          <option value="기타">📂 기타 기록</option>
+        `;
+        historyClassSelect.disabled = false;
+      } else {
+        historyClassSelect.innerHTML = `<option value="${clsName}" selected>🔒 ${clsName} (${state.teacherName}) 전용</option>`;
+        historyClassSelect.disabled = true;
+      }
     }
 
     populateHistoryChildOptions();
@@ -127,15 +141,25 @@ async function fetchHistoryLogs(forceRefresh = false) {
       const refSummary = props['참조 출처 요약']?.rich_text?.[0]?.plain_text || '';
 
       let cls = '기타';
-      if (title.includes('소망') || refSummary.includes('소망') || memo.includes('소망')) cls = '소망반';
-      else if (title.includes('사랑') || refSummary.includes('사랑') || memo.includes('사랑')) cls = '사랑반';
-      else if (title.includes('햇살')) cls = '햇살반';
-      else if (title.includes('바다')) cls = '바다반';
+      const combinedText = `${title} ${refSummary} ${memo} ${kidsnote} ${reportOrObs}`;
+      if (combinedText.includes('소망')) cls = '소망반';
+      else if (combinedText.includes('사랑')) cls = '사랑반';
+      else if (combinedText.includes('햇살')) cls = '햇살반';
+      else if (combinedText.includes('바다')) cls = '바다반';
+      else if (combinedText.includes('연구') || combinedText.includes('테스트') || combinedText.includes('sandbox')) cls = '연구반';
+      else {
+        // 원아 이름으로 소속 학급 역추적 매칭 (예: 하은 -> 소망반, 시우 -> 사랑반)
+        const pool = (state.allChildren && state.allChildren.length > 0) ? state.allChildren : (state.children || []);
+        const foundChild = pool.find(c => c.name && c.name.length >= 2 && combinedText.includes(c.name));
+        if (foundChild && foundChild.childClass) {
+          cls = foundChild.childClass;
+        }
+      }
 
       let type = 'kidsnote';
       if (title.includes('보육일지') || reportOrObs.includes('보육과정') || reportOrObs.includes('일과 및')) {
         type = 'report';
-      } else if (title.includes('관찰일지') || reportOrObs.includes('관찰')) {
+      } else if (title.includes('관찰일지') || title.includes('개별관찰') || title.includes('발달평가') || reportOrObs.includes('관찰')) {
         type = 'obs';
       }
 
