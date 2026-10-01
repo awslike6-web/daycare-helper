@@ -136,6 +136,25 @@
 
     <!-- 📝 입력 폼 메인 영역 -->
     <main class="content-area">
+      <!-- ✏️ 자동 임시저장 복원 안내 배너 (Crash Guard) -->
+      <div id="autoDraftRestoreBanner" style="display: none; background: #FEF3C7; border: 1.5px solid #FCD34D; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; box-shadow: 0 2px 6px rgba(245, 158, 11, 0.15);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">💾</span>
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: #92400E;">작성 중이던 임시 저장본이 있습니다!</div>
+            <div style="font-size: 11px; color: #B45309;" id="autoDraftRestoreMeta">저장하지 않고 나갔던 일지 내용을 1초 만에 복원합니다.</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button type="button" id="btnRestoreAutoDraft" class="action-btn" style="background: #D97706; color: white; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; border: none; cursor: pointer;">
+            ✏️ 이어서 작성하기
+          </button>
+          <button type="button" id="btnDiscardAutoDraft" class="action-btn" style="background: #F3F4F6; color: #4B5563; padding: 6px 10px; font-size: 12px; border-radius: 6px; border: 1px solid #D1D5DB; cursor: pointer;">
+            지우기
+          </button>
+        </div>
+      </div>
+
       <!-- 🎛️ 모드 스위처 (원터치 올인원으로 통합되어 숨김 유지) -->
       <div class="mode-switcher" id="modeSwitcher" style="display: none;">
         <button type="button" class="mode-btn active" data-mode="all_suite">
@@ -1407,20 +1426,81 @@
       </div>
     </div>
 
+    <!-- 📅 당일 기존 일지 중복 감지 스마트 선택 모달 (1번 방식) -->
+    <div class="modal-overlay" id="duplicateLogModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.55); z-index: 9999; align-items: center; justify-content: center;">
+      <div class="modal-card" style="background: white; max-width: 480px; width: 92%; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.25); animation: modalPop 0.25s ease-out;">
+        <div class="modal-header" style="background: #FFFBEB; border-bottom: 1.5px solid #FDE68A; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #92400E; display: flex; align-items: center; gap: 8px;">
+            <span>📅</span> <span>오늘 이미 저장된 일지가 있습니다!</span>
+          </h3>
+          <button type="button" class="modal-close-btn" id="btnDuplicateModalClose" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #92400E; line-height: 1;">&times;</button>
+        </div>
+        
+        <div class="modal-body" style="padding: 16px 18px; font-size: 13px; line-height: 1.6; color: #374151;">
+          <div style="background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 12.5px; color: #78350F;" id="duplicateModalDesc">
+            선생님, 오늘 <strong><span id="duplicateChildName">원아</span></strong>의 기록이 노션에 이미 등록되어 있어요.<br/>
+            현재 작성하신 내용을 어떻게 반영할까요?
+          </div>
+          
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <!-- 옵션 1: 이어서 추가 -->
+            <button type="button" id="btnDupAppend" class="action-btn" style="background: #ECFDF5; border: 1.5px solid #10B981; color: #065F46; padding: 12px 14px; border-radius: 10px; text-align: left; cursor: pointer; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s;">
+              <span style="font-size: 22px; line-height: 1;">➕</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 700; font-size: 14px; color: #065F46; display: flex; align-items: center; gap: 6px;">
+                  <span>기존 내용에 이어서 추가</span>
+                  <span style="font-size: 10px; background: #059669; color: white; padding: 2px 6px; border-radius: 10px;">추천</span>
+                </div>
+                <div style="font-size: 12px; color: #047857; margin-top: 3px; line-height: 1.4;">
+                  오전에 작성한 내용 뒤에 오후 놀이 기록을 덧붙여 하나로 합칩니다.
+                </div>
+              </div>
+            </button>
+
+            <!-- 옵션 2: 덮어쓰기 -->
+            <button type="button" id="btnDupOverwrite" class="action-btn" style="background: #EFF6FF; border: 1.5px solid #3B82F6; color: #1E40AF; padding: 12px 14px; border-radius: 10px; text-align: left; cursor: pointer; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s;">
+              <span style="font-size: 22px; line-height: 1;">✏️</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 700; font-size: 14px; color: #1E40AF;">최신 내용으로 덮어쓰기</div>
+                <div style="font-size: 12px; color: #2563EB; margin-top: 3px; line-height: 1.4;">
+                  오타나 문장을 수정한 최신 완성본으로 기존 일지를 깔끔하게 교체합니다.
+                </div>
+              </div>
+            </button>
+
+            <!-- 옵션 3: 별도 저장 -->
+            <button type="button" id="btnDupNew" class="action-btn" style="background: #F9FAFB; border: 1.5px solid #D1D5DB; color: #374151; padding: 12px 14px; border-radius: 10px; text-align: left; cursor: pointer; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s;">
+              <span style="font-size: 22px; line-height: 1;">📑</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 700; font-size: 14px; color: #374151;">새로운 일지로 따로 저장</div>
+                <div style="font-size: 12px; color: #6B7280; margin-top: 3px; line-height: 1.4;">
+                  기존 일지는 그대로 두고, 별개의 새 카드로 저장합니다 (기존 방식).
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+        
+        <div class="modal-footer" style="padding: 10px 18px; background: #F9FAFB; border-top: 1px solid #E5E7EB; display: flex; justify-content: flex-end;">
+          <button type="button" id="btnDupCancel" class="action-btn" style="background: #E5E7EB; color: #4B5563; padding: 6px 14px; border-radius: 6px; font-size: 12px; border: none; cursor: pointer;">취소</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 🍞 알림 토스트 -->
     <div class="toast" id="toastMessage">클립보드에 복사되었습니다.</div>
   </div>
 
   <!-- 🧩 2026 도메인별 모듈 분리 파이프라인 (AI 토큰 70% 절감 & 고속 로드) -->
-  <script src="./js/config.js?v=20261001_v24"></script>
-  <script src="./js/auth-gate.js?v=20261001_v24"></script>
-  <script src="./js/children-store.js?v=20261001_v24"></script>
-  <script src="./js/notion-bridge.js?v=20261001_v24"></script>
-  <script src="./js/history-viewer.js?v=20261001_v24"></script>
-  <script src="./js/daycare-date-utils.js?v=20261001_v24"></script>
-  <script src="./js/media-assistant.js?v=20261001_v24"></script>
-  <script src="./js/export-formatters.js?v=20261001_v24"></script>
-  <script src="./gemini-client.js?v=20261001_v24"></script>
-  <script src="./app.js?v=20261001_v24"></script>
+  <script src="./js/config.js?v=20261001_v25"></script>
+  <script src="./js/auth-gate.js?v=20261001_v25"></script>
+  <script src="./js/children-store.js?v=20261001_v25"></script>
+  <script src="./js/notion-bridge.js?v=20261001_v25"></script>
+  <script src="./js/history-viewer.js?v=20261001_v25"></script>
+  <script src="./js/daycare-date-utils.js?v=20261001_v25"></script>
+  <script src="./js/media-assistant.js?v=20261001_v25"></script>
+  <script src="./js/export-formatters.js?v=20261001_v25"></script>
+  <script src="./gemini-client.js?v=20261001_v25"></script>
+  <script src="./app.js?v=20261001_v25"></script>
 </body>
 </html>

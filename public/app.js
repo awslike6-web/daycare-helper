@@ -365,11 +365,104 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (e) {}
 
+    // 🛡️ 작성 중이던 일지 자동 복원 배너 확인 (Crash Guard)
+    checkAndRestoreAutoDraft();
+
     // 이벤트 리스너 등록
     setupEventListeners();
 
     // 📑 서식 선택 툴바 초기화 (상시 저장 및 토큰 절감)
     initFormatSelector();
+  }
+
+  // ============================================================================
+  // 3-B. 🛡️ 안심 임시보관 및 복원 (Crash Guard & Auto-Draft)
+  // ============================================================================
+  function saveAutoDraft() {
+    if (!state.lastResult && (!rawMemoInput || !rawMemoInput.value.trim())) return;
+    try {
+      const draftData = {
+        timestamp: Date.now(),
+        date: state.selectedDate || new Date().toISOString().split('T')[0],
+        childId: state.selectedChild?.id || null,
+        childName: state.selectedChild?.name || '원아',
+        className: state.className || '',
+        rawMemo: rawMemoInput ? rawMemoInput.value : '',
+        lastResult: state.lastResult || null,
+        originalResult: state.originalResult || null,
+        selectedFormats: state.selectedFormats || []
+      };
+      localStorage.setItem('daycare_auto_draft', JSON.stringify(draftData));
+    } catch (e) {
+      console.warn('[saveAutoDraft] 저장 오류:', e);
+    }
+  }
+
+  function clearAutoDraft() {
+    try {
+      localStorage.removeItem('daycare_auto_draft');
+      const banner = document.getElementById('autoDraftRestoreBanner');
+      if (banner) banner.style.display = 'none';
+    } catch (e) {}
+  }
+  window.clearAutoDraft = clearAutoDraft;
+
+  function checkAndRestoreAutoDraft() {
+    try {
+      const saved = localStorage.getItem('daycare_auto_draft');
+      if (!saved) return;
+      const draft = JSON.parse(saved);
+      if (!draft || (!draft.lastResult && !draft.rawMemo)) return;
+
+      const today = new Date().toISOString().split('T')[0];
+      const isRecent = (draft.date === today) || ((Date.now() - (draft.timestamp || 0)) < 24 * 3600 * 1000);
+      if (!isRecent) return;
+
+      const banner = document.getElementById('autoDraftRestoreBanner');
+      const metaEl = document.getElementById('autoDraftRestoreMeta');
+      const btnRestore = document.getElementById('btnRestoreAutoDraft');
+      const btnDiscard = document.getElementById('btnDiscardAutoDraft');
+
+      if (banner) {
+        if (metaEl) {
+          metaEl.textContent = `${draft.date} [${draft.childName || '원아'}] 작성본이 안전하게 보관되어 있습니다.`;
+        }
+        banner.style.display = 'flex';
+
+        if (btnRestore) {
+          btnRestore.onclick = (e) => {
+            e.preventDefault();
+            // 1. 메모 복원
+            if (rawMemoInput && draft.rawMemo) {
+              rawMemoInput.value = draft.rawMemo;
+            }
+            // 2. 결과물 복원
+            if (draft.lastResult) {
+              state.lastResult = draft.lastResult;
+              state.originalResult = draft.originalResult || draft.lastResult;
+              renderResults(draft.lastResult);
+            }
+            // 3. 서식 칩 복원
+            if (Array.isArray(draft.selectedFormats) && draft.selectedFormats.length > 0) {
+              state.selectedFormats = draft.selectedFormats;
+              initFormatSelector();
+            }
+            banner.style.display = 'none';
+            if (typeof showToast === 'function') showToast('🎉 작성 중이던 일지 내용이 성공적으로 복원되었습니다!');
+          };
+        }
+
+        if (btnDiscard) {
+          btnDiscard.onclick = (e) => {
+            e.preventDefault();
+            clearAutoDraft();
+            if (typeof showToast === 'function') showToast('임시 저장본이 삭제되었습니다.');
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('[checkAndRestoreAutoDraft] 오류:', e);
+    }
   }
 
   // ============================================================================
@@ -876,6 +969,7 @@ document.addEventListener('DOMContentLoaded', () => {
       rawMemoInput.addEventListener('input', () => {
         try {
           localStorage.setItem('daycare_draft_memo', rawMemoInput.value);
+          saveAutoDraft();
         } catch (e) {}
       });
     }
@@ -1502,6 +1596,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 결과 섹션 노출 및 스크롤
     resultsSection.style.display = 'flex';
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // 🛡️ 생성 완료 즉시 로컬 임시보관 (Crash Guard)
+    saveAutoDraft();
   }
 
   // ============================================================================

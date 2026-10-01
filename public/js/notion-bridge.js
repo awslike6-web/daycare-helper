@@ -80,6 +80,85 @@ function isValidNotionId(id) {
   return /^[0-9a-fA-F]{32}$/.test(cleanId);
 }
 
+// 🔍 2-C. 당일 기존 일지 조회 (중복 감지용)
+async function findExistingDailyLog(today, targetChildId, isClassAll) {
+  const notionConfig = window.NOTION_CONFIG || {};
+  if (!notionConfig.DAILY_LOG_DB_ID) return null;
+
+  try {
+    const andFilters = [
+      { property: '작성일자', date: { equals: today } }
+    ];
+
+    if (isClassAll) {
+      andFilters.push({ property: '활동 구분', select: { equals: '보육일지' } });
+    } else if (isValidNotionId(targetChildId)) {
+      andFilters.push({ property: '원아', relation: { contains: targetChildId } });
+    } else {
+      return null;
+    }
+
+    const res = await directNotionCall(`/databases/${notionConfig.DAILY_LOG_DB_ID}/query`, 'POST', {
+      page_size: 5,
+      filter: { and: andFilters },
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }]
+    });
+
+    if (res && res.results && res.results.length > 0) {
+      const existing = res.results[0];
+      const props = existing.properties || {};
+      return {
+        id: existing.id,
+        title: props['기록명/식별자']?.title?.[0]?.plain_text || '',
+        rawMemo: props['원시 메모/키워드']?.rich_text?.[0]?.plain_text || '',
+        kidsnoteText: props['알림장 최종본']?.rich_text?.[0]?.plain_text || '',
+        obsText: props['관찰일지 최종본']?.rich_text?.[0]?.plain_text || '',
+        citationSummary: props['참조 출처 요약']?.rich_text?.[0]?.plain_text || '',
+        obsSummary: props['관찰 요약']?.rich_text?.[0]?.plain_text || ''
+      };
+    }
+  } catch (err) {
+    console.warn('[findExistingDailyLog] 기존 일지 조회 실패 (신규 저장으로 계속):', err);
+  }
+  return null;
+}
+
+// 📅 2-D. 당일 중복 일지 스마트 선택 모달 (Promise 기반 - 1번 방식)
+function promptDuplicateAction(childName, today) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('duplicateLogModal');
+    const childNameEl = document.getElementById('duplicateChildName');
+    const btnAppend = document.getElementById('btnDupAppend');
+    const btnOverwrite = document.getElementById('btnDupOverwrite');
+    const btnNew = document.getElementById('btnDupNew');
+    const btnClose = document.getElementById('btnDuplicateModalClose');
+    const btnCancel = document.getElementById('btnDupCancel');
+
+    if (!modal || !btnAppend || !btnOverwrite || !btnNew) {
+      return resolve('new'); // 모달 요소가 없으면 기본 신규 저장
+    }
+
+    if (childNameEl) childNameEl.textContent = childName || '원아';
+    modal.style.display = 'flex';
+
+    const cleanup = (choice) => {
+      modal.style.display = 'none';
+      btnAppend.onclick = null;
+      btnOverwrite.onclick = null;
+      btnNew.onclick = null;
+      if (btnClose) btnClose.onclick = null;
+      if (btnCancel) btnCancel.onclick = null;
+      resolve(choice);
+    };
+
+    btnAppend.onclick = () => cleanup('append');
+    btnOverwrite.onclick = () => cleanup('overwrite');
+    btnNew.onclick = () => cleanup('new');
+    if (btnClose) btnClose.onclick = () => cleanup('cancel');
+    if (btnCancel) btnCancel.onclick = () => cleanup('cancel');
+  });
+}
+
 // ⚡ 3. [공통 전송 디스패처] 모든 서식의 노션 DAILY_LOG_DB 2중화 전송을 단일화
 async function sendDailyLogToNotion({
   btn = null,
@@ -95,6 +174,7 @@ async function sendDailyLogToNotion({
   obsSummary = '',
   childId = null,
   childName = '원아',
+  skipPrompt = false,
   successToast = '노션에 안전하게 저장되었습니다!'
 }) {
   const state = window.state || {};
@@ -151,7 +231,7 @@ async function sendDailyLogToNotion({
       '관찰 요약': { rich_text: [{ text: { content: (obsSummary || '').slice(0, 80) } }] }
     };
 
-    // 🌟 핵심: 유효한 32/36자리 노션 페이지 UUID일 때만 원아 relation을 연결 (학급 전체일 때는 제외하여 400 에러 원천 방지)
+    // 🌟 핵심: 유효한 32/36자리 노션 페이지 UUID일 때만 원아 relation을 연결
     if (isValidNotionId(targetChildId)) {
       props['원아'] = { relation: [{ id: targetChildId }] };
     }
@@ -159,20 +239,74 @@ async function sendDailyLogToNotion({
       props['작성교사'] = { relation: [{ id: teacherPageId }] };
     }
 
-    // 5. 1차 시도: Direct Notion Call (브라우저 직접 연결)
+    // 5. 📅 당일 기존 일지 중복 감지 및 3-옵션 스마트 분기 (1번 방식)
+    let targetPageId = null; // null: POST 신규 생성, id: PATCH 갱신
+    if (!skipPrompt) {
+      const existingLog = await findExistingDailyLog(today, targetChildId, isClassAll);
+      if (existingLog) {
+        if (btn) btn.disabled = false;
+        const choice = await promptDuplicateAction(childName, today);
+        if (btn) btn.disabled = true;
+
+        if (choice === 'cancel') {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = defaultHtml;
+          }
+          if (typeof showToast === 'function') showToast('노션 저장을 취소했습니다.');
+          return false;
+        }
+
+        if (choice === 'append') {
+          // 기존 텍스트 뒤에 현재 시간 타임스탬프와 함께 덧붙여 합치기
+          const now = new Date();
+          const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+          if (kidsnoteText && existingLog.kidsnoteText) {
+            props['알림장 최종본'] = {
+              rich_text: [{ text: { content: `${existingLog.kidsnoteText}\n\n[추가 기록 - ${timeStr}]\n${kidsnoteText}`.slice(0, 1900) } }]
+            };
+          }
+          if (obsText && existingLog.obsText) {
+            props['관찰일지 최종본'] = {
+              rich_text: [{ text: { content: `${existingLog.obsText}\n\n[추가 기록 - ${timeStr}]\n${obsText}`.slice(0, 1900) } }]
+            };
+          }
+          if (rawMemo && existingLog.rawMemo) {
+            props['원시 메모/키워드'] = {
+              rich_text: [{ text: { content: `${existingLog.rawMemo}\n\n[${timeStr}] ${rawMemo}`.slice(0, 1900) } }]
+            };
+          }
+          targetPageId = existingLog.id;
+          successToast = `🎉 [내용 추가] ${childName}의 기존 일지에 최신 내용이 안전하게 덧붙여졌습니다!`;
+        } else if (choice === 'overwrite') {
+          // 최신 내용으로 깔끔히 교체
+          targetPageId = existingLog.id;
+          successToast = `🎉 [덮어쓰기] ${childName}의 기존 일지가 최신 내용으로 갱신되었습니다!`;
+        }
+        // choice === 'new'는 targetPageId = null 상태 유지하여 신규 생성
+      }
+    }
+
+    // 6. 1차 시도: Direct Notion Call (브라우저 직접 연결: PATCH 또는 POST)
     try {
-      await directNotionCall('/pages', 'POST', {
-        parent: { database_id: notionConfig.DAILY_LOG_DB_ID },
-        properties: props
-      });
+      if (targetPageId) {
+        await directNotionCall(`/pages/${targetPageId}`, 'PATCH', { properties: props });
+      } else {
+        await directNotionCall('/pages', 'POST', {
+          parent: { database_id: notionConfig.DAILY_LOG_DB_ID },
+          properties: props
+        });
+      }
       state.isHistoryLoaded = false;
+      if (typeof window.clearAutoDraft === 'function') window.clearAutoDraft();
       if (typeof showToast === 'function') showToast(successToast);
       return true;
     } catch (directErr) {
       console.warn('Direct Notion Call failed, falling back to worker endpoint:', directErr);
     }
 
-    // 6. 2차 시도: Worker /api/logs/save 폴백
+    // 7. 2차 시도: Worker /api/logs/save 폴백
     const fallbackRes = await fetch('/api/logs/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -196,6 +330,7 @@ async function sendDailyLogToNotion({
     }
 
     state.isHistoryLoaded = false;
+    if (typeof window.clearAutoDraft === 'function') window.clearAutoDraft();
     if (typeof showToast === 'function') showToast(successToast);
     return true;
 
@@ -349,6 +484,7 @@ async function handleSaveIndividualObs() {
         obsSummary: `${childName} - ${summaryText}`.slice(0, 80),
         childId: targetChildId,
         childName,
+        skipPrompt: true,
         successToast: '' // 개별 토스트는 생략하고 최종 일괄 토스트
       });
 
