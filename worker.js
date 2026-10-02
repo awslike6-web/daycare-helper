@@ -226,10 +226,29 @@ export default {
           return jsonResponse(result);
         }
 
-        // [POST] /api/logs/save - 노션 3대 DB 일지 적재
-        if (url.pathname === '/api/logs/save' && request.method === 'POST') {
+        // [POST] /api/logs/save 및 /api/save-notion - 노션 3대 DB 일지 적재
+        if ((url.pathname === '/api/logs/save' || url.pathname === '/api/save-notion') && request.method === 'POST') {
           const body = await request.json();
-          const result = await saveDailyLogToNotion(body, env);
+          // payload 표준화: result 객체가 중첩되어 오더라도 최상위로 플랫하게 병합
+          const res = body.result || {};
+          const normalizedPayload = {
+            date: body.date || new Date().toISOString().split('T')[0],
+            childId: body.childId || null,
+            childName: body.childName || '원아',
+            childClass: body.className || body.childClass || '사랑반',
+            teacherId: body.teacherId || null,
+            teacherName: body.teacherName || '공가영 선생님',
+            activityArea: body.activityArea || res.activity_area || '자유놀이',
+            standardArea: body.standardArea || res.observation_log?.standard_area || '의사소통',
+            rawMemo: body.rawMemo || res.rawMemo || body.memo || '',
+            kidsnoteText: body.kidsnoteText || res.kidsnote?.content || '',
+            observationText: body.observationText || res.observation_log?.behavior || res.monthly_observation?.play_obs?.behavior || '',
+            citationSummary: body.citationSummary || res.citation?.summary || '',
+            obsSummary: body.obsSummary || res.observation_summary || body.rawMemo || '',
+            overwrite: body.overwrite || false,
+            pageId: body.pageId || null
+          };
+          const result = await saveDailyLogToNotion(normalizedPayload, env);
           return jsonResponse(result);
         }
 

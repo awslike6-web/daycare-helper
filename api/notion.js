@@ -353,7 +353,8 @@ export async function saveDailyLogToNotion({
   observationText,
   citationSummary,
   obsSummary,
-  referencedLogId
+  referencedLogId,
+  pageId
 }, env) {
   const dbId = env.NOTION_DAILY_LOG_DB_ID;
   const token = env.NOTION_TOKEN;
@@ -451,6 +452,25 @@ export async function saveDailyLogToNotion({
   if (referencedLogId && isValidNotionId(referencedLogId)) {
     properties['참조한 과거 일지'] = {
       relation: [{ id: referencedLogId }]
+    };
+  }
+
+  // 덮어쓰기(PATCH) 지원
+  if (pageId && isValidNotionId(pageId)) {
+    const updatePayload = { properties };
+    const response = await callNotionApi({
+      endpoint: `/pages/${pageId}`,
+      method: 'PATCH',
+      body: updatePayload,
+      token,
+      proxyUrl
+    });
+    return {
+      success: true,
+      mode: 'notion_updated',
+      page_id: response.id,
+      title: pageTitle,
+      url: response.url
     };
   }
 

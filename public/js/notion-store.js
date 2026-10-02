@@ -320,6 +320,8 @@
 
     const childName = state.selectedChild?.name || '우리 반';
     const date = state.selectedDate || new Date().toISOString().split('T')[0];
+    const rawMemoInput = document.getElementById('rawMemoInput');
+    const rawMemo = rawMemoInput ? rawMemoInput.value.trim() : '';
 
     await checkDuplicateAndSave(date, childName, async ({ overwrite, pageId }) => {
       showToast('☁️ 노션 DB로 전송 중입니다...');
@@ -330,12 +332,14 @@
           childName,
           className: state.className || '사랑반',
           teacherName: state.teacherName || '공가영 선생님',
+          activityArea: state.activityArea || '자유놀이 및 일상생활',
+          rawMemo: rawMemo || (state.lastResult?.rawMemo || ''), // 🌟 원시 메모 필수 전송!
           result: state.lastResult,
           overwrite,
           pageId
         };
 
-        const res = await fetch('/api/save-notion', {
+        const res = await fetch('/api/logs/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
