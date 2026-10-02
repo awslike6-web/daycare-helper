@@ -24,14 +24,15 @@ jobs:
 
       - name: Verify JavaScript Syntax & Integrity
         run: |
-          echo "🔍 JavaScript 코드 문법 및 무결성 검사 시작..."
+          echo "🔍 JavaScript 4대 완성형 코어 문법 및 무결성 검사 시작..."
           node --check worker.js
           node --check public/app.js
           node --check public/gemini-client.js
-          node --check public/js/config.js
-          node --check public/js/auth-gate.js
-          node --check public/js/children-store.js
-          node --check public/js/notion-bridge.js
-          node --check public/js/history-viewer.js
+          node --check public/js/auth-security.js
+          node --check public/js/notion-store.js
+          node --check public/js/ai-engine.js
+          echo "🔍 정밀 골디락스 응집도 및 스코프 해석 검증..."
+          python scripts/verify_js_modules.py
+          python scripts/audit_scope_resolution.py
           echo "✅ 모든 코드가 오류 없이 완벽하게 검증되었습니다!"
           echo "🚀 Cloudflare 자동 배포가 정상 진행됩니다."

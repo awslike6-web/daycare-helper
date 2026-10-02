@@ -6,7 +6,8 @@ import sys
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-base_dir = r"g:\master-tower\daycare-helper\public"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.join(os.path.dirname(script_dir), "public")
 
 # 1. index.html에서 로드하는 스크립트 순서
 with open(os.path.join(base_dir, "index.html"), "r", encoding="utf-8") as f:

@@ -8,7 +8,8 @@ import re
 sys.stdout.reconfigure(encoding='utf-8')
 
 def check_js_syntax_and_cohesion():
-    base_dir = r"g:\master-tower\daycare-helper\public"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.path.join(os.path.dirname(script_dir), "public")
     html_path = os.path.join(base_dir, "index.html")
     
     with open(html_path, "r", encoding="utf-8") as f:
