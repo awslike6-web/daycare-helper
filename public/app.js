@@ -513,6 +513,185 @@ document.addEventListener('DOMContentLoaded', () => {
       closeSettingsBtn.onclick = () => { settingsModal.style.display = 'none'; };
     }
 
+    // 10. 가이드 모달 확인 버튼
+    const btnConfirmGuideModal = document.getElementById('btnConfirmGuideModal');
+    if (btnConfirmGuideModal && teacherGuideModal) {
+      btnConfirmGuideModal.onclick = () => { teacherGuideModal.style.display = 'none'; };
+    }
+
+    // 11. AI 생성 즉시 중단 버튼
+    const btnCancelAiGenerate = document.getElementById('btnCancelAiGenerate');
+    if (btnCancelAiGenerate) {
+      btnCancelAiGenerate.onclick = () => {
+        if (state.currentAbortController) {
+          state.isGenerationAborted = true;
+          state.currentAbortController.abort();
+          showToast('⏹️ AI 생성을 즉시 중단하고 있습니다...');
+        }
+      };
+    }
+
+    // 12. 설정 모달 저장 버튼
+    const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+    const settingClassNameInput = document.getElementById('settingClassNameInput');
+    const settingTeacherNameInput = document.getElementById('settingTeacherNameInput');
+    const personaSampleNote = document.getElementById('personaSampleNote');
+    const personaCallStyle = document.getElementById('personaCallStyle');
+    const personaEmojiLevel = document.getElementById('personaEmojiLevel');
+
+    if (saveSettingsBtn) {
+      saveSettingsBtn.onclick = () => {
+        const newClassName = settingClassNameInput ? settingClassNameInput.value.trim() : state.className;
+        const newTeacherName = settingTeacherNameInput ? settingTeacherNameInput.value.trim() : state.teacherName;
+        const classChanged = (newClassName !== state.className);
+
+        state.className = newClassName;
+        state.teacherName = newTeacherName;
+        try {
+          localStorage.setItem('daycare_class_name', newClassName);
+          localStorage.setItem('daycare_teacher_name', newTeacherName);
+        } catch (e) {}
+
+        const headerClassNameText = document.getElementById('headerClassNameText');
+        if (headerClassNameText) headerClassNameText.textContent = newClassName;
+        const headerTeacherNameText = document.getElementById('headerTeacherNameText');
+        if (headerTeacherNameText) headerTeacherNameText.textContent = newTeacherName;
+
+        const currentPersona = window.DaycareAuth?.getTeacherPersona(state.activeTeacherKey) || {};
+        const updatedPersona = {
+          ...currentPersona,
+          sampleNote: personaSampleNote ? personaSampleNote.value.trim() : (currentPersona.sampleNote || ''),
+          callStyle: personaCallStyle ? personaCallStyle.value : (currentPersona.callStyle || '우리 [아동A]'),
+          emojiLevel: personaEmojiLevel ? personaEmojiLevel.value : (currentPersona.emojiLevel || 'moderate')
+        };
+        state.persona = updatedPersona;
+        window.DaycareAuth?.setTeacherPersona(state.activeTeacherKey, updatedPersona);
+
+        if (classChanged && window.ChildrenStore?.loadChildren) {
+          window.ChildrenStore.loadChildren();
+        }
+        if (settingsModal) settingsModal.style.display = 'none';
+        showToast(`🌱 '${newClassName}' (${newTeacherName}) 맞춤 설정이 성공적으로 저장되었습니다!`);
+      };
+    }
+
+    // 13. 페르소나 프리셋 칩 클릭
+    const personaPresetGrid = document.getElementById('personaPresetGrid');
+    const { PERSONA_PRESETS } = window.DaycareConfig || {};
+    if (personaPresetGrid && PERSONA_PRESETS) {
+      personaPresetGrid.querySelectorAll('.persona-chip').forEach(chip => {
+        chip.onclick = () => {
+          personaPresetGrid.querySelectorAll('.persona-chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          const presetKey = chip.dataset.preset;
+          const preset = PERSONA_PRESETS[presetKey];
+          if (preset) {
+            if (personaSampleNote) personaSampleNote.value = preset.sampleNote || '';
+            const personaNameInput = document.getElementById('personaNameInput');
+            if (personaNameInput) personaNameInput.value = preset.name;
+            showToast(`✨ '${preset.name}' 스타일이 적용되었습니다. [저장]을 눌러주세요.`);
+          }
+        };
+      });
+    }
+
+    // 14. 노션 프로필 동기화
+    const syncTeacherFromNotionBtn = document.getElementById('syncTeacherFromNotionBtn');
+    if (syncTeacherFromNotionBtn) {
+      syncTeacherFromNotionBtn.onclick = () => {
+        if (typeof window.handleSyncTeacherProfile === 'function') {
+          window.handleSyncTeacherProfile();
+        } else {
+          showToast('노션 프로필 동기화는 최신 상태입니다.');
+        }
+      };
+    }
+
+    // 15. 보안 세션 배너 제어
+    const closeSessionBannerBtn = document.getElementById('closeSessionBannerBtn');
+    const dismissSessionBannerBtn = document.getElementById('dismissSessionBannerBtn');
+    const testBannerToggleBtn = document.getElementById('testBannerToggleBtn');
+    const sessionExpiryBanner = document.getElementById('sessionExpiryBanner');
+
+    const hideSessionBanner = () => {
+      if (sessionExpiryBanner) sessionExpiryBanner.style.display = 'none';
+    };
+
+    if (closeSessionBannerBtn) closeSessionBannerBtn.onclick = hideSessionBanner;
+    if (dismissSessionBannerBtn) {
+      dismissSessionBannerBtn.onclick = () => {
+        try {
+          localStorage.setItem('daycare_dismissed_session_exp', Math.floor(Date.now() / 1000 + 86400 * 7).toString());
+        } catch (e) {}
+        hideSessionBanner();
+        showToast('✅ 보안 세션 알림을 확인 완료했습니다.');
+      };
+    }
+    if (testBannerToggleBtn) {
+      testBannerToggleBtn.onclick = () => {
+        if (sessionExpiryBanner) {
+          const isHidden = (sessionExpiryBanner.style.display === 'none' || !sessionExpiryBanner.style.display);
+          sessionExpiryBanner.style.display = isHidden ? 'flex' : 'none';
+          showToast(isHidden ? '🧪 세션 안내 배너를 표시했습니다.' : '테스트 배너를 닫았습니다.');
+        }
+      };
+    }
+
+    // 16. 모달 내부 PIN 변경 제어 및 로그아웃
+    const openChangePinBtn = document.getElementById('openChangePinBtn');
+    const changePinArea = document.getElementById('changePinArea');
+    const saveNewPinBtn = document.getElementById('saveNewPinBtn');
+    const cancelNewPinBtn = document.getElementById('cancelNewPinBtn');
+    const modalLogoutBtn = document.getElementById('modalLogoutBtn');
+    const newPinInput = document.getElementById('newPinInput');
+
+    if (openChangePinBtn && changePinArea) {
+      openChangePinBtn.onclick = () => {
+        changePinArea.style.display = (changePinArea.style.display === 'none' || !changePinArea.style.display) ? 'block' : 'none';
+        if (newPinInput) newPinInput.focus();
+      };
+    }
+    if (cancelNewPinBtn && changePinArea) {
+      cancelNewPinBtn.onclick = () => {
+        changePinArea.style.display = 'none';
+        if (newPinInput) newPinInput.value = '';
+      };
+    }
+    if (saveNewPinBtn && newPinInput) {
+      saveNewPinBtn.onclick = () => {
+        const val = newPinInput.value.trim();
+        if (val.length !== 4 || isNaN(val)) {
+          showToast('⚠️ PIN 번호는 4자리 숫자여야 합니다.');
+          return;
+        }
+        try {
+          localStorage.setItem(`daycare_custom_pin_${state.activeTeacherKey}`, val);
+          showToast('🔒 새 PIN 번호가 안전하게 저장되었습니다!');
+          if (changePinArea) changePinArea.style.display = 'none';
+          newPinInput.value = '';
+        } catch (e) {
+          showToast('PIN 저장 중 오류가 발생했습니다.');
+        }
+      };
+    }
+    if (modalLogoutBtn) {
+      modalLogoutBtn.onclick = () => {
+        const headerLogoutBtn = document.getElementById('headerLogoutBtn');
+        if (headerLogoutBtn) headerLogoutBtn.click();
+        if (settingsModal) settingsModal.style.display = 'none';
+      };
+    }
+
+    // 17. 결과 탭 명시적 ID 바인딩
+    const tabClassDailyReport = document.getElementById('tabClassDailyReport');
+    const tabHangrooEval = document.getElementById('tabHangrooEval');
+    if (tabClassDailyReport) {
+      tabClassDailyReport.onclick = () => window.AiEngine?.switchResultTab('class_daily_report');
+    }
+    if (tabHangrooEval) {
+      tabHangrooEval.onclick = () => window.AiEngine?.switchResultTab('hangroo_eval');
+    }
+
     // 원아 관리 모달 버튼
     const addChildBtn = document.getElementById('addChildBtn');
     const editChildBtn = document.getElementById('editChildBtn');

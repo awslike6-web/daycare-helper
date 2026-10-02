@@ -467,9 +467,92 @@
     return handleSaveNotion();
   }
 
-  // 4. 개별 관찰일지 노션 저장
+  // 4. 감지된 원아별 놀이 요약 (선택된 원아 개별 노션 분할 저장)
+  function updateSelectedIndivObsCount() {
+    const checkboxes = document.querySelectorAll('.indiv-obs-checkbox:checked, .indiv-obs-check:checked');
+    const countBadge = document.getElementById('individualObsCountBadge');
+    const btnText = document.getElementById('btnSaveIndividualObsText');
+    const count = checkboxes.length;
+    if (countBadge) countBadge.textContent = `${count}명 선택됨`;
+    if (btnText) btnText.textContent = `선택한 ${count}명 개별 관찰일지 DB에 반영`;
+  }
+
   async function handleSaveIndividualObs() {
-    return handleSaveNotion();
+    const state = window.state || {};
+    const btnSaveIndividualObs = document.getElementById('btnSaveIndividualObs');
+    const btnSaveIndividualObsText = document.getElementById('btnSaveIndividualObsText');
+    const checkedBoxes = Array.from(document.querySelectorAll('.indiv-obs-checkbox:checked, .indiv-obs-check:checked'));
+
+    if (checkedBoxes.length === 0) {
+      showToast('반영할 원아를 1명 이상 선택해 주세요.');
+      return;
+    }
+
+    if (btnSaveIndividualObs) {
+      btnSaveIndividualObs.disabled = true;
+      if (btnSaveIndividualObsText) btnSaveIndividualObsText.textContent = `노션 개별 관찰일지 적재 중... (0/${checkedBoxes.length})`;
+    }
+
+    const todayStr = state.selectedDate || new Date().toISOString().split('T')[0];
+    let successCount = 0;
+
+    try {
+      for (let i = 0; i < checkedBoxes.length; i++) {
+        const chk = checkedBoxes[i];
+        const idx = chk.dataset.idx;
+        const childName = chk.dataset.childName || '원아';
+        const area = chk.dataset.area || '자유놀이';
+        const standardArea = chk.dataset.standardArea || '의사소통';
+
+        // 교사가 수정한 input 필드 내용 최우선 반영
+        const inputEl = document.getElementById(`indiv-obs-input-${idx}`);
+        const summaryText = inputEl ? inputEl.value.trim() : (chk.dataset.playText || '');
+
+        if (btnSaveIndividualObsText) {
+          btnSaveIndividualObsText.textContent = `노션 적재 중... (${i + 1}/${checkedBoxes.length} - ${childName})`;
+        }
+
+        // 원아의 실제 노션 UUID 찾기
+        const pool = state.children || [];
+        const matchedChild = pool.find(c => c.name === childName);
+        const targetChildId = matchedChild ? matchedChild.id : null;
+
+        const payload = {
+          date: todayStr,
+          childId: targetChildId,
+          childName,
+          className: state.className || '사랑반',
+          teacherName: state.teacherName || '공가영 선생님',
+          activityArea: area,
+          standardArea,
+          rawMemo: summaryText,
+          obsSummary: `${childName} - ${summaryText}`.slice(0, 80),
+          observationText: `[원아별 행동 관찰 요약]\n${summaryText}\n\n[학급 놀이 맥락]\n${state.lastResult?.class_daily_report?.play_theme || state.activityArea || '자유놀이'}`,
+          citationSummary: `한그루 보육일지 내 ${childName} 놀이 팩트 자동 추출`
+        };
+
+        const res = await fetch('/api/logs/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          successCount++;
+          const statusTag = document.getElementById(`indiv-obs-status-${idx}`);
+          if (statusTag) statusTag.style.display = 'inline-block';
+        }
+      }
+
+      showToast(`🎉 선택한 원아 ${successCount}명의 개별 관찰일지가 노션에 안전하게 분할 저장되었습니다!`);
+    } catch (err) {
+      showToast(`❌ 개별 관찰일지 저장 중 오류: ${err.message}`);
+    } finally {
+      if (btnSaveIndividualObs) {
+        btnSaveIndividualObs.disabled = false;
+        if (btnSaveIndividualObsText) btnSaveIndividualObsText.textContent = '선택한 원아 개별 관찰일지 DB에 반영';
+      }
+    }
   }
 
   // ============================================================================
@@ -637,6 +720,7 @@
     handleSaveClassReportNotion,
     handleSaveHangrooEvalNotion,
     handleSaveIndividualObs,
+    updateSelectedIndivObsCount,
     openHistoryModal,
     loadHistoryLogs
   };
@@ -652,6 +736,7 @@
   window.handleSaveClassReportNotion = handleSaveClassReportNotion;
   window.handleSaveHangrooEvalNotion = handleSaveHangrooEvalNotion;
   window.handleSaveIndividualObs = handleSaveIndividualObs;
+  window.updateSelectedIndivObsCount = updateSelectedIndivObsCount;
   window.openHistoryModal = openHistoryModal;
   window.loadHistoryLogs = loadHistoryLogs;
 })();
