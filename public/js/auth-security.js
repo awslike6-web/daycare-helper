@@ -361,17 +361,13 @@
   // ============================================================================
   async function checkSecuritySession() {
     try {
-      const res = await fetch('/cdn-cgi/access/get-identity', { method: 'GET' });
+      const res = await fetch('/api/session', { method: 'GET' });
       if (!res.ok) return;
       const data = await res.json();
-      if (!data || !data.exp) return;
+      if (!data || !data.protected || !data.exp) return;
 
-      const now = Math.floor(Date.now() / 1000);
-      const remainingSeconds = data.exp - now;
-      const remainingDays = Math.ceil(remainingSeconds / 86400);
-
-      if (remainingDays <= 7 && remainingDays > 0) {
-        showSessionBanner(remainingDays, data.exp);
+      if (data.isExpiringSoon && data.remainingDays > 0) {
+        showSessionBanner(data.remainingDays, data.exp);
       }
     } catch (e) {
       // 로컬 환경이나 비Access 환경에서는 조용히 넘어감

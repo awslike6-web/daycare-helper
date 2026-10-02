@@ -58,8 +58,8 @@ export default {
       });
     }
 
-    // 2. 헬스체크 엔드포인트 (/health)
-    if (url.pathname === '/health') {
+    // 2. 헬스체크 엔드포인트 (/health, /api/health)
+    if (url.pathname === '/health' || url.pathname === '/api/health') {
       return jsonResponse({
         status: 'ok',
         service: 'daycare-helper',
