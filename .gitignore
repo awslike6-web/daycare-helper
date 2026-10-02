@@ -6,3 +6,4 @@ dist/
 Thumbs.db
 *.log
 __pycache__/
+public/js/legacy/

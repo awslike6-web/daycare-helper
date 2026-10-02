@@ -204,3 +204,18 @@ flowchart LR
 - **월간 종합 모드**: 교사가 `[📅 9월 종합 관찰일지]` 버튼을 클릭하면:
   1. 노션 DB에서 해당 원아의 **해당 월 전체 기록(10~20건)을 일괄 수급**.
   2. Gemini 3.8 Flash가 **표준보육 6대 영역별 1개월 성장 변화와 월말 교사 총평**을 A4 1장 평가제 제출용 서식으로 원클릭 완제 도출.
+
+---
+
+## 11. 🛡️ 2026 프론트엔드 골디락스 4대 핵심 코어 아키텍처 (SSOT)
+
+전사 거버넌스 헌법(GEMINI.md 제 7조 0항)의 **골디락스 적정 응집도(300~600줄 최적, 절대 상한 800줄 미만)** 원칙에 따라 무분별한 14개 나노 파편화를 종식하고 4대 완성형 코어로 일원화했습니다.
+
+| 모듈 | 상대 경로 | 역할 및 핵심 기능 | 라인 수 |
+| :--- | :--- | :--- | :--- |
+| **1. UI 메인 컨트롤러** | `public/app.js` | • 전역 상태(`state`), 토스트 알림(`showToast`) 단일 원천<br>• 📑 **서식 선택 칩 이벤트 위임 (`#formatChipsGrid` onclick)**: 중복 리스너 방지 및 100% 클릭 무결성<br>• 📅 소급 작성 날짜 및 캘린더 동기화<br>• 🎙️ 음성 인식 (STT) 및 사진 업로드 (Base64)<br>• 🛡️ 실시간 자동 임시보관 및 복원 배너 (`AutoDraft`)<br>• ⚙️ 환경설정 / 가이드 / 페르소나 모달 제어 | ~580줄 |
+| **2. 보안 & 환경설정 코어** | `public/js/auth-security.js` | • 교사 프로필 3종 (`wife`, `sister_in_law`, `sandbox`) 및 페르소나 4대 프리셋<br>• 2-Way PIN 터치 키패드 보안 잠금 게이트 (`initAuthGate`, `verifyPin`)<br>• Cloudflare Access 세션 만료 모니터 (`checkSecuritySession`)<br>• 교사 스위처 브리지 (`executeTeacherSwitch`, `switchTeacherProfile`) | ~445줄 |
+| **3. 데이터 & 노션 코어** | `public/js/notion-store.js` | • 원아 목록 관리 및 실시간 칩 렌더링 (`loadChildren`, `selectChild`)<br>• 개인정보 실명 가명화/마스킹 가드 (`maskPayload`, `unmaskResult`)<br>• 노션 DB 통신 및 헬스체크 (`checkHealth`, `handleSaveNotion`)<br>• 중복 일지 감지 및 덮어쓰기 모달 (`checkDuplicateAndSave`)<br>• 📂 지난 보육 기록 보관함 모달 및 1초 복원 (`openHistoryModal`) | ~554줄 |
+| **4. AI 결과물 & 내보내기 코어** | `public/js/ai-engine.js` | • AI 일지 생성 파이프라인 및 실시간 Abort 제어 (`handleGenerate`)<br>• 7대 서식 렌더러 및 결과 탭 스위처 (`renderResults`, `switchResultTab`)<br>• HWP 공문서 표 클립보드 복사 (`copyHwpTableToClipboard`)<br>• 키즈노트 알림장 원터치 복사 및 모바일 Web Share 연동 (`shareKidsnote`) | ~490줄 |
+| **5. AI 클라이언트 직통 엔진** | `public/gemini-client.js` | • Gemini 3.8 Flash 한국 브라우저 IP 직통 호출 (Cloudflare 유럽 지역 제한 원천 회피) | ~520줄 |
+

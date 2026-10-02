@@ -1,37 +1,69 @@
 /**
- * 🧸 daycare-helper Frontend Application Logic (app.js)
+ * 🧸 daycare-helper Main UI Controller (app.js)
  * 2026 Modern Vanilla JS (ES2024+)
+ * 
+ * 주요 역할:
+ *  - 애플리케이션 라이프사이클 및 전역 상태(state) 단일 원천
+ *  - 📑 생성 서식 선택 툴바 이벤트 위임 (Event Delegation) 100% 무결성 토글
+ *  - 📅 소급 작성 날짜 / 캘린더 동기화
+ *  - 🎙️ 음성 인식 (STT) 및 사진 업로드
+ *  - 🛡️ 작성 중 일지 실시간 임시보관 및 복원 (AutoDraft)
+ *  - ⚙️ 환경설정 / 가이드 / 페르소나 모달 제어
  */
 
 document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
-  // 0. 프리셋 및 교사 프로필 참조 (config.js 및 auth-gate.js 연동)
+  // 0. 토스트 알림 헬퍼 (글로벌 단일 원천)
   // ============================================================================
-  const { PERSONA_PRESETS, PARENT_PRESETS, TEACHER_PROFILES, TEACHER_PAGE_MAP, NOTION_CONFIG } = window.DaycareConfig || window;
+  let toastTimeout = null;
+  function showToast(message) {
+    const toastEl = document.getElementById('toastMessage');
+    if (!toastEl) {
+      console.log('[Toast]', message);
+      return;
+    }
+    if (toastTimeout) clearTimeout(toastTimeout);
+    toastEl.textContent = message;
+    toastEl.classList.add('show');
+    toastTimeout = setTimeout(() => {
+      toastEl.classList.remove('show');
+    }, 2400);
+  }
+  window.showToast = showToast;
+
+  // ============================================================================
+  // 1. 프로필 참조 및 전역 상태 (Single Source of Truth)
+  // ============================================================================
+  const { TEACHER_PROFILES } = window.DaycareConfig || {};
   const initialTeacherKey = localStorage.getItem('daycare_active_teacher') || 'wife';
-  const initialProfile = (TEACHER_PROFILES && TEACHER_PROFILES[initialTeacherKey]) || (TEACHER_PROFILES && TEACHER_PROFILES.wife) || { key: 'wife', className: '사랑반', name: '공가영 선생님' };
+  const initialProfile = (TEACHER_PROFILES && TEACHER_PROFILES[initialTeacherKey]) ||
+    (TEACHER_PROFILES && TEACHER_PROFILES.wife) ||
+    { key: 'wife', className: '사랑반', name: '공가영 선생님' };
+
+  const getStyleFn = window.DaycareAuth?.getTeacherStyle || (() => '다정하고 꼼꼼한 선생님');
+  const getPersonaFn = window.DaycareAuth?.getTeacherPersona || (() => ({ name: '맞춤 페르소나' }));
 
   const state = {
     activeTeacherKey: initialProfile.key,
-    className: initialProfile.className,
-    teacherName: initialProfile.name,
-    filterOnlyMyClass: true, // 🔒 항상 담당 학급만 100% 철통 격리
+    className: localStorage.getItem('daycare_class_name') || initialProfile.className,
+    teacherName: localStorage.getItem('daycare_teacher_name') || initialProfile.name,
+    filterOnlyMyClass: true,
     children: [],
     selectedChild: null,
     mode: initialProfile.key === 'sister_in_law' ? 'class_report' : 'all_suite',
     activityArea: '자유놀이 및 일상생활',
-    photos: [], // base64 strings
-    teacherStyle: getTeacherStyle(initialProfile.key),
-    persona: getTeacherPersona(initialProfile.key),
+    photos: [],
+    teacherStyle: getStyleFn(initialProfile.key),
+    persona: getPersonaFn(initialProfile.key),
     isRecording: false,
     recognition: null,
     lastResult: null,
-    originalResult: null, // ↺ 최초 생성본 (원래대로 복원용)
-    selectedDate: new Date().toISOString().split('T')[0], // 📅 소급 작성 날짜 (기본: 오늘)
-    historyLogs: [], // 📂 지난 기록 보관함 캐시
+    originalResult: null,
+    selectedDate: new Date().toISOString().split('T')[0],
+    historyLogs: [],
     isHistoryLoaded: false,
     selectedHistoryLog: null,
-    currentAbortController: null, // ⏹️ AI 생성 즉시 중단용 제어기
+    currentAbortController: null,
     isGenerationAborted: false,
     selectedFormats: (() => {
       try {
@@ -41,484 +73,507 @@ document.addEventListener('DOMContentLoaded', () => {
           if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         }
       } catch (e) {}
-      return ['class_daily_report', 'kidsnote']; // 🌟 기본값: 놀이 보육일지 + 알림장 2대 서식 집중
+      return ['class_daily_report', 'kidsnote']; // 기본 2대 서식 집중
     })()
   };
   window.state = state;
 
   // ============================================================================
-  // 2. DOM 요소 참조
-  // ============================================================================
-
-  const modeSwitcher = document.getElementById('modeSwitcher');
-  const areaGrid = document.getElementById('areaGrid');
-  const voiceMicBtn = document.getElementById('voiceMicBtn');
-  const rawMemoInput = document.getElementById('rawMemoInput');
-  const photoFileInput = document.getElementById('photoFileInput');
-  const generateBtn = document.getElementById('generateBtn');
-  const btnCancelAiGenerate = document.getElementById('btnCancelAiGenerate');
-
-  const kidsnoteCard = document.getElementById('kidsnoteCard');
-  const observationCard = document.getElementById('observationCard');
-  const dailyCareCard = document.getElementById('dailyCareCard');
-  const counselingCard = document.getElementById('counselingCard');
-  const playSupportCard = document.getElementById('playSupportCard');
-  const copyKidsnoteBtn = document.getElementById('copyKidsnoteBtn');
-  const shareKidsnoteBtn = document.getElementById('shareKidsnoteBtn');
-
-  const kidsnoteRefineBox = document.getElementById('kidsnoteRefineBox');
-  const resetKidsnoteBtn = document.getElementById('resetKidsnoteBtn');
-  const customRefineInput = document.getElementById('customRefineInput');
-  const customRefineBtn = document.getElementById('customRefineBtn');
-
-  const btnAutoDistributeDates = document.getElementById('btnAutoDistributeDates');
-  const monthlyObsTargetMonth = document.getElementById('monthlyObsTargetMonth');
-
-  const copyMonthlyObsHwpBtn = document.getElementById('copyMonthlyObsHwpBtn');
-  const printMonthlyObsBtn = document.getElementById('printMonthlyObsBtn');
-
-  const obsStandardArea = document.getElementById('obsStandardArea');
-  const obsActivityName = document.getElementById('obsActivityName');
-  const obsBehaviorContent = document.getElementById('obsBehaviorContent');
-  const obsEvaluationContent = document.getElementById('obsEvaluationContent');
-  const copyObservationBtn = document.getElementById('copyObservationBtn');
-
-  const classDailyReportCard = document.getElementById('classDailyReportCard');
-  const copyHangrooReportBtn = document.getElementById('copyHangrooReportBtn');
-  const copyHwpTableBtn = document.getElementById('copyHwpTableBtn');
-  const printReportBtn = document.getElementById('printReportBtn');
-  const copyFullReportTextBtn = document.getElementById('copyFullReportTextBtn');
-  const saveClassReportNotionBtn = document.getElementById('saveClassReportNotionBtn');
-
-  const hangrooEvalCard = document.getElementById('hangrooEvalCard');
-  const copyHangrooEvalBtn = document.getElementById('copyHangrooEvalBtn');
-  const copyHangrooEvalHwpBtn = document.getElementById('copyHangrooEvalHwpBtn');
-  const saveHangrooEvalNotionBtn = document.getElementById('saveHangrooEvalNotionBtn');
-  const copyHangrooObsBtn = document.getElementById('copyHangrooObsBtn');
-
-  const btnSaveIndividualObs = document.getElementById('btnSaveIndividualObs');
-
-  const dailyPlaySummary = document.getElementById('dailyPlaySummary');
-  const dailyPlayEval = document.getElementById('dailyPlayEval');
-  const dailyNextPlan = document.getElementById('dailyNextPlan');
-  const copyDailyCareBtn = document.getElementById('copyDailyCareBtn');
-
-  const counselRoutine = document.getElementById('counselRoutine');
-  const counselSocial = document.getElementById('counselSocial');
-  const counselDev = document.getElementById('counselDev');
-  const counselOpinion = document.getElementById('counselOpinion');
-  const copyCounselingBtn = document.getElementById('copyCounselingBtn');
-
-  const playExtension = document.getElementById('playExtension');
-  const playMaterials = document.getElementById('playMaterials');
-  const playTips = document.getElementById('playTips');
-  const copyPlaySupportBtn = document.getElementById('copyPlaySupportBtn');
-
-  const toastMessage = document.getElementById('toastMessage');
-
-  // ============================================================================
-  // 3-A. 🧸 2-Way 보안 잠금 게이트 및 교사 스위처 (auth-gate.js에서 자동 처리)
-  // ============================================================================
-
-  // 📅 소급 작성 날짜 변경 및 UI 갱신 함수 (settings-controller.js 연동)
-  function updateRecordDate(dateStr) {
-    if (window.SettingsController && typeof window.SettingsController.updateRecordDate === 'function') {
-      window.SettingsController.updateRecordDate(dateStr);
-    }
-  }
-
-  // ============================================================================
-  // 3. 초기화 (Init)
-  // ============================================================================
-  function init() {
-    // 🔐 2-Way 보안 게이트 초기화
-    initAuthGate();
-
-    // 📅 작성 날짜 셋업 (오늘 날짜 기본)
-    updateRecordDate(state.selectedDate || new Date().toISOString().split('T')[0]);
-
-    // 👩‍🏫 교사 프로필 스위처 버튼 동기화
-    syncTeacherSwitcherUI();
-
-    updatePersonaUI();
-
-    // 🔐 보안 세션 확인 (Cloudflare Access D-7 체크)
-    checkSecuritySession();
-
-    // Web Speech API 초기화
-    setupSpeechRecognition();
-
-    // 헬스체크 및 원아 목록 로드
-    checkHealth();
-    loadChildren();
-
-    // 📝 이전에 작성 중이던 메모 자동 복원 (Autosave Restore)
-    try {
-      const savedDraft = localStorage.getItem('daycare_draft_memo');
-      if (savedDraft && rawMemoInput) {
-        rawMemoInput.value = savedDraft;
-      }
-    } catch (e) {}
-
-    // 🛡️ 작성 중이던 일지 자동 복원 배너 확인 (Crash Guard)
-    checkAndRestoreAutoDraft();
-
-    // 이벤트 리스너 등록
-    setupEventListeners();
-
-    // 📑 서식 선택 툴바 초기화 (상시 저장 및 토큰 절감)
-    initFormatSelector();
-  }
-
-  // ============================================================================
-  // 3-B. 🛡️ 안심 임시보관 및 복원 (auto-draft.js 모듈 위임)
-  // ============================================================================
-  function saveAutoDraft() {
-    if (window.AutoDraft && typeof window.AutoDraft.save === 'function') {
-      window.AutoDraft.save(state);
-    }
-  }
-
-  function clearAutoDraft() {
-    if (window.AutoDraft && typeof window.AutoDraft.clear === 'function') {
-      window.AutoDraft.clear();
-    }
-  }
-  window.clearAutoDraft = clearAutoDraft;
-
-  function checkAndRestoreAutoDraft() {
-    if (window.AutoDraft && typeof window.AutoDraft.checkAndRestore === 'function') {
-      window.AutoDraft.checkAndRestore({
-        renderResults,
-        initFormatSelector,
-        showToast
-      });
-    }
-  }
-
-  // ============================================================================
-  // 3-C. 📑 생성 서식 선택 툴바 관리 (상시 체크 유지 & 토큰 70% 절감)
+  // 2. 📑 생성 서식 선택 툴바 관리 (Event Delegation 완전 무결성)
   // ============================================================================
   function initFormatSelector() {
-    const formatChips = document.querySelectorAll('.format-chip');
-    if (!formatChips || formatChips.length === 0) return;
+    const grid = document.getElementById('formatChipsGrid');
+    if (!grid) return;
 
-    formatChips.forEach(chip => {
-      const fmt = chip.dataset.format;
+    // UI 상태 반영
+    syncFormatChipsUI();
+
+    // 단일 이벤트 위임 바인딩 (자식 span을 눌러도 100% 정상 작동)
+    grid.onclick = (e) => {
+      const chip = e.target.closest('.format-chip');
+      if (!chip) return;
+      e.preventDefault();
+
+      const fmt = chip.getAttribute('data-format');
+      if (!fmt) return;
+
+      const isCurrentlyActive = state.selectedFormats.includes(fmt);
+
+      if (isCurrentlyActive) {
+        if (state.selectedFormats.length <= 1) {
+          showToast('⚠️ 최소 1개 이상의 서식을 선택해야 합니다.');
+          return;
+        }
+        state.selectedFormats = state.selectedFormats.filter(f => f !== fmt);
+      } else {
+        state.selectedFormats.push(fmt);
+      }
+
+      try {
+        localStorage.setItem('daycare_selected_formats', JSON.stringify(state.selectedFormats));
+      } catch (err) {}
+
+      syncFormatChipsUI();
+      updateGenerateBtnText();
+    };
+
+    updateGenerateBtnText();
+  }
+
+  function syncFormatChipsUI() {
+    const chips = document.querySelectorAll('.format-chip');
+    chips.forEach(chip => {
+      const fmt = chip.getAttribute('data-format');
       const isActive = state.selectedFormats.includes(fmt);
       chip.classList.toggle('active', isActive);
     });
-
-    formatChips.forEach(chip => {
-      chip.addEventListener('click', (e) => {
-        e.preventDefault();
-        const fmt = chip.dataset.format;
-        const isCurrentlyActive = state.selectedFormats.includes(fmt);
-
-        if (isCurrentlyActive) {
-          if (state.selectedFormats.length <= 1) {
-            showToast('⚠️ 최소 1개 이상의 서식을 선택해야 합니다.');
-            return;
-          }
-          state.selectedFormats = state.selectedFormats.filter(f => f !== fmt);
-          chip.classList.remove('active');
-        } else {
-          state.selectedFormats.push(fmt);
-          chip.classList.add('active');
-        }
-
-        try {
-          localStorage.setItem('daycare_selected_formats', JSON.stringify(state.selectedFormats));
-        } catch (err) {}
-
-        updateGenerateBtnText();
-      });
-    });
-
-    updateGenerateBtnText();
   }
 
   function updateGenerateBtnText() {
     const generateBtnText = document.getElementById('generateBtnText');
     if (!generateBtnText) return;
+
     const names = [];
     if (state.selectedFormats.includes('class_daily_report')) names.push('보육일지');
     if (state.selectedFormats.includes('kidsnote')) names.push('알림장');
     if (state.selectedFormats.includes('observation')) names.push('관찰일지');
+    if (state.selectedFormats.includes('hangroo_eval')) names.push('발달평가');
     if (state.selectedFormats.includes('daily_care')) names.push('일일일지');
     if (state.selectedFormats.includes('counseling')) names.push('상담일지');
     if (state.selectedFormats.includes('play_support')) names.push('지원안');
 
     const summary = names.slice(0, 2).join('·') + (names.length > 2 ? ` 외 ${names.length - 2}종` : '');
-    generateBtnText.textContent = `✨ 선택한 서식 스마트 즉시 생성 (${summary})`;
+    generateBtnText.textContent = `✨ 선택한 서식 스마트 즉시 생성 (${summary || '기본 서식'})`;
+  }
+
+  window.initFormatSelector = initFormatSelector;
+  window.syncFormatChipsUI = syncFormatChipsUI;
+
+  // ============================================================================
+  // 3. 📅 소급 작성 날짜 동기화 및 캘린더
+  // ============================================================================
+  function updateRecordDate(dateStr) {
+    if (!dateStr) return;
+    state.selectedDate = dateStr;
+
+    const recordDatePicker = document.getElementById('recordDatePicker');
+    const headerDateText = document.getElementById('headerDateText');
+    const retroDateBadge = document.getElementById('retroDateBadge');
+    const headerDateWrapper = document.getElementById('headerDateWrapper');
+
+    if (recordDatePicker) recordDatePicker.value = dateStr;
+    const dt = new Date(dateStr + 'T00:00:00');
+    const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
+    if (headerDateText) headerDateText.textContent = dt.toLocaleDateString('ko-KR', options);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isRetro = (dateStr !== todayStr);
+    if (retroDateBadge) {
+      retroDateBadge.style.display = isRetro ? 'inline-block' : 'none';
+    }
+    if (headerDateWrapper) {
+      if (isRetro) {
+        headerDateWrapper.title = `소급 작성 중 (${dateStr}) - 클릭하여 날짜 변경`;
+        headerDateWrapper.style.borderColor = '#EF4444';
+        headerDateWrapper.style.background = '#FEF2F2';
+      } else {
+        headerDateWrapper.title = '클릭하여 소급 작성 날짜 변경';
+        headerDateWrapper.style.borderColor = '#CBD5E1';
+        headerDateWrapper.style.background = '#F8FAFC';
+      }
+    }
+  }
+  window.updateRecordDate = updateRecordDate;
+
+  // ============================================================================
+  // 4. 🛡️ 안심 자동 임시보관 및 복원 (Crash Guard)
+  // ============================================================================
+  const DRAFT_STORAGE_KEY = 'daycare_auto_draft';
+
+  function saveAutoDraft() {
+    const rawMemoInput = document.getElementById('rawMemoInput');
+    if (!state.lastResult && (!rawMemoInput || !rawMemoInput.value.trim())) return;
+
+    try {
+      const draftData = {
+        timestamp: Date.now(),
+        date: state.selectedDate || new Date().toISOString().split('T')[0],
+        childId: state.selectedChild?.id || null,
+        childName: state.selectedChild?.name || '원아',
+        className: state.className || '',
+        rawMemo: rawMemoInput ? rawMemoInput.value : '',
+        lastResult: state.lastResult || null,
+        originalResult: state.originalResult || null,
+        selectedFormats: state.selectedFormats || []
+      };
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftData));
+    } catch (e) {}
+  }
+
+  function clearAutoDraft() {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      const banner = document.getElementById('autoDraftRestoreBanner');
+      if (banner) banner.style.display = 'none';
+    } catch (e) {}
+  }
+
+  function checkAndRestoreAutoDraft() {
+    try {
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!saved) return;
+      const draft = JSON.parse(saved);
+      if (!draft || (!draft.lastResult && !draft.rawMemo)) return;
+
+      const banner = document.getElementById('autoDraftRestoreBanner');
+      const metaEl = document.getElementById('autoDraftRestoreMeta');
+      const btnRestore = document.getElementById('btnRestoreAutoDraft');
+      const btnDiscard = document.getElementById('btnDiscardAutoDraft');
+      const rawMemoInput = document.getElementById('rawMemoInput');
+
+      if (banner) {
+        if (metaEl) {
+          metaEl.textContent = `${draft.date} [${draft.childName || '원아'}] 작성본이 안전하게 보관되어 있습니다.`;
+        }
+        banner.style.display = 'flex';
+
+        if (btnRestore) {
+          btnRestore.onclick = (e) => {
+            e.preventDefault();
+            if (rawMemoInput && draft.rawMemo) rawMemoInput.value = draft.rawMemo;
+            if (draft.lastResult) {
+              state.lastResult = draft.lastResult;
+              state.originalResult = draft.originalResult || draft.lastResult;
+              if (window.AiEngine && typeof window.AiEngine.renderResults === 'function') {
+                window.AiEngine.renderResults(draft.lastResult);
+              }
+            }
+            if (Array.isArray(draft.selectedFormats) && draft.selectedFormats.length > 0) {
+              state.selectedFormats = draft.selectedFormats;
+              syncFormatChipsUI();
+              updateGenerateBtnText();
+            }
+            banner.style.display = 'none';
+            showToast('🎉 작성 중이던 일지 내용이 복원되었습니다!');
+          };
+        }
+
+        if (btnDiscard) {
+          btnDiscard.onclick = (e) => {
+            e.preventDefault();
+            clearAutoDraft();
+            showToast('임시 저장본이 삭제되었습니다.');
+          };
+        }
+      }
+    } catch (e) {}
+  }
+
+  window.saveAutoDraft = saveAutoDraft;
+  window.clearAutoDraft = clearAutoDraft;
+  window.AutoDraft = { save: saveAutoDraft, clear: clearAutoDraft, checkAndRestore: checkAndRestoreAutoDraft };
+
+  // ============================================================================
+  // 5. 🎙️ Web Speech API 및 사진 첨부 (Media Assistant)
+  // ============================================================================
+  function setupSpeechRecognition() {
+    const voiceMicBtn = document.getElementById('voiceMicBtn');
+    const micIcon = document.getElementById('micIcon');
+    const micStatusText = document.getElementById('micStatusText');
+    const rawMemoInput = document.getElementById('rawMemoInput');
+    if (!voiceMicBtn) return;
+
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      voiceMicBtn.style.opacity = '0.5';
+      voiceMicBtn.onclick = () => showToast('이 브라우저는 음성 인식을 지원하지 않습니다.');
+      return;
+    }
+
+    const recognition = new SpeechRec();
+    recognition.lang = 'ko-KR';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      state.isRecording = true;
+      voiceMicBtn.classList.add('recording');
+      if (micIcon) micIcon.textContent = '⏹️';
+      if (micStatusText) micStatusText.textContent = '듣고 있어요...';
+      showToast('마이크가 켜졌습니다. 말씀하세요!');
+    };
+
+    recognition.onresult = (event) => {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) transcript += event.results[i][0].transcript + ' ';
+      }
+      if (transcript.trim() && rawMemoInput) {
+        const cur = rawMemoInput.value.trim();
+        rawMemoInput.value = cur ? `${cur}\n${transcript.trim()}` : transcript.trim();
+        try { localStorage.setItem('daycare_draft_memo', rawMemoInput.value); } catch (e) {}
+        showToast('🎙️ 음성 메모가 입력되었습니다.');
+      }
+    };
+
+    recognition.onerror = () => stopRecording();
+    recognition.onend = () => stopRecording();
+
+    function stopRecording() {
+      state.isRecording = false;
+      if (voiceMicBtn) voiceMicBtn.classList.remove('recording');
+      if (micIcon) micIcon.textContent = '🎙️';
+      if (micStatusText) micStatusText.textContent = '음성 메모';
+    }
+
+    voiceMicBtn.onclick = () => {
+      if (state.isRecording) {
+        recognition.stop();
+      } else {
+        try { recognition.start(); } catch (e) {}
+      }
+    };
+  }
+
+  function handlePhotoUpload(e) {
+    if (!state.photos) state.photos = [];
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (state.photos.length + files.length > 6) {
+      showToast('사진은 최대 6장까지만 첨부할 수 있습니다.');
+      return;
+    }
+
+    files.forEach(file => {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        state.photos.push(event.target.result);
+        renderPhotoPreviews();
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  }
+
+  function renderPhotoPreviews() {
+    const box = document.getElementById('photoPreviews');
+    if (!box) return;
+    box.innerHTML = '';
+    state.photos.forEach((src, idx) => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position: relative; width: 64px; height: 64px; border-radius: 8px; overflow: hidden; border: 1px solid #CBD5E1;';
+      wrap.innerHTML = `
+        <img src="${src}" style="width: 100%; height: 100%; object-fit: cover;">
+        <button type="button" style="position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: #FFF; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; cursor: pointer;">&times;</button>
+      `;
+      wrap.querySelector('button').onclick = () => {
+        state.photos.splice(idx, 1);
+        renderPhotoPreviews();
+      };
+      box.appendChild(wrap);
+    });
   }
 
   // ============================================================================
-  // 3-B. 보안 세션, 페르소나 UI 및 교사 스위처 (auth-gate.js에서 자동 처리)
+  // 6. ⚙️ 모달 및 화면 이벤트 리스너 통합 바인딩
   // ============================================================================
-
-  // ============================================================================
-  // 3-F. 🧸 평가제 월간 관찰일지 날짜 자동 분산 헬퍼 (daycare-date-utils.js 모듈로 분리 완료)
-  // ============================================================================
-
-  // ============================================================================
-  // 4. 이벤트 리스너 등록
-  // ============================================================================
-  function setupEventListeners() {
-    // ⚙️ 교사 스위처, 소급 캘린더, 가이드/설정/원아 모달, 메모 2-Tap (settings-controller.js 연동)
-    if (window.SettingsController && typeof window.SettingsController.setupSettingsListeners === 'function') {
-      window.SettingsController.setupSettingsListeners({ showToast });
-    }
-
-    // 모드 스위처 클릭 (숨김 상태여도 null-safe)
+  function setupAllEventListeners() {
+    // 1. 모드 스위처 (필요 시)
+    const modeSwitcher = document.getElementById('modeSwitcher');
     if (modeSwitcher) {
       modeSwitcher.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.onclick = () => {
           modeSwitcher.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           state.mode = btn.dataset.mode;
-        });
+        };
       });
     }
 
-    // 🧸 월간 관찰일지 평일 자동 분산 버튼
-    if (btnAutoDistributeDates) {
-      btnAutoDistributeDates.addEventListener('click', () => autoDistributeObsDates());
-    }
-    if (monthlyObsTargetMonth) {
-      monthlyObsTargetMonth.addEventListener('change', () => autoDistributeObsDates());
-    }
-    // 페이지 로드 시 관찰일지 기본 날짜/영역 1회 자동 초기화
-    if (typeof initMonthlyObsPanel === 'function') {
-      try { initMonthlyObsPanel(); } catch (e) { /* ignore */ }
+    // 2. 소급 캘린더
+    const recordDatePicker = document.getElementById('recordDatePicker');
+    if (recordDatePicker) {
+      recordDatePicker.onchange = (e) => {
+        updateRecordDate(e.target.value);
+        showToast(`📅 작성 날짜가 [${e.target.value}]로 변경되었습니다.`);
+      };
     }
 
-    // 활동 영역 칩 클릭 (숨김 상태여도 null-safe)
-    if (areaGrid) {
-      areaGrid.querySelectorAll('.area-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          areaGrid.querySelectorAll('.area-chip').forEach(c => c.classList.remove('active'));
-          chip.classList.add('active');
-          state.activityArea = chip.dataset.area;
-        });
-      });
-    }
+    // 3. 교사 스위처 버튼 바인딩
+    const btnWife = document.getElementById('btnSwitchWife');
+    const btnSister = document.getElementById('btnSwitchSisterInLaw');
+    const btnSandbox = document.getElementById('btnSwitchSandbox');
+    if (btnWife) btnWife.onclick = () => window.DaycareAuth?.handleTeacherSwitchClick('wife');
+    if (btnSister) btnSister.onclick = () => window.DaycareAuth?.handleTeacherSwitchClick('sister_in_law');
+    if (btnSandbox) btnSandbox.onclick = () => window.DaycareAuth?.handleTeacherSwitchClick('sandbox');
 
-    // 사진 파일 첨부
-    photoFileInput.addEventListener('change', handlePhotoUpload);
+    // 4. 사진 파일 업로드
+    const photoFileInput = document.getElementById('photoFileInput');
+    if (photoFileInput) photoFileInput.onchange = handlePhotoUpload;
 
-    // 생성 버튼 클릭
-    generateBtn.addEventListener('click', handleGenerate);
-
-    // 결과 탭 스위처 클릭
-    const resultTabBtns = document.querySelectorAll('.result-tab-btn');
-    resultTabBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const tab = btn.dataset.tab;
-        if (typeof switchResultTab === 'function') {
-          switchResultTab(tab);
-        } else if (window.ResultsRenderer && typeof window.ResultsRenderer.switchResultTab === 'function') {
-          window.ResultsRenderer.switchResultTab(tab);
+    // 5. 메모 2-Tap 안전 비우기
+    const rawMemoInput = document.getElementById('rawMemoInput');
+    const btnClearMemo = document.getElementById('btnClearMemoBtn');
+    if (btnClearMemo && rawMemoInput) {
+      let isWaiting = false;
+      let timer = null;
+      btnClearMemo.onclick = () => {
+        if (!rawMemoInput.value.trim() && (!state.photos || state.photos.length === 0)) {
+          showToast('비울 메모가 없습니다.');
+          return;
         }
-      });
-    });
-
-    // 0~5. 공문서 HWP 표 복사, 원터치 텍스트 복사 및 노션 저장 버튼 이벤트 리스너 통합 연동 (export-formatters.js 위임)
-    if (window.ExportFormatters && typeof window.ExportFormatters.setupExportListeners === 'function') {
-      window.ExportFormatters.setupExportListeners();
-    } else if (typeof setupExportListeners === 'function') {
-      setupExportListeners();
-    }
-
-    // 🪄 AI 실시간 다듬기 (Quick Refine) 칩 클릭
-    if (kidsnoteRefineBox) {
-      const refinePrompts = {
-        cheerful: '문맥에 어울리는 따뜻하고 예쁜 이모지를 1~2개 더 자연스럽게 넣고, 한층 더 다정하고 발랄하며 사랑스러운 말투로 다듬어줘',
-        detailed: '아이가 놀잇감을 조작하며 집중한 표정과 놀이 과정을 조금 더 자세하고 풍성하게 1~2문장 늘려서 서술해줘',
-        compact: '문장의 군더더기를 줄이고 핵심 놀이와 성취감 중심으로 조금 더 간결하고 단정하게 다듬어줘',
-        meal: '본문 끝부분에 오늘 점심 식사 시간에 스스로 숟가락으로 골고루 맛있게 잘 먹었다는 기특한 식습관 칭찬 1줄을 자연스럽게 덧붙여줘'
+        if (!isWaiting) {
+          isWaiting = true;
+          btnClearMemo.innerHTML = '<span>⚠️</span> <span>정말 비울까요?</span>';
+          btnClearMemo.style.background = '#FEE2E2';
+          btnClearMemo.style.color = '#DC2626';
+          timer = setTimeout(() => {
+            isWaiting = false;
+            btnClearMemo.innerHTML = '<span>🗑️</span> <span>비우기</span>';
+            btnClearMemo.style.background = '#F1F5F9';
+            btnClearMemo.style.color = '#64748B';
+          }, 3000);
+          showToast('3초 안에 한 번 더 누르면 메모와 사진이 비워집니다.');
+        } else {
+          clearTimeout(timer);
+          isWaiting = false;
+          btnClearMemo.innerHTML = '<span>🗑️</span> <span>비우기</span>';
+          btnClearMemo.style.background = '#F1F5F9';
+          btnClearMemo.style.color = '#64748B';
+          rawMemoInput.value = '';
+          state.photos = [];
+          renderPhotoPreviews();
+          try { localStorage.removeItem('daycare_draft_memo'); } catch (e) {}
+          showToast('🗑️ 메모와 사진이 깨끗하게 비워졌습니다.');
+        }
       };
 
-      kidsnoteRefineBox.querySelectorAll('.refine-chip[data-refine]').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const type = chip.dataset.refine;
-          const prompt = refinePrompts[type];
-          if (prompt) handleRefine(prompt);
-        });
-      });
-
-      // ↺ 원래대로 복원 버튼
-      if (resetKidsnoteBtn) {
-        resetKidsnoteBtn.addEventListener('click', handleResetOriginal);
-      }
-
-      // 직접 지시 입력창 및 버튼
-      if (customRefineBtn && customRefineInput) {
-        customRefineBtn.addEventListener('click', () => {
-          const val = customRefineInput.value.trim();
-          if (val) {
-            handleRefine(val);
-            customRefineInput.value = '';
-          }
-        });
-        customRefineInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            const val = customRefineInput.value.trim();
-            if (val) {
-              handleRefine(val);
-              customRefineInput.value = '';
-            }
-          }
-        });
-      }
+      rawMemoInput.oninput = () => {
+        try { localStorage.setItem('daycare_draft_memo', rawMemoInput.value); } catch (e) {}
+        saveAutoDraft();
+      };
     }
 
-    // (노션 저장 버튼 리스너들은 export-formatters.js에서 바인딩 완료)
-
-    // 🎭 페르소나 설정 및 🔐 보안 세션 배너 (settings-controller.js에서 처리)
-
-    // 👶 원아 관리 모달 및 🎭 페르소나/우리 반 저장 (settings-controller.js에서 처리)
-
-    // 📝 관찰 메모 실시간 자동 저장은 settings-controller.js에서 처리
-
-    // 🗑️ 작성 중인 메모 2-Tap 안전 비우기는 settings-controller.js에서 처리 완료
-    // ⏹️ AI 생성 중단 버튼 이벤트 리스너
-    if (btnCancelAiGenerate) {
-      btnCancelAiGenerate.addEventListener('click', () => {
-        if (state.currentAbortController) {
-          state.isGenerationAborted = true;
-          state.currentAbortController.abort();
-          showToast('⏹️ AI 생성을 즉시 중단하고 있습니다...');
-        }
-      });
+    // 6. 생성 버튼 바인딩
+    const generateBtn = document.getElementById('generateBtn');
+    if (generateBtn) {
+      generateBtn.onclick = () => window.AiEngine?.handleGenerate();
     }
 
-    // 🚀 PWA 홈 화면 위젯 및 바로가기 URL 파라미터 체크 (?action=mic, ?action=history, ?teacher=sandbox 등)
-    setTimeout(() => {
-      try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const actionParam = urlParams.get('action');
-        const modeParam = urlParams.get('mode');
-        const teacherParam = urlParams.get('teacher');
-
-        if (teacherParam && ['wife', 'sister_in_law', 'sandbox'].includes(teacherParam)) {
-          switchTeacherProfile(teacherParam);
+    // 7. 결과 탭 스위처 바인딩
+    const resultTabBtns = document.querySelectorAll('.result-tab-btn');
+    resultTabBtns.forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        const tab = btn.dataset.tab;
+        if (window.AiEngine && typeof window.AiEngine.switchResultTab === 'function') {
+          window.AiEngine.switchResultTab(tab);
         }
+      };
+    });
 
-        if (modeParam && modeSwitcher) {
-          const targetModeBtn = modeSwitcher.querySelector(`.mode-btn[data-mode="${modeParam}"]`);
-          if (targetModeBtn) {
-            targetModeBtn.click();
-            showToast(`🧸 [${targetModeBtn.textContent.trim()}] 모드로 전환되었습니다.`);
-          }
-        }
-
-        if (actionParam === 'mic') {
-          setTimeout(() => {
-            if (rawMemoInput) {
-              rawMemoInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              rawMemoInput.focus();
-            }
-            if (voiceMicBtn && !state.isRecording) {
-              try {
-                voiceMicBtn.click();
-              } catch (e) {
-                console.warn('Voice mic auto-trigger error:', e);
-              }
-            }
-            showToast('🎙️ 음성 메모 모드입니다. 마이크 버튼을 눌러 말씀하세요!');
-          }, 350);
-        }
-
-        if (actionParam === 'history') {
-          setTimeout(() => {
-            if (typeof openHistoryModal === 'function') {
-              openHistoryModal();
-              showToast('📂 [지난 기록 보관함]을 열었습니다.');
-            }
-          }, 400);
-        }
-      } catch (err) {
-        console.warn('URL params check error:', err);
-      }
-    }, 200);
-  }
-
-  // ============================================================================
-  // 5. 토스트 알림 헬퍼
-  // ============================================================================
-  let toastTimeout = null;
-  function showToast(message) {
-    if (toastTimeout) clearTimeout(toastTimeout);
-    toastMessage.textContent = message;
-    toastMessage.classList.add('show');
-    toastTimeout = setTimeout(() => {
-      toastMessage.classList.remove('show');
-    }, 2400);
-  }
-
-  // ============================================================================
-  // 6 & 7. 노션 직결 브릿지 & 원아 목록 관리 (notion-bridge.js & children-store.js에서 처리)
-  // ============================================================================
-
-  // ============================================================================
-  // 8 & 9. Web Speech API 및 사진 업로드 핸들러 (media-assistant.js 모듈로 분리 완료)
-  // ============================================================================
-
-  // ============================================================================
-  // 9-B. 원아의 노션 실제 과거 관찰 기록 스캔 (시계열 팩트 기반 검증)
-  // ============================================================================
-  // ============================================================================
-  // 9-B & 10. 과거 관찰 기록 스캔 및 AI 생성 (ai-generator.js 위임)
-  // ============================================================================
-  async function fetchChildPastLogs(childId, childName) {
-    if (window.AiGenerator && typeof window.AiGenerator.fetchChildPastLogs === 'function') {
-      return window.AiGenerator.fetchChildPastLogs(childId, childName);
+    // 8. 내보내기 리스너 바인딩
+    if (window.AiEngine && typeof window.AiEngine.setupExportListeners === 'function') {
+      window.AiEngine.setupExportListeners();
     }
-    return [];
-  }
 
-  async function handleGenerate() {
-    if (window.AiGenerator && typeof window.AiGenerator.handleGenerate === 'function') {
-      return window.AiGenerator.handleGenerate();
+    // 9. 설정 & 가이드 모달 바인딩
+    const headerGuideBtn = document.getElementById('headerGuideBtn');
+    const teacherGuideModal = document.getElementById('teacherGuideModal');
+    const btnCloseGuideModal = document.getElementById('btnCloseGuideModal');
+    if (headerGuideBtn && teacherGuideModal) {
+      headerGuideBtn.onclick = () => { teacherGuideModal.style.display = 'flex'; };
+    }
+    if (btnCloseGuideModal && teacherGuideModal) {
+      btnCloseGuideModal.onclick = () => { teacherGuideModal.style.display = 'none'; };
+    }
+
+    const headerHistoryBtn = document.getElementById('headerHistoryBtn');
+    if (headerHistoryBtn) {
+      headerHistoryBtn.onclick = () => window.DaycareNotion?.openHistoryModal();
+    }
+
+    const headerClassNameBtn = document.getElementById('headerClassNameBtn');
+    const headerPersonaBtn = document.getElementById('headerPersonaBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+
+    const openSettings = () => {
+      if (settingsModal) settingsModal.style.display = 'flex';
+      window.DaycareAuth?.updatePersonaUI();
+    };
+
+    if (headerClassNameBtn) headerClassNameBtn.onclick = openSettings;
+    if (headerPersonaBtn) headerPersonaBtn.onclick = openSettings;
+    if (settingsBtn) settingsBtn.onclick = openSettings;
+    if (closeSettingsBtn && settingsModal) {
+      closeSettingsBtn.onclick = () => { settingsModal.style.display = 'none'; };
+    }
+
+    // 원아 관리 모달 버튼
+    const addChildBtn = document.getElementById('addChildBtn');
+    const editChildBtn = document.getElementById('editChildBtn');
+    const closeChildModalBtn = document.getElementById('closeChildModalBtn');
+    const childManageModal = document.getElementById('childManageModal');
+    const childManageForm = document.getElementById('childManageForm');
+
+    if (addChildBtn) addChildBtn.onclick = () => window.ChildrenStore?.openChildModal('add');
+    if (editChildBtn) editChildBtn.onclick = () => {
+      if (state.selectedChild) window.ChildrenStore?.openChildModal('edit', state.selectedChild);
+      else showToast('수정할 원아를 먼저 선택해주세요.');
+    };
+    if (closeChildModalBtn && childManageModal) {
+      closeChildModalBtn.onclick = () => { childManageModal.style.display = 'none'; };
+    }
+    if (childManageForm) {
+      childManageForm.onsubmit = (e) => window.ChildrenStore?.handleChildFormSubmit(e);
     }
   }
 
-  // 11. 생성 결과 렌더링
   // ============================================================================
-  function renderResults(data) {
-    if (window.ResultsRenderer && typeof window.ResultsRenderer.renderResults === 'function') {
-      window.ResultsRenderer.renderResults(data);
+  // 7. 애플리케이션 초기화 (Init)
+  // ============================================================================
+  function init() {
+    // 1. 보안 게이트 초기화
+    if (window.DaycareAuth && typeof window.DaycareAuth.initAuthGate === 'function') {
+      window.DaycareAuth.initAuthGate();
     }
+
+    // 2. 소급 작성 날짜 초기화 (오늘 기본)
+    updateRecordDate(state.selectedDate || new Date().toISOString().split('T')[0]);
+
+    // 3. 교사 UI 및 페르소나 동기화
+    window.DaycareAuth?.syncTeacherSwitcherUI();
+    window.DaycareAuth?.updatePersonaUI();
+    window.DaycareAuth?.checkSecuritySession();
+
+    // 4. 음성 인식 초기화
+    setupSpeechRecognition();
+
+    // 5. 헬스체크 및 원아 목록 로드
+    window.DaycareNotion?.checkHealth();
+    window.ChildrenStore?.loadChildren();
+
+    // 6. 작성 중 메모 복원
+    try {
+      const savedMemo = localStorage.getItem('daycare_draft_memo');
+      const rawMemoInput = document.getElementById('rawMemoInput');
+      if (savedMemo && rawMemoInput) rawMemoInput.value = savedMemo;
+    } catch (e) {}
+
+    // 7. 충돌 방지 자동 복원 배너 확인
+    checkAndRestoreAutoDraft();
+
+    // 8. 전역 이벤트 리스너 통합 등록
+    setupAllEventListeners();
+
+    // 9. 📑 서식 선택 툴바 초기화 (이벤트 위임 바인딩)
+    initFormatSelector();
   }
-  window.renderResults = renderResults;
-  // 11-B. 처형분 실무 공문서 버튼 핸들러 (한글 HWP 표 복사, 텍스트 복사, 노션 저장)
-  // ============================================================================
-  // ============================================================================
-  // 11-B. 처형분 실무 공문서 및 한그루 ERP 복사 핸들러 (export-formatters.js 모듈로 분리 완료)
-  // ============================================================================
 
-  // 5, 6, 7. 노션 저장 래퍼 (notion-bridge.js 연동)
-  const handleSaveHangrooEvalNotion = () => window.DaycareNotion?.handleSaveHangrooEvalNotion?.() || showToast('노션 연동 모듈 준비 중');
-  const handleSaveClassReportNotion = () => window.DaycareNotion?.handleSaveClassReportNotion?.() || showToast('노션 연동 모듈 준비 중');
-  const handleSaveIndividualObs = () => window.DaycareNotion?.handleSaveIndividualObs?.() || showToast('노션 연동 모듈 준비 중');
-
-  // ============================================================================
-  // 11-C. 키즈노트 알림장 복사 및 공유 핸들러 (export-formatters.js 모듈로 분리 완료)
-  // ============================================================================
-
-  // ============================================================================
-  // 9 & 10. 노션 DB 저장 & 지난 기록 보관함 (notion-bridge.js & history-viewer.js 연동)
-  // ============================================================================
-
-  // 📂 지난 보육 기록 보관함 리스너 등록 (history-viewer.js 연동)
-  if (typeof setupHistoryListeners === 'function') {
-    setupHistoryListeners();
-  } else if (window.setupHistoryListeners) {
-    window.setupHistoryListeners();
-  }
-
-  // 애플리케이션 시작
+  // 앱 실행
   init();
 });
-
