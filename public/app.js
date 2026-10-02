@@ -311,85 +311,23 @@ document.addEventListener('DOMContentLoaded', () => {
     generateBtn.addEventListener('click', handleGenerate);
 
     // 결과 탭 스위처 클릭
+    const resultTabBtns = document.querySelectorAll('.result-tab-btn');
     resultTabBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        resultTabBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
         const tab = btn.dataset.tab;
-        
-        // 5대 서식 + 한그루 서식 카드 전체 숨김 후 선택된 탭만 노출
-        if (classDailyReportCard) classDailyReportCard.style.display = 'none';
-        kidsnoteCard.style.display = 'none';
-        observationCard.style.display = 'none';
-        if (hangrooEvalCard) hangrooEvalCard.style.display = 'none';
-        if (dailyCareCard) dailyCareCard.style.display = 'none';
-        if (counselingCard) counselingCard.style.display = 'none';
-        if (playSupportCard) playSupportCard.style.display = 'none';
-
-        if (tab === 'class_daily_report' && classDailyReportCard) classDailyReportCard.style.display = 'block';
-        else if (tab === 'kidsnote') kidsnoteCard.style.display = 'flex';
-        else if (tab === 'observation') observationCard.style.display = 'block';
-        else if (tab === 'hangroo_eval' && hangrooEvalCard) hangrooEvalCard.style.display = 'block';
-        else if (tab === 'daily_care' && dailyCareCard) dailyCareCard.style.display = 'flex';
-        else if (tab === 'counseling' && counselingCard) counselingCard.style.display = 'flex';
-        else if (tab === 'play_support' && playSupportCard) playSupportCard.style.display = 'flex';
+        if (typeof switchResultTab === 'function') {
+          switchResultTab(tab);
+        } else if (window.ResultsRenderer && typeof window.ResultsRenderer.switchResultTab === 'function') {
+          window.ResultsRenderer.switchResultTab(tab);
+        }
       });
     });
 
-    // 0. 한그루 ERP 및 실무 공문서 버튼 (한그루 복사, 한글 표 복사, A4 인쇄, 노션 저장)
-    if (copyHangrooReportBtn) copyHangrooReportBtn.addEventListener('click', handleCopyHangrooReport);
-    if (copyHwpTableBtn) copyHwpTableBtn.addEventListener('click', handleCopyHwpTable);
-    if (printReportBtn) printReportBtn.addEventListener('click', () => window.print());
-    if (copyFullReportTextBtn) copyFullReportTextBtn.addEventListener('click', handleCopyFullReportText);
-    if (saveClassReportNotionBtn) saveClassReportNotionBtn.addEventListener('click', handleSaveClassReportNotion);
-
-    // 0-A. 🧩 감지된 원아별 놀이 요약 분할 저장 버튼
-    if (btnSaveIndividualObs) btnSaveIndividualObs.addEventListener('click', handleSaveIndividualObs);
-
-    // 0-B. 🧸 한그루 ERP 월간 관찰일지 버튼 (한그루 복사, 한글 표 복사, A4 인쇄)
-    if (copyHangrooObsBtn) copyHangrooObsBtn.addEventListener('click', handleCopyHangrooObs);
-    if (copyMonthlyObsHwpBtn) copyMonthlyObsHwpBtn.addEventListener('click', handleCopyMonthlyObsHwp);
-    if (printMonthlyObsBtn) printMonthlyObsBtn.addEventListener('click', () => window.print());
-
-    // 0-C. 📊 한그루 ERP 발달평가 버튼 (한그루 복사, 한글 복사, 노션 저장)
-    if (copyHangrooEvalBtn) copyHangrooEvalBtn.addEventListener('click', handleCopyHangrooEval);
-    if (copyHangrooEvalHwpBtn) copyHangrooEvalHwpBtn.addEventListener('click', handleCopyHangrooEvalHwp);
-    if (saveHangrooEvalNotionBtn) saveHangrooEvalNotionBtn.addEventListener('click', handleSaveHangrooEvalNotion);
-
-    // 1. 키즈노트 알림장 복사 및 공유
-    if (copyKidsnoteBtn) copyKidsnoteBtn.addEventListener('click', handleCopyKidsnote);
-    if (shareKidsnoteBtn) shareKidsnoteBtn.addEventListener('click', handleShareKidsnote);
-
-    // 2. 평가제 관찰일지 복사
-    if (copyObservationBtn) {
-      copyObservationBtn.addEventListener('click', () => {
-        const text = `[관찰일지 - ${obsStandardArea ? obsStandardArea.textContent : ''} / ${obsActivityName ? obsActivityName.textContent : ''}]\n\n[행동 관찰]\n${obsBehaviorContent ? obsBehaviorContent.value : ''}\n\n[지원 및 평가]\n${obsEvaluationContent ? obsEvaluationContent.value : ''}`;
-        copyTextToClipboard(text, '📋 평가제 관찰일지가 복사되었습니다.');
-      });
-    }
-
-    // 3. 일일 보육일지 복사
-    if (copyDailyCareBtn) {
-      copyDailyCareBtn.addEventListener('click', () => {
-        const text = `[일일 보육일지 - 놀이 평가 및 지원 계획]\n\n1. 놀이 흐름 요약:\n${dailyPlaySummary ? dailyPlaySummary.value : ''}\n\n2. 교사 종합 평가:\n${dailyPlayEval ? dailyPlayEval.value : ''}\n\n3. 내일 놀이 연계 및 지원 계획:\n${dailyNextPlan ? dailyNextPlan.value : ''}`;
-        copyTextToClipboard(text, '📋 보육일지 놀이평가 및 지원계획이 복사되었습니다.');
-      });
-    }
-
-    // 4. 학부모 상담 면담일지 복사
-    if (copyCounselingBtn) {
-      copyCounselingBtn.addEventListener('click', () => {
-        const text = `[학부모 상담 면담일지 요약 - ${state.selectedChild?.name || '원아'}]\n\n1. 기본생활습관: ${counselRoutine ? counselRoutine.value : ''}\n2. 대인관계 및 사회성: ${counselSocial ? counselSocial.value : ''}\n3. 발달 특성: ${counselDev ? counselDev.value : ''}\n4. 종합 상담 의견: ${counselOpinion ? counselOpinion.value : ''}`;
-        copyTextToClipboard(text, '📋 학부모 상담 일지가 복사되었습니다.');
-      });
-    }
-
-    // 5. 놀이 지원안 복사
-    if (copyPlaySupportBtn) {
-      copyPlaySupportBtn.addEventListener('click', () => {
-        const text = `[놀이 지원 & 환경구성안]\n\n1. 확장 놀이 아이디어:\n${playExtension ? playExtension.value : ''}\n\n2. 추천 준비 교구:\n${playMaterials ? playMaterials.value : ''}\n\n3. 교사 추천 발문 팁:\n${playTips ? playTips.value : ''}`;
-        copyTextToClipboard(text, '📋 놀이 지원 및 환경구성안이 복사되었습니다.');
-      });
+    // 0~5. 공문서 HWP 표 복사, 원터치 텍스트 복사 및 노션 저장 버튼 이벤트 리스너 통합 연동 (export-formatters.js 위임)
+    if (window.ExportFormatters && typeof window.ExportFormatters.setupExportListeners === 'function') {
+      window.ExportFormatters.setupExportListeners();
+    } else if (typeof setupExportListeners === 'function') {
+      setupExportListeners();
     }
 
     // 🪄 AI 실시간 다듬기 (Quick Refine) 칩 클릭
