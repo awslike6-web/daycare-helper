@@ -229,8 +229,24 @@ export default {
         // [POST] /api/logs/save 및 /api/save-notion - 노션 3대 DB 일지 적재
         if ((url.pathname === '/api/logs/save' || url.pathname === '/api/save-notion') && request.method === 'POST') {
           const body = await request.json();
-          // payload 표준화: result 객체가 중첩되어 오더라도 최상위로 플랫하게 병합
           const res = body.result || {};
+          // payload 표준화: result 객체가 중첩되어 오더라도 최상위로 플랫하게 병합
+          const isGreetingText = (t) => {
+            if (!t || typeof t !== 'string') return true;
+            const s = t.trim();
+            return s.startsWith('안녕') || s.startsWith('반갑') || s.startsWith('선생님') ||
+                   s.startsWith('학부모') || s.startsWith('어머님') || s.startsWith('아버님') ||
+                   s.includes('하루를 전해') || s.length < 5;
+          };
+
+          let cleanObs = body.obsSummary;
+          if (isGreetingText(cleanObs)) {
+            cleanObs = res.observation_summary && !isGreetingText(res.observation_summary) ? res.observation_summary : '';
+          }
+          if (isGreetingText(cleanObs)) {
+            cleanObs = body.rawMemo || '자유놀이 및 일과 관찰 요약';
+          }
+
           const normalizedPayload = {
             date: body.date || new Date().toISOString().split('T')[0],
             childId: body.childId || null,
@@ -244,7 +260,7 @@ export default {
             kidsnoteText: body.kidsnoteText || res.kidsnote?.content || '',
             observationText: body.observationText || res.observation_log?.behavior || res.monthly_observation?.play_obs?.behavior || '',
             citationSummary: body.citationSummary || res.citation?.summary || '',
-            obsSummary: body.obsSummary || res.observation_summary || body.rawMemo || '',
+            obsSummary: cleanObs,
             overwrite: body.overwrite || false,
             pageId: body.pageId || null
           };

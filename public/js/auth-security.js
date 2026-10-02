@@ -155,17 +155,22 @@
     const profile = TEACHER_PROFILES[activeTeacherKey] || TEACHER_PROFILES.wife;
     const isUnlocked = sessionStorage.getItem(`daycare_unlocked_${profile.key}`) === 'true';
 
-    if (!isUnlocked) {
+    // 연구반(sandbox)은 기본 잠금 해제
+    sessionStorage.setItem('daycare_unlocked_sandbox', 'true');
+
+    if (!isUnlocked && activeTeacherKey !== 'sandbox') {
       showPinModal(profile.key, false);
     }
 
     const headerLogoutBtn = document.getElementById('headerLogoutBtn');
     if (headerLogoutBtn) {
-      headerLogoutBtn.addEventListener('click', () => {
-        sessionStorage.removeItem(`daycare_unlocked_${activeTeacherKey}`);
+      headerLogoutBtn.onclick = (e) => {
+        e.preventDefault();
+        const curKey = localStorage.getItem('daycare_active_teacher') || 'wife';
+        sessionStorage.removeItem(`daycare_unlocked_${curKey}`);
         window.showToast('🔒 안전하게 잠금 처리되었습니다. PIN을 다시 입력해주세요.');
-        showPinModal(activeTeacherKey, false);
-      });
+        showPinModal(curKey, false);
+      };
     }
 
     setupPinModalListeners();
@@ -286,6 +291,13 @@
     const currentKey = localStorage.getItem('daycare_active_teacher') || 'wife';
     if (currentKey === targetKey) {
       window.showToast(`현재 이미 [${TEACHER_PROFILES[targetKey]?.name}] 프로필입니다.`);
+      return;
+    }
+
+    // 연구반(sandbox)은 자유 체험 구역이므로 PIN 없이 즉시 전환
+    if (targetKey === 'sandbox') {
+      sessionStorage.setItem('daycare_unlocked_sandbox', 'true');
+      executeTeacherSwitch('sandbox');
       return;
     }
 

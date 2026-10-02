@@ -66,7 +66,7 @@
       const res = await fetch('/api/children', { method: 'GET' });
       if (!res.ok) throw new Error('원아 목록을 불러올 수 없습니다.');
       const json = await res.json();
-      state.children = json.data || [];
+      state.children = json.children || json.data || [];
     } catch (err) {
       console.warn('원아 목록 로드 실패, 로컬 캐시 폴백:', err);
       try {
@@ -84,25 +84,33 @@
 
   function renderChildrenChips(keepSelectedId = null) {
     const state = window.state || {};
-    const container = document.getElementById('childrenChipsList');
+    const container = document.getElementById('childScrollContainer') || document.getElementById('childrenChipsList');
     if (!container) return;
 
     container.innerHTML = '';
 
     // 학급 필터링
     let visibleChildren = state.children || [];
-    if (state.filterOnlyMyClass && state.className) {
-      visibleChildren = visibleChildren.filter(c => {
-        if (!c.className) return true;
-        return c.className.trim() === state.className.trim();
-      });
+    const curClass = state.className || '사랑반';
+
+    if (state.filterOnlyMyClass && curClass) {
+      if (curClass === '연구반') {
+        const sandboxKids = visibleChildren.filter(c => (c.className || c.childClass) === '연구반');
+        visibleChildren = sandboxKids.length > 0 ? sandboxKids : visibleChildren;
+      } else {
+        visibleChildren = visibleChildren.filter(c => {
+          const cls = c.className || c.childClass || '';
+          if (!cls) return true;
+          return cls.trim() === curClass.trim();
+        });
+      }
     }
 
-    // 0. 학급 전체 공통 일지 가상 원아 칩 (처형분 전용)
+    // 0. 학급 전체 공통 일지 가상 원아 칩 (보육일지 전용)
     const allChild = {
       id: 'class-all',
-      name: `${state.className || '우리 반'} 전체`,
-      age: state.className?.includes('사랑') ? '만 0세' : '만 2세',
+      name: `${curClass} 전체`,
+      age: curClass.includes('사랑') ? '만 0세' : '만 2세',
       gender: '공통',
       traits: '학급 영유아 전체 공통 놀이 흐름 및 일과',
       isClassAll: true
@@ -111,8 +119,7 @@
     const chipsToRender = [allChild, ...visibleChildren];
 
     chipsToRender.forEach(child => {
-      const chip = document.createElement('button');
-      chip.type = 'button';
+      const chip = document.createElement('div');
       chip.className = 'child-chip';
       chip.dataset.id = child.id;
 
@@ -124,9 +131,10 @@
         state.selectedChild = child;
       }
 
+      const avatar = child.isClassAll ? '🌱' : (child.gender === '여' ? '👧' : '🧒');
       chip.innerHTML = `
-        <span class="child-chip-name">${child.name}</span>
-        <span class="child-chip-sub">${child.age || (child.isClassAll ? '학급' : '원아')}</span>
+        <span class="child-avatar">${avatar}</span>
+        <span>${child.name}</span>
       `;
 
       chip.onclick = (e) => {
@@ -137,23 +145,57 @@
       container.appendChild(chip);
     });
 
-    // 기본 선택 (선택된 아이가 없으면 첫 번째 아이 자동 선택)
-    if (!state.selectedChild && chipsToRender.length > 0) {
-      selectChild(chipsToRender[0]);
+    // 기본 선택 (선택된 아이가 없거나 현재 학급에 맞지 않으면 첫 번째 아이 자동 선택)
+    if (!state.selectedChild || !chipsToRender.some(c => c.id === state.selectedChild.id)) {
+      if (chipsToRender.length > 0) {
+        selectChild(chipsToRender[0]);
+      }
+    } else {
+      selectChild(state.selectedChild);
     }
   }
 
   function selectChild(child) {
+    if (!child) return;
     const state = window.state || {};
     state.selectedChild = child;
 
     const chips = document.querySelectorAll('.child-chip');
     chips.forEach(c => c.classList.toggle('active', c.dataset.id === child.id));
 
+    // 선택 원아 카드 UI 동기화
+    const selectedChildAge = document.getElementById('selectedChildAge');
+    const classFilterText = document.getElementById('classFilterText');
+    const childTraitsText = document.getElementById('childTraitsText');
+    const childParentText = document.getElementById('childParentText');
+    const childAlertText = document.getElementById('childAlertText');
+
+    if (selectedChildAge) selectedChildAge.textContent = child.age || '만 2세';
+    if (classFilterText) classFilterText.textContent = `${state.className || '우리 반'} 전용`;
+    if (childTraitsText) childTraitsText.textContent = `💡 성향: ${child.traits || '특이사항 없음'}`;
+
+    if (childParentText) {
+      if (child.parentStyle) {
+        childParentText.textContent = `💌 소통 맞춤: ${child.parentStyle}`;
+        childParentText.style.display = 'block';
+      } else {
+        childParentText.style.display = 'none';
+      }
+    }
+
+    if (childAlertText) {
+      if (child.allergies && child.allergies !== '없음') {
+        childAlertText.textContent = `⚠️ 주의: ${child.allergies}`;
+        childAlertText.style.display = 'block';
+      } else {
+        childAlertText.style.display = 'none';
+      }
+    }
+
     // 학급 전체 선택 시 보육일지 서식 우선 추천
     if (child.isClassAll) {
-      if (typeof window.switchResultTab === 'function') {
-        window.switchResultTab('class_daily_report');
+      if (window.AiEngine && typeof window.AiEngine.switchResultTab === 'function') {
+        window.AiEngine.switchResultTab('class_daily_report');
       }
     }
 
@@ -310,6 +352,61 @@
     }
   }
 
+  // 순수 관찰 요약 추출 (인삿말 등 알림장 서두 오염 원천 차단)
+  function extractCleanObsSummary(result, rawMemo) {
+    if (!result) return (rawMemo || '자유놀이 및 일과 관찰').slice(0, 60);
+
+    const isGreeting = (str) => {
+      if (!str || typeof str !== 'string') return true;
+      const t = str.trim();
+      return (
+        t.startsWith('안녕') ||
+        t.startsWith('반갑') ||
+        t.startsWith('선생님') ||
+        t.startsWith('학부모') ||
+        t.startsWith('어머님') ||
+        t.startsWith('아버님') ||
+        t.includes('하루를 전해') ||
+        t.includes('바람과 함께') ||
+        t.length < 5
+      );
+    };
+
+    // 1. AI 생성 observation_summary가 유효하고 인삿말이 아닌 경우 (최우선)
+    if (result.observation_summary && !isGreeting(result.observation_summary)) {
+      return result.observation_summary.trim().slice(0, 80);
+    }
+
+    // 2. 한그루 보육일지 반성평가(reflection) 또는 놀이 활동
+    if (result.class_daily_report) {
+      const rep = result.class_daily_report;
+      const refText = rep.reflection || rep.play_activity || rep.play_theme || '';
+      const cleanRef = refText.split(/[\n.]/).map(s => s.trim()).filter(s => s && !isGreeting(s))[0];
+      if (cleanRef) return cleanRef.slice(0, 80);
+    }
+
+    // 3. 개별 관찰일지 행동 관찰 (observation_log.behavior)
+    if (result.observation_log?.behavior) {
+      const bText = result.observation_log.behavior;
+      const cleanB = bText.split(/[.!\n]/).map(s => s.trim()).filter(s => s && !isGreeting(s))[0];
+      if (cleanB) return cleanB.slice(0, 80);
+    }
+
+    // 4. 월간 관찰일지 행동 관찰
+    if (result.monthly_observation?.play_obs?.behavior) {
+      const bText = result.monthly_observation.play_obs.behavior;
+      const cleanB = bText.split(/[.!\n]/).map(s => s.trim()).filter(s => s && !isGreeting(s))[0];
+      if (cleanB) return cleanB.slice(0, 80);
+    }
+
+    // 5. 교사 원시 메모 (rawMemo)
+    if (rawMemo && !isGreeting(rawMemo)) {
+      return rawMemo.trim().slice(0, 80);
+    }
+
+    return '자유놀이 및 일과 관찰 요약';
+  }
+
   // 1. 단일/통합 노션 저장 파이프라인
   async function handleSaveNotion() {
     const state = window.state || {};
@@ -322,6 +419,7 @@
     const date = state.selectedDate || new Date().toISOString().split('T')[0];
     const rawMemoInput = document.getElementById('rawMemoInput');
     const rawMemo = rawMemoInput ? rawMemoInput.value.trim() : '';
+    const obsSummary = extractCleanObsSummary(state.lastResult, rawMemo);
 
     await checkDuplicateAndSave(date, childName, async ({ overwrite, pageId }) => {
       showToast('☁️ 노션 DB로 전송 중입니다...');
@@ -334,6 +432,7 @@
           teacherName: state.teacherName || '공가영 선생님',
           activityArea: state.activityArea || '자유놀이 및 일상생활',
           rawMemo: rawMemo || (state.lastResult?.rawMemo || ''), // 🌟 원시 메모 필수 전송!
+          obsSummary, // 🌟 인삿말 없는 순수 관찰 요약 전송!
           result: state.lastResult,
           overwrite,
           pageId
