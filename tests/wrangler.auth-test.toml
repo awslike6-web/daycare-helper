@@ -1,6 +1,6 @@
 # 독립된 가상 인증 실행기. 운영 계정이나 비밀값을 사용하지 않는다.
 name = "daycare-auth-runtime-test"
-main = "../worker.js"
+main = "auth-fixture-worker.js"
 compatibility_date = "2026-06-26"
 compatibility_flags = ["nodejs_compat"]
 

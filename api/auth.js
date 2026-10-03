@@ -1,5 +1,6 @@
 /** 등록된 기기의 PIN 인증과 서버 세션. 보육 정보는 저장하지 않는다. */
 const DAY = 86400000;
+const DEVICE_MAX_AGE = 30 * 86400;
 const IDLE = 60 * 60000;
 const encoder = new TextEncoder();
 export class ApiError extends Error {
@@ -92,7 +93,7 @@ export class AuthStore {
   }
   async issueSession(device, deviceToken, remember) {
     const token = randomToken();
-    const maxAge = remember ? 30 * 86400 : 86400;
+    const maxAge = remember ? DEVICE_MAX_AGE : 86400;
     await this.db.put('session:' + await digest(token), {
       teacherId: device.teacherId, className: device.className,
       deviceHash: await digest(deviceToken), expires: Date.now() + maxAge * 1000,
@@ -143,10 +144,10 @@ export class AuthStore {
       }
       await this.db.delete(inviteKey);
       const deviceToken = randomToken();
-      const device = { teacherId: invite.teacherId, className: invite.className, version: account.version, expires: Date.now() + 30 * DAY };
+      const device = { teacherId: invite.teacherId, className: invite.className, version: account.version, expires: Date.now() + DEVICE_MAX_AGE * 1000 };
       await this.db.put('device:' + await digest(deviceToken), device);
       await this.db.setAlarm(Date.now() + DAY);
-      return { ...await this.issueSession(device, deviceToken, b.remember), deviceToken, deviceMaxAge: 30 * 86400 };
+      return { ...await this.issueSession(device, deviceToken, b.remember), deviceToken, deviceMaxAge: DEVICE_MAX_AGE };
     }
     if (op === 'login') {
       requirePin(b.pin);
@@ -155,7 +156,11 @@ export class AuthStore {
       const account = await this.db.get('account:' + device.teacherId);
       await this.throttle('account:' + device.teacherId, async () => !!account && equal(account.hash, await pinHash(b.pin, account.salt, this.env.AUTH_PEPPER)));
       device.version = account.version;
-      return this.issueSession(device, b.deviceToken, b.remember);
+      const session = await this.issueSession(device, b.deviceToken, b.remember);
+      // 기존 PIN 인증에 성공한 기기만 서버와 브라우저의 등록 기한을 함께 갱신한다.
+      device.expires = Date.now() + DEVICE_MAX_AGE * 1000;
+      await this.db.put('device:' + await digest(b.deviceToken), device);
+      return { ...session, deviceToken: b.deviceToken, deviceMaxAge: DEVICE_MAX_AGE };
     }
     if (op === 'session') return this.session(b);
     if (op === 'logout') {

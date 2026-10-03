@@ -1,6 +1,6 @@
 # 보육비서 공통 부품·API 지도
 
-개정: 2026-10-03 · 명세: docs/daycare_spec.md
+개정: 2026-10-04 · 명세: docs/daycare_spec.md
 
 ## 서버 대문
 
@@ -19,7 +19,11 @@
 
 AuthStore, authCall, requireSession, checkMutation, authCookies. Durable Object가 초대·PIN 해시·기기·세션·실패 횟수·교사별 초안 키를 보관합니다.
 
+login은 유효 기기의 PIN 확인·세션 저장 성공 후 기기 만료를 30일로 갱신하며 deviceToken/deviceMaxAge를 기존 Worker의 HttpOnly 쿠키 발급 경로에 반환합니다. 조회·실패·만료·해제 기기는 연장하지 않습니다. 세션 유지 옵션은 기기 연장과 별도로 적용합니다.
+
 AuthStore.failure(error)는 인증 예외를 응답으로 변환합니다. fetch의 직렬 실행 콜백 내부에서 호출하여 PIN 오류로 객체가 재시작되지 않도록 합니다. tests/auth-runtime.test.js와 tests/wrangler.auth-test.toml은 실제 workerd의 가상 계정 등록·오류 재시도·쿠키·세션·5회 제한을 검증하며 운영 계정을 사용하지 않습니다.
+
+tests/auth-fixture-worker.js는 독립 로컬 인증 저장소에서만 기기 만료·해제 조건을 구성하는 검증용 Worker입니다. 운영 worker.js는 이 파일을 가져오지 않으며 공개 API는 검증 제어 기능을 제공하지 않습니다. 실제 실행기 검증은 서버/쿠키 연장 일치와 원래 만료일 이후 진입, 실패 미연장, 만료·해제 거부, 같은 교사의 여러 기기 등록 유지와 연장·해제의 독립 적용을 포함합니다.
 
 ### api/notion.js
 

@@ -97,7 +97,7 @@
     document.body.dataset.locked = 'false';
     if (el('authGateModal')) el('authGateModal').style.display = 'none';
     if (el('sessionUserEmailText')) el('sessionUserEmailText').textContent = profile.name;
-    if (el('sessionDaysLeftText')) el('sessionDaysLeftText').textContent = '기기 등록 최대 30일 · 1시간 미사용 시 PIN 잠금';
+    if (el('sessionDaysLeftText')) el('sessionDaysLeftText').textContent = 'PIN 인증 시 기기 등록 30일 연장 · 1시간 미사용 시 잠금';
     if (el('sessionExpiryDateText')) el('sessionExpiryDateText').textContent = new Date(session.expiresAt).toLocaleDateString('ko-KR');
     // 편집 중에는 세션을 확인하고, 활동이 없으면 최대 1시간 뒤 잠근다.
     refreshTimer = setInterval(() => {
