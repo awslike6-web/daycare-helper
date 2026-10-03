@@ -378,9 +378,7 @@
 
     // 8. 결과 탭 바 표시 최적화
     const resultTabBtns = document.querySelectorAll('.result-tab-btn');
-    const validFormats = (state.selectedFormats && state.selectedFormats.length > 0)
-      ? state.selectedFormats
-      : ['class_daily_report', 'kidsnote'];
+    const validFormats = window.DaycareRecords.availableFormats(data).filter(f => !state.selectedFormats?.length || state.selectedFormats.includes(f));
 
     resultTabBtns.forEach(b => {
       const tab = b.dataset.tab;
@@ -405,6 +403,7 @@
     }
 
     switchResultTab(defaultTab);
+    window.DaycareRecords.saveStatus('아직 노션에 저장되지 않았습니다. 검수 확인 후 저장을 눌러 주세요.');
 
     // 결과 섹션 표시 및 스크롤
     const resultsSection = document.getElementById('resultsSection');
@@ -426,6 +425,7 @@
     const state = window.state || {};
     const rawMemoInput = document.getElementById('rawMemoInput');
     const memoText = rawMemoInput ? rawMemoInput.value.trim() : '';
+    if (state.savingNotion || state.savingIndividual || state.currentAbortController) return;
 
     if (!state.selectedChild) {
       showToast('⚠️ 먼저 원아나 학급을 선택해주세요.');
@@ -451,19 +451,8 @@
     state.currentAbortController = abortController;
     state.isGenerationAborted = false;
 
-    // 로딩 스텝 애니메이션
-    const steps = [
-      '🛡️ 원아 실명 마스킹 가드 적용 중...',
-      '🤖 Gemini 3.8 Flash 멀티모달 보육 맥락 분석 중...',
-      '📌 표준보육과정 연계 및 성장점 도출 중...',
-      '✨ 맞춤 알림장 및 보육일지 완성 중...'
-    ];
-    let stepIdx = 0;
-    if (loadingStepText) loadingStepText.textContent = steps[0];
-    const stepTimer = setInterval(() => {
-      stepIdx = (stepIdx + 1) % steps.length;
-      if (loadingStepText) loadingStepText.textContent = steps[stepIdx];
-    }, 1200);
+    await window.DaycareRecords.save();
+    const stepTimer = window.DaycareRecords.generationProgress();
 
     try {
       const payload = {
@@ -497,8 +486,12 @@
       state.lastResult = resultData;
       state.originalResult = JSON.parse(JSON.stringify(resultData));
       renderResults(resultData);
-      showToast('🎉 선택한 서식이 모두 완성되었습니다!');
+      window.DaycareRecords.generationStatus('선택한 서식 생성 완료 · 검수 후 노션 저장을 눌러 주세요.', 'success');
+      showToast('선택한 서식이 완성되었습니다. 검수 후 저장해 주세요.');
     } catch (err) {
+      window.DaycareRecords.generationStatus(err.name === 'AbortError' ? '생성을 중단했습니다. 입력 내용은 보관됩니다.' : '생성 실패 · ' + err.message, 'error');
+      await window.DaycareRecords.save();
+      if (state.lastResult && resultsSection) resultsSection.style.display = 'flex';
       if (err.name === 'AbortError' || state.isGenerationAborted) {
         showToast('⏹️ 생성이 안전하게 중단되었습니다.');
       } else {

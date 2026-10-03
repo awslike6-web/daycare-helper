@@ -270,9 +270,13 @@
       const response = await fetch('/api/history?' + params); const json = await response.json();
       if (!response.ok) throw new Error(json.error || '중복 확인 실패');
       const existing = (json.data || []).find(l => childId === 'class-all' ? !l.childId : l.childId === childId);
-      if (existing) { openDuplicateModal(existing, saveCallback); return; }
-      await saveCallback({ overwrite: false });
-    } catch (error) { showToast('저장 전 기록 확인 실패: ' + error.message); }
+      if (existing) {
+        window.DaycareRecords?.saveStatus('같은 날짜의 기록이 있습니다. 열린 창에서 저장 방식을 선택해 주세요.');
+        const choice = await new Promise(resolve => openDuplicateModal(existing, resolve));
+        return choice ? await saveCallback(choice) : false;
+      }
+      return await saveCallback({ overwrite: false });
+    } catch (error) { throw new Error('저장 확인 단계: ' + error.message); }
   }
 
   function openDuplicateModal(existingLog, callback) {
@@ -296,14 +300,14 @@
     const btnNew = document.getElementById('btnDupNew');
     const modal = document.getElementById('duplicateLogModal');
     const close = document.getElementById('btnDuplicateModalClose');
-    if (close) close.onclick = () => { modal.style.display = 'none'; pendingSaveAction = null; };
+    if (close) close.onclick = () => { modal.style.display = 'none'; pendingSaveAction?.(null); pendingSaveAction = null; };
     const append = document.getElementById('btnDupAppend');
     if (append) append.onclick = () => { modal.style.display = 'none'; pendingSaveAction?.({ append: true, pageId: existingPageId }); };
 
     if (btnCancel) {
       btnCancel.onclick = () => {
         if (modal) modal.style.display = 'none';
-        pendingSaveAction = null;
+        pendingSaveAction?.(null); pendingSaveAction = null;
       };
     }
     if (btnOverwrite) {
@@ -377,56 +381,7 @@
 
   // 1. 단일/통합 노션 저장 파이프라인
   async function handleSaveNotion() {
-    const state = window.state || {};
-    if (!state.lastResult) {
-      showToast('저장할 일지 생성 결과가 없습니다.');
-      return;
-    }
-
-    if (!document.getElementById('reviewConfirmed')?.checked) { showToast('실제 관찰과 맞는지 검수 확인을 눌러 주세요.'); return; }
-    window.DaycareRecords?.capture();
-    const childName = state.selectedChild?.name || '우리 반';
-    const date = state.selectedDate || new Date().toISOString().split('T')[0];
-    const rawMemoInput = document.getElementById('rawMemoInput');
-    const rawMemo = rawMemoInput ? rawMemoInput.value.trim() : '';
-    const obsSummary = extractCleanObsSummary(state.lastResult, rawMemo);
-
-    await checkDuplicateAndSave(date, childName, async ({ overwrite, pageId, append }) => {
-      showToast('☁️ 노션 DB로 전송 중입니다...');
-      try {
-        const payload = {
-          date,
-          childId: state.selectedChild?.id,
-          childName,
-          className: state.className || '사랑반',
-          teacherName: state.teacherName || '공가영 선생님',
-          activityArea: state.activityArea || '자유놀이 및 일상생활',
-          rawMemo: rawMemo || (state.lastResult?.rawMemo || ''), // 🌟 원시 메모 필수 전송!
-          obsSummary, // 🌟 인삿말 없는 순수 관찰 요약 전송!
-          result: state.lastResult,
-          overwrite,
-          append,
-          pageId
-        };
-
-        const res = await fetch('/api/logs/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const json = await res.json();
-        if (!res.ok || !json.success || json.source !== 'notion') throw new Error(json.error || '노션 저장 실패');
-        state.isHistoryLoaded = false;
-        showToast('🎉 노션 [DAILY_LOG_DB]에 성공적으로 저장되었습니다!');
-
-        if (typeof window.clearAutoDraft === 'function') {
-          window.clearAutoDraft();
-        }
-      } catch (err) {
-        showToast(`❌ 저장 실패: ${err.message}`);
-      }
-    });
+    return window.DaycareRecords.saveNotion({ checkDuplicateAndSave, extractCleanObsSummary });
   }
 
   // 2. 한그루 정규 놀이 보육일지 전용 노션 저장
@@ -451,11 +406,12 @@
 
   async function handleSaveIndividualObs() {
     const state = window.state || {};
+    if (state.savingNotion || state.savingIndividual) return;
     const btnSaveIndividualObs = document.getElementById('btnSaveIndividualObs');
     const btnSaveIndividualObsText = document.getElementById('btnSaveIndividualObsText');
     const checkedBoxes = Array.from(document.querySelectorAll('.indiv-obs-checkbox:checked, .indiv-obs-check:checked'));
 
-    if (!document.getElementById('reviewConfirmed')?.checked) { showToast('원아별 요약을 검수한 뒤 확인해 주세요.'); return; }
+    if (!document.getElementById('reviewConfirmed')?.checked) { window.DaycareRecords.saveStatus('개별 요약은 아직 저장되지 않았습니다. 검수 확인을 체크해 주세요.', 'error'); showToast('원아별 요약을 검수한 뒤 확인해 주세요.'); return; }
     if (checkedBoxes.length === 0) {
       showToast('반영할 원아를 1명 이상 선택해 주세요.');
       return;
@@ -467,10 +423,13 @@
     }
 
     const todayStr = state.selectedDate || new Date().toISOString().split('T')[0];
+    const teacherId = state.teacherId; state.savingIndividual = true;
     let successCount = 0;
 
     try {
       for (let i = 0; i < checkedBoxes.length; i++) {
+        if (!state.authenticated || state.teacherId !== teacherId || state.selectedDate !== todayStr) throw new Error('교사 또는 날짜가 변경됐습니다. 미저장 항목을 다시 확인해 주세요.');
+        window.DaycareRecords.saveStatus(`원아별 요약 저장 중 · ${successCount}/${checkedBoxes.length}건 완료`);
         const chk = checkedBoxes[i];
         const idx = chk.dataset.idx;
         const childName = chk.dataset.childName || '원아';
@@ -514,7 +473,7 @@
         });
 
         const saved = await res.json();
-        if (!res.ok || !saved.success) throw new Error(saved.error || '노션 저장 실패');
+        if (!res.ok || !saved.success || saved.source !== 'notion' || !saved.pageId) throw new Error(saved.error || '노션 저장 완료 응답을 확인하지 못했습니다.');
         if (saved.success) {
           successCount++;
           if (state.lastResult?.individual_observations?.[idx]) state.lastResult.individual_observations[idx].saved_page_id = saved.pageId;
@@ -526,9 +485,12 @@
       }
 
       showToast(`🎉 선택한 원아 ${successCount}명의 개별 관찰일지가 노션에 안전하게 분할 저장되었습니다!`);
+      window.DaycareRecords.saveStatus(`원아별 관찰 요약 ${successCount}건 노션 저장 완료 · 통합 서식은 별도로 저장해 주세요.`, 'success');
     } catch (err) {
+      window.DaycareRecords.saveStatus(`원아별 요약 ${successCount}/${checkedBoxes.length}건 저장 완료 · 미저장 항목: ${err.message}`, 'error');
       showToast(`저장 ${successCount}/${checkedBoxes.length}건 완료. 미저장 항목: ${err.message}`);
     } finally {
+      state.savingIndividual = false;
       if (btnSaveIndividualObs) {
         btnSaveIndividualObs.disabled = false;
         if (btnSaveIndividualObsText) btnSaveIndividualObsText.textContent = '선택한 원아 개별 관찰일지 DB에 반영';

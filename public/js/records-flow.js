@@ -5,6 +5,66 @@
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   window.DaycareHTML = (parts, ...values) => parts.reduce((html, part, i) => html + part + (i < values.length ? escape(values[i]) : ''), '');
   let queue = Promise.resolve(), restoring = false, revision = 0;
+  function setStatus(id, message, kind = 'info') {
+    const node = el(id); if (!node) return;
+    node.textContent = message; node.dataset.kind = kind; node.hidden = !message;
+  }
+  const saveStatus = (message, kind) => setStatus('notionSaveStatus', message, kind);
+  const generationStatus = (message, kind) => setStatus('generationStatus', message, kind);
+  function generationProgress() {
+    const start = Date.now(); generationStatus('AI에 요청했습니다. 사진과 서식이 많으면 시간이 더 걸릴 수 있습니다.');
+    const update = () => {
+      if (el('loadingStepText')) el('loadingStepText').textContent = `AI 응답을 기다리는 중 · ${Math.floor((Date.now() - start) / 1000)}초 경과 · 입력 내용은 임시보관됩니다.`;
+    };
+    update(); return setInterval(update, 1000);
+  }
+  function availableFormats(data) {
+    const keys = { kidsnote: 'kidsnote', class_daily_report: 'class_daily_report', observation: 'monthly_observation',
+      hangroo_eval: 'hangroo_eval', daily_care: 'daily_care_log', counseling: 'parent_counseling', play_support: 'play_support' };
+    return Object.entries(keys).filter(([, key]) => data[key]).map(([format]) => format);
+  }
+  let saving = false;
+  async function saveNotion({ checkDuplicateAndSave, extractCleanObsSummary }) {
+    const state = window.state || {};
+    if (saving || state.savingIndividual) return;
+    if (!state.lastResult) { saveStatus('저장할 생성 결과가 없습니다.', 'error'); return; }
+    if (!el('reviewConfirmed')?.checked) {
+      saveStatus('아직 저장되지 않았습니다. 위의 검수 확인을 체크한 뒤 저장을 눌러 주세요.', 'error');
+      el('reviewConfirmed')?.focus(); window.showToast?.('실제 관찰 사실을 확인한 뒤 검수 확인을 체크해 주세요.'); return;
+    }
+    const result = structuredClone(capture());
+    const rawMemo = el('rawMemoInput')?.value.trim() || result.rawMemo || '';
+    const payload = { date: state.selectedDate, childId: state.selectedChild?.id, childName: state.selectedChild?.name || '학급 전체',
+      className: state.className, teacherName: state.teacherName, activityArea: state.activityArea || '자유놀이',
+      rawMemo, obsSummary: extractCleanObsSummary(result, rawMemo), result };
+    const teacherId = state.teacherId;
+    const buttons = [...document.querySelectorAll('[id$="NotionBtn"], #saveNotionBtn, #generateBtn')];
+    const disabled = buttons.map(b => b.disabled);
+    saving = true; state.savingNotion = true; buttons.forEach(b => { b.disabled = true; });
+    try {
+      await save();
+      saveStatus('저장 전 같은 날짜의 기록을 확인하는 중입니다.');
+      const saved = await checkDuplicateAndSave(payload.date, payload.childName, async choice => {
+        if (!state.authenticated || state.teacherId !== teacherId || state.selectedDate !== payload.date || state.selectedChild?.id !== payload.childId) throw new Error('원아·날짜·교사가 변경됐습니다. 현재 작성본을 다시 확인해 주세요.');
+        saveStatus('노션에 검수본과 원시 메모를 저장하는 중입니다.');
+        const response = await fetch('/api/logs/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, ...choice }) });
+        const json = await response.json();
+        if (!response.ok || !json.success || json.source !== 'notion' || !json.pageId) throw new Error(json.error || '노션 저장 완료 응답을 확인하지 못했습니다.');
+        state.isHistoryLoaded = false;
+        const unchanged = state.teacherId === teacherId && state.selectedDate === payload.date && state.selectedChild?.id === payload.childId &&
+          JSON.stringify(capture()) === JSON.stringify(result) && (el('rawMemoInput')?.value.trim() || result.rawMemo || '') === rawMemo;
+        if (unchanged) clear();
+        else await save();
+        saveStatus(unchanged ? '노션 저장 완료 · 원시 메모와 검수본이 기록되었습니다. 보관함에서 확인할 수 있습니다.' : '노션 저장 완료 · 저장 중 추가한 수정은 아직 저장되지 않았습니다. 다시 검수·저장해 주세요.', unchanged ? 'success' : 'info');
+        window.showToast?.('노션에 저장했습니다. 보관함에서 확인할 수 있습니다.'); return true;
+      });
+      if (!saved) saveStatus('저장을 취소했습니다. 작성 내용은 임시보관됩니다.');
+    } catch (error) {
+      await save(); saveStatus('저장 실패 · ' + error.message, 'error'); window.showToast?.('저장 실패: ' + error.message);
+    } finally {
+      saving = false; state.savingNotion = false; buttons.forEach((b, i) => { b.disabled = disabled[i]; });
+    }
+  }
   function capture() {
     const state = window.state || {};
     if (!state.lastResult) return null;
@@ -191,7 +251,14 @@
     evidenceSequence++; if (window.state) window.state.evidenceIds = [];
     el('evidenceList')?.replaceChildren(); initEvidence();
   }
-  document.addEventListener('input', event => { if (event.target.closest('#resultsSection, #rawMemoInput, #personaSampleNote')) save(); });
+  document.addEventListener('input', event => {
+    if (event.target.id === 'reviewConfirmed') return;
+    if (event.target.closest('#resultsSection, #rawMemoInput')) {
+      if (el('reviewConfirmed')) el('reviewConfirmed').checked = false;
+      if (window.state?.lastResult) saveStatus('수정한 내용은 아직 노션에 저장되지 않았습니다. 검수 확인 후 저장해 주세요.');
+    }
+    if (event.target.closest('#resultsSection, #rawMemoInput, #personaSampleNote')) save();
+  });
   document.addEventListener('click', event => { if (event.target.closest('#resultsSection')) capture(); }, true);
   window.addEventListener('pagehide', save);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
@@ -221,5 +288,6 @@
   const monthlyOptions = () => ({ targetMonth: el('monthlyObsTargetMonth')?.value || window.state?.selectedDate?.slice(0, 7),
     date1: el('monthlyObsDate1')?.value || '', date2: el('monthlyObsDate2')?.value || '',
     area1: el('monthlyObsArea1')?.value || '', area2: el('monthlyObsArea2')?.value || '' });
-  window.DaycareRecords = { capture, save, clear, restore, forget, invalidateResult, initEvidence, resetEvidence, escape, monthlyOptions };
+  window.DaycareRecords = { capture, save, clear, restore, forget, invalidateResult, initEvidence, resetEvidence, escape, monthlyOptions,
+    saveNotion, saveStatus, generationStatus, generationProgress, availableFormats };
 })();

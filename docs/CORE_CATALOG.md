@@ -21,13 +21,13 @@ AuthStore, authCall, requireSession, checkMutation, authCookies. Durable Object�
 
 ### api/notion.js
 
-callNotionApi(env, endpoint, method, body), getTeachersList, getChildrenList, requireChild, getAllDailyLogs, getRecentChildLogs, getLogDetail, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion, updateTeacherProfile.
+callNotionApi(env, endpoint, method, body), getTeachersList, getChildrenList, requireChild, getAllDailyLogs, getRecentChildLogs, getLogDetail, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion, updateTeacherProfile, verifyNotionConnection(env, teacher, date).
 
 서비스 바인딩·서버 전용 헤더·실제 스키마·커서 조회·전체 rich_text 결합·검수 JSON 복원을 담당하며 연결 실패를 샘플로 바꾸지 않습니다.
 
 ### api/gemini.js
 
-generateDaycareLog(options). 선택 서식의 프롬프트·사실 규칙을 구성하여 서버 키로 호출하고 meta.model_used로 실제 모델을 반환합니다. worker.js에서 원아 정보·근거·원시 메모를 가명화하여 전달합니다.
+generateDaycareLog(options), validateFormats(data, formats), FORMAT_KEYS. 선택 서식의 프롬프트·사실 규칙·응답 내용 검증·110초 제한·일시 장애 재시도를 구성하여 서버 키로 호출하고 meta.model_used로 실제 모델을 반환합니다. worker.js에서 원아 정보·근거·원시 메모를 가명화하여 전달합니다.
 
 ### infra/notion-proxy.js / api/notion-proxy-guard.js
 
@@ -41,7 +41,7 @@ initAuthGate, lock, changePin, saveProfile, syncProfile, 교사 전환. 실제 �
 
 ### public/js/records-flow.js → DaycareRecords
 
-capture, save, restore, clear, forget, invalidateResult, initEvidence, resetEvidence, monthlyOptions. 검수 수집·AES-GCM 초안·실제 근거 선택·대상 변경·현재 서식 인쇄본을 담당합니다. DaycareHTML은 동적 HTML 텍스트를 이스케이프합니다.
+capture, save, restore, clear, forget, invalidateResult, initEvidence, resetEvidence, monthlyOptions, saveNotion, saveStatus, generationStatus, generationProgress, availableFormats. 검수 수집·AES-GCM 초안·실제 근거 선택·대상 변경·현재 서식 인쇄본·검수 저장 상태를 담당합니다. DaycareNotion.handleSaveNotion이 저장 오케스트레이터를 호출합니다. DaycareHTML은 동적 HTML 텍스트를 이스케이프합니다.
 
 ### public/js/notion-store.js → ChildrenStore / DaycareNotion
 
@@ -63,6 +63,8 @@ DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, openHisto
 - tests/backend.test.js: 기기·PIN·학급·프록시·실제 근거·전체 저장 계약.
 - tests/draft.test.js: 암호화 초안·빈 화면 덮어쓰기 방지·검수 복원.
 - tests/frontend.test.js: 필수 DOM·모듈 경로·키 경로·파일 크기.
+- tests/stability.test.js: 만료 링크 복구·등록 주소 보존·교사 선택 DOM·AI/노션 오류 분류·검수 누락·연속 저장 제한.
+- scripts/verify_connections.mjs: 관리자 운영 연결 검증. --notion-only로 AI와 분리한 가상 기록 쓰기·읽기를 수행합니다.
 - tests/ui-fixture.js + .dev.vars.ui-test: 실제 자료와 분리된 가상 노션·AI(8790), 로컬 Worker(8787).
 - scripts/verify_js_modules.py: Node 실제 파서와 프론트 코어 800줄 상한.
 - scripts/create_device_invite.mjs: 관리자 비밀값으로 담당반 일회용 등록 링크 생성.

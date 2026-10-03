@@ -1,6 +1,6 @@
 import { generateDaycareLog } from './api/gemini.js';
 import { ApiError, authCall, cookies, authCookies, checkMutation, requireSession } from './api/auth.js';
-import { getTeachersList, getChildrenList, requireChild, getRecentChildLogs, getAllDailyLogs, getLogDetail, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion, updateTeacherProfile, callNotionApi } from './api/notion.js';
+import { getTeachersList, getChildrenList, requireChild, getRecentChildLogs, getAllDailyLogs, getLogDetail, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion, updateTeacherProfile, callNotionApi, verifyNotionConnection } from './api/notion.js';
 export { AuthStore } from './api/auth.js';
 
 const securityHeaders = {
@@ -126,6 +126,8 @@ export default {
         const teacher = (await getTeachersList(env)).find(t => t.className === '연구반');
         if (!teacher) throw new ApiError('연구반 교사 프로필이 필요합니다.', 503);
         const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+        const options = request.body ? await bodyOf(request) : {};
+        if (options.notionOnly === true) return json(await verifyNotionConnection(env, teacher, date));
         const childName = '시스템검증가상원아';
         const rawMemo = '[시스템 검증용 가상 메모 · 실제 원아 기록 아님] 시스템검증가상원아 블록 두 개를 손으로 잡음.';
         const child = await saveChildToNotion({ name: childName, className: teacher.className, age: '만 0세', traits: '실제 원아가 아닌 시스템 연결 검증 자료' }, env);

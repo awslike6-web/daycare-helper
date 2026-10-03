@@ -74,6 +74,7 @@
     if (el('rawMemoInput')) el('rawMemoInput').readOnly = false;
     if (el('generateBtn')) el('generateBtn').disabled = false;
     if (el('resultsSection')) el('resultsSection').style.display = 'none';
+    window.DaycareRecords?.generationStatus(''); window.DaycareRecords?.saveStatus('');
     for (const id of ['childScrollContainer', 'historyDetailBody', 'historyListContainer', 'photoPreviews']) if (el(id)) el(id).replaceChildren();
     document.querySelectorAll('.modal-overlay').forEach(modal => { if (modal.id !== 'authGateModal') modal.style.display = 'none'; });
   }
@@ -120,6 +121,7 @@
         invite: invitation.token, pin: invitation.initial ? firstPin : pin, confirmPin: pin,
         remember: !!el('rememberAuthCheck')?.checked
       } : { teacherId: selected.id, pin, remember: !!el('rememberAuthCheck')?.checked });
+      if (invitation) history.replaceState(null, '', location.pathname + location.search);
       invitation = null; firstPin = ''; lastActivity = Date.now(); await unlock();
     } catch (e) { firstPin = ''; error(e.message); } finally { busy = false; }
   }
@@ -131,7 +133,13 @@
     const list = el('authTeacherSelector'); if (!list) return; list.replaceChildren();
     Object.values(TEACHER_PROFILES).forEach(profile => {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'auth-teacher-chip';
-      button.classList.toggle('active', selected?.id === profile.id); button.textContent = `${profile.className} · ${profile.name}`;
+      button.classList.toggle('active', selected?.id === profile.id);
+      const icon = document.createElement('span'); icon.className = 'auth-chip-icon';
+      icon.textContent = profile.key === 'wife' ? '🌸' : profile.key === 'sister_in_law' ? '🌿' : '🧪';
+      const info = document.createElement('div'); info.className = 'auth-chip-info';
+      const name = document.createElement('div'); name.className = 'auth-chip-name'; name.textContent = profile.name;
+      const className = document.createElement('div'); className.className = 'auth-chip-class'; className.textContent = profile.className;
+      info.append(name, className); button.append(icon, info);
       button.disabled = !!invitation && invitation.teacherId !== profile.id;
       button.onclick = () => { selected = profile; digits = ''; firstPin = ''; dots(); error(); renderSelection(); };
       list.appendChild(button);
@@ -143,14 +151,21 @@
   async function consumeInvitation() {
     const token = new URLSearchParams(location.hash.slice(1)).get('register');
     if (!token) return false;
-    history.replaceState(null, '', location.pathname + location.search);
+    let status;
+    try { status = await api('/api/auth/invite-status', { invite: token }); }
+    catch (e) {
+      invitation = null;
+      if (e.status === 403 || e.status === 400) history.replaceState(null, '', location.pathname + location.search);
+      renderSelection();
+      throw new Error(e.status === 403 ? '등록 링크가 만료되었거나 사용됐습니다. 등록된 기기는 기존 PIN으로, 새 기기는 새 등록 링크로 접속해 주세요.' : e.message);
+    }
     if (ready) await lock();
-    invitation = { ...await api('/api/auth/invite-status', { invite: token }), token };
+    invitation = { ...status, token };
     selected = Object.values(TEACHER_PROFILES).find(p => p.id === invitation.teacherId);
     renderSelection(); return true;
   }
   async function initAuthGate() {
-    showGate();
+    showGate(); busy = true;
     document.querySelectorAll('.keypad-btn[data-num]').forEach(button => { button.onclick = () => { if (busy) return; if (digits.length < 4) digits += button.dataset.num; dots(); if (digits.length === 4) submitPin(); }; });
     if (el('keypadClearBtn')) el('keypadClearBtn').onclick = () => { digits = ''; dots(); };
     if (el('keypadBackspaceBtn')) el('keypadBackspaceBtn').onclick = () => { digits = digits.slice(0, -1); dots(); };
@@ -165,10 +180,12 @@
       const profiles = await api('/api/auth/profiles');
       profiles.profiles.forEach(p => { TEACHER_PROFILES[p.key] = p; });
       selected = Object.values(TEACHER_PROFILES).find(p => p.id === profiles.teacherId) || Object.values(TEACHER_PROFILES)[0];
-      await consumeInvitation();
+      let inviteError = '';
+      try { await consumeInvitation(); } catch (e) { inviteError = e.message; }
       renderSelection();
       if (!invitation) try { await unlock(); } catch (e) { if (e.status !== 401) error(e.message); }
-    } catch (e) { error(e.message); }
+      if (inviteError && !ready) error(inviteError);
+    } catch (e) { error(e.message); } finally { busy = false; }
     window.addEventListener('hashchange', () => consumeInvitation().catch(e => error(e.message)));
   }
   async function changePin() {

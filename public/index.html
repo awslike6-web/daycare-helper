@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json?v=20261003_v41">
-  <link rel="stylesheet" href="./style.css?v=20261003_v41">
+  <link rel="manifest" href="./manifest.json?v=20261003_v42">
+  <link rel="stylesheet" href="./style.css?v=20261003_v42">
 </head>
 <body data-locked="true">
   <div class="app-container">
@@ -22,7 +22,7 @@
       <div class="brand-area">
         <span class="brand-logo">🧸</span>
         <div>
-          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v3.5</span></div>
+          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v3.5.1</span></div>
           <div class="header-date-wrapper" id="headerDateWrapper" title="클릭하여 소급 작성 날짜 변경">
             <span class="header-date-icon">📅</span>
             <span class="brand-sub header-date-text" id="headerDateText">오늘의 보육 기록</span>
@@ -261,6 +261,7 @@
         </button>
       </div>
 
+      <div id="generationStatus" class="workflow-status" role="status" aria-live="polite" hidden></div>
       <!-- 🎁 5대 보육 표준 서식 결과 섹션 -->
       <section class="results-section" id="resultsSection">
           <!-- 📌 과거 기록 출처 (Citation) 배지 -->
@@ -285,6 +286,7 @@
           </button>
         </div>
 
+        <div id="notionSaveStatus" class="workflow-status" role="status" aria-live="polite" hidden></div>
         <!-- 5대 서식 가로 스크롤 탭 스위처 -->
         <div class="result-tabs-scroll">
           <div class="result-tabs" id="resultTabs">
@@ -1463,11 +1465,11 @@
   </div>
 
   <!-- 🛡️ 2026 골디락스 4대 완성형 코어 아키텍처 (안정성 & 효율성 극대화) -->
-  <script src="./js/records-flow.js?v=20261003_v41"></script>
-  <script src="./js/auth-security.js?v=20261003_v41"></script>
-  <script src="./js/notion-store.js?v=20261003_v41"></script>
-  <script src="./js/ai-engine.js?v=20261003_v41"></script>
-  <script src="./gemini-client.js?v=20261003_v41"></script>
-  <script src="./app.js?v=20261003_v41"></script>
+  <script src="./js/records-flow.js?v=20261003_v42"></script>
+  <script src="./js/auth-security.js?v=20261003_v42"></script>
+  <script src="./js/notion-store.js?v=20261003_v42"></script>
+  <script src="./js/ai-engine.js?v=20261003_v42"></script>
+  <script src="./gemini-client.js?v=20261003_v42"></script>
+  <script src="./app.js?v=20261003_v42"></script>
 </body>
 </html>

@@ -10,9 +10,28 @@
  *  5. 과거 기록(Citation) 연계: 이전 2~3건 관찰 이력 대조 및 성장점 출처 표기
  */
 
+import { ApiError } from './auth.js';
+
 const GEMINI_PRIMARY_MODEL = 'gemini-3.8-flash';
 const GEMINI_FALLBACK_MODEL = 'gemini-3.6-flash';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+export const FORMAT_KEYS = { kidsnote: 'kidsnote', class_daily_report: 'class_daily_report', observation: 'monthly_observation',
+  hangroo_eval: 'hangroo_eval', daily_care: 'daily_care_log', counseling: 'parent_counseling', play_support: 'play_support' };
+export function validateFormats(data, formats) {
+  const hasText = value => typeof value === 'string' ? !!value.trim() : Array.isArray(value) ? value.some(hasText) :
+    !!value && typeof value === 'object' && Object.entries(value).some(([key, v]) => !['title', 'date', 'area', 'child_name'].includes(key) && hasText(v));
+  const missing = formats.filter(format => !data?.[FORMAT_KEYS[format]] || typeof data[FORMAT_KEYS[format]] !== 'object' || Array.isArray(data[FORMAT_KEYS[format]]) || !hasText(data[FORMAT_KEYS[format]]));
+  if (missing.length) throw new ApiError('AI가 선택한 서식을 완성하지 못했습니다. 메모와 기존 작성본을 보존했습니다. 서식을 줄여 다시 생성해 주세요.', 502);
+}
+function aiError(status, text = '') {
+  if (status === 402) return new ApiError('AI 프로젝트의 선불 잔액을 확인해 주세요. 메모와 사진은 보관됩니다.', 402);
+  if (/location|region|country/i.test(text)) return new ApiError('현재 AI 호출 지역이 지원되지 않습니다. 관리자에게 연결 설정 확인을 요청해 주세요.', 503);
+  if (status === 401 || status === 403 || /API key|permission|credential/i.test(text)) return new ApiError('AI 키 또는 프로젝트 권한 설정을 확인해 주세요. 작성 내용은 보관됩니다.', 503);
+  if (status === 429) return new ApiError('AI 사용량 제한에 도달했습니다. 잠시 후 다시 시도하거나 프로젝트 한도를 확인해 주세요.', 429);
+  if ([500, 502, 503, 504].includes(status)) return new ApiError('AI 서버가 일시적으로 응답하지 않습니다. 자동 재시도 후에도 연결되지 않았습니다. 메모를 보존했으니 잠시 후 다시 시도해 주세요.', 503);
+  return new ApiError('AI 요청 설정을 확인해 주세요. 메모와 사진은 보관됩니다.', 502);
+}
 
 /**
  * 실명 마스킹 유틸리티
@@ -404,7 +423,7 @@ export async function generateDaycareLog({
   model = GEMINI_PRIMARY_MODEL, fallbackModel = GEMINI_FALLBACK_MODEL, date, roster = [], refinement = null, apiBase = GEMINI_API_BASE
 }) {
   if (!apiKey) {
-    throw new Error('Gemini API 키가 제공되지 않았습니다.');
+    throw new ApiError('서버의 Gemini API 키 등록이 필요합니다.', 503);
   }
 
   // 1. 실명 마스킹 가드 (개인정보 보호)
@@ -474,7 +493,8 @@ ${refinement ? '다듬기 요청: ' + JSON.stringify(refinement) + '\n기존 글
     }
   };
 
-  // 4. 모델 호출 (3.8-flash 우선, 실패 시 3.6-flash 폴백)
+  // 모델 호출 전체를 110초 이내로 제한하고 일시 장애에만 재시도한다.
+  const deadline = Date.now() + 110000;
   const callModel = async (modelName) => {
     const url = `${apiBase}/${modelName}:generateContent`;
     const response = await fetch(url, {
@@ -482,35 +502,57 @@ ${refinement ? '다듬기 요청: ' + JSON.stringify(refinement) + '\n기존 글
       headers: {
         'Content-Type': 'application/json', 'x-goog-api-key': apiKey
       },
-      body: JSON.stringify(payload), signal: AbortSignal.timeout(90000)
+      body: JSON.stringify(payload), signal: AbortSignal.timeout(Math.max(1, Math.min(60000, deadline - Date.now())))
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      let reason = '응답 형식/설정';
-      if (/location|region|country/i.test(errText)) reason = '호출 지역 제한';
-      else if (/API key|permission|credential/i.test(errText)) reason = '서버 인증 설정';
-      else if (/quota|resource_exhausted/i.test(errText)) reason = '사용량 제한';
-      console.error('AI 응답 오류', modelName, response.status, reason);
-      throw Object.assign(new Error('AI 생성에 실패했습니다. 메모를 보존한 채 다시 시도해 주세요.'), { status: 502 });
+      let upstreamStatus = '분류 없음';
+      try {
+        const code = JSON.parse(errText).error?.status;
+        if (['UNAVAILABLE', 'RESOURCE_EXHAUSTED', 'PERMISSION_DENIED', 'UNAUTHENTICATED', 'INVALID_ARGUMENT', 'FAILED_PRECONDITION', 'NOT_FOUND'].includes(code)) upstreamStatus = code;
+      } catch {}
+      console.error('AI 응답 오류', modelName, response.status, upstreamStatus);
+      const error = aiError(response.status, errText);
+      error.retryable = [429, 500, 502, 503, 504].includes(response.status);
+      const wait = Number(response.headers.get('Retry-After'));
+      error.retryAfter = Number.isFinite(wait) && wait > 0 ? wait * 1000 : 1200;
+      throw error;
     }
 
     const data = await response.json();
     const candidate = data.candidates?.[0];
     const rawContent = candidate?.content?.parts?.filter(part => !part.thought && part.text).map(part => part.text).join('');
     if (!rawContent) {
-      throw new Error(`Gemini API returned empty response (${modelName})`);
+      throw new ApiError('AI 응답이 비어 있습니다. 메모를 보존한 채 다시 시도해 주세요.', 502);
     }
 
-    return JSON.parse(rawContent);
+    let result;
+    try { result = JSON.parse(rawContent); } catch { throw new ApiError('AI 응답 서식을 읽을 수 없습니다. 작성 내용은 보관됩니다.', 502); }
+    validateFormats(result, selectedFormats);
+    return result;
   };
 
   let parsedJson = null; let usedModel = model;
-  try {
-    parsedJson = await callModel(model);
-  } catch (err) {
-    console.warn('기본 AI 모델 실패, 대체 모델 사용'); usedModel = fallbackModel;
-    parsedJson = await callModel(fallbackModel);
+  const candidates = [model, fallbackModel, model];
+  for (let attempt = 0; attempt < candidates.length; attempt++) {
+    usedModel = candidates[attempt];
+    try { parsedJson = await callModel(usedModel); break; }
+    catch (error) {
+      const timeout = error.name === 'TimeoutError' || error.name === 'AbortError';
+      if (!(error instanceof ApiError) && !timeout) {
+        error = new ApiError('AI 연결을 확인하지 못했습니다. 작성 내용은 보관됩니다. 잠시 후 다시 시도해 주세요.', 503);
+        error.retryable = true;
+      }
+      const retryable = timeout || error.retryable || error.status === 502;
+      const wait = error.retryAfter || 1200 * (attempt + 1);
+      if (!retryable || attempt === candidates.length - 1 || Date.now() + wait + 2000 >= deadline) {
+        if (timeout) throw new ApiError('AI 응답 대기 시간이 초과됐습니다. 메모와 사진을 보존했습니다. 서식이나 사진 수를 줄여 다시 시도해 주세요.', 504);
+        throw error;
+      }
+      console.warn('AI 일시 장애 또는 서식 누락, 재시도', attempt + 1);
+      await new Promise(resolve => setTimeout(resolve, wait));
+    }
   }
 
   // 5. 실명 언마스킹 복원 ([아동A] -> 실제 원아 이름)

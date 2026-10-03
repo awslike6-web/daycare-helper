@@ -12,14 +12,26 @@ export async function callNotionApi(env, endpoint, method = 'GET', body) {
   const headers = { 'Content-Type': 'application/json', 'Notion-Version': env.NOTION_VERSION || '2022-06-28' };
   if (env.NOTION_TOKEN) headers.Authorization = 'Bearer ' + env.NOTION_TOKEN.replace(/^Bearer /, '');
   if (env.NOTION_PROXY_SECRET) headers['X-Daycare-Service-Key'] = env.NOTION_PROXY_SECRET;
-  const request = new Request(base + endpoint, { method, headers, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(20000) });
-  // 같은 계정의 Worker끼리는 공개 URL 대신 서비스 바인딩으로 호출한다.
-  const response = env.NOTION_PROXY ? await env.NOTION_PROXY.fetch(request) : await fetch(request);
-  if (!response.ok) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const request = new Request(base + endpoint, { method, headers, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(20000) });
+    // 같은 계정의 Worker끼리는 서비스 바인딩으로 호출한다. 쓰기 불명확 오류는 재전송하지 않는다.
+    let response;
+    try { response = env.NOTION_PROXY ? await env.NOTION_PROXY.fetch(request) : await fetch(request); }
+    catch { throw new ApiError('노션 응답을 확인하지 못했습니다. 작성본은 보존됩니다. 저장 기록을 먼저 조회한 뒤 다시 시도해 주세요.', 502); }
+    if (response.ok) return response.json();
+    const detail = await response.json().catch(() => ({}));
     console.error('노션 요청 실패', response.status, endpoint.split('/')[1]);
-    throw new ApiError('노션 연결에 실패했습니다. 작성 내용은 임시보관되어 있습니다.', 502);
+    if ([429, 529].includes(response.status) && detail.additional_data?.rate_limit_reason !== 'public_api_request_blocked') {
+      const seconds = Number(response.headers.get('Retry-After') ?? detail.additional_data?.retry_after ?? 2 ** attempt);
+      if (attempt < 2 && Number.isFinite(seconds) && seconds >= 0 && seconds <= 10) {
+        await new Promise(resolve => setTimeout(resolve, seconds * 1000 + 100)); continue;
+      }
+      throw new ApiError('노션이 요청을 제한하고 있습니다. 작성본을 보관했습니다. 잠시 후 저장을 다시 눌러 주세요.', 429);
+    }
+    if ([401, 403].includes(response.status)) throw new ApiError('노션 DB의 연결 권한 또는 이용 한도를 확인해 주세요. 작성본은 보존됩니다.', 502);
+    if (response.status === 400) throw new ApiError('노션이 저장 서식을 거부했습니다. 관리자에게 DB 속성 확인을 요청해 주세요. 작성본은 보존됩니다.', 502);
+    throw new ApiError('노션 연결에 실패했습니다. 작성본은 보존됩니다. 저장 기록을 먼저 조회한 뒤 다시 시도해 주세요.', 502);
   }
-  return response.json();
 }
 function db(env, key) {
   if (!env[key]) throw new ApiError('노션 DB 설정이 필요합니다.', 503);
@@ -154,6 +166,24 @@ export async function saveDailyLogToNotion(payload, env) {
     page = await callNotionApi(env, '/pages', 'POST', { parent: { database_id: db(env, 'NOTION_DAILY_LOG_DB_ID') }, properties, children });
   }
   return { success: true, source: 'notion', pageId: page.id, url: page.url };
+}
+
+/** AI 장애와 독립된 운영 연결 검증. 연구반의 가상 기록만 작성 후 보관한다. */
+export async function verifyNotionConnection(env, teacher, date) {
+  const rawMemo = '[시스템 연결 검증용 가상 메모 · 실제 원아 기록/AI 생성본 아님] 가상 블록 두 개를 손으로 잡음.';
+  const result = { kidsnote: { content: rawMemo + '\n[검수 문장 보존 확인]' }, observation_summary: rawMemo,
+    record_context: { date, childId: null, teacherId: teacher.id, className: teacher.className } };
+  let pageId;
+  try {
+    const saved = await saveDailyLogToNotion({ date, childId: null, childName: '가상 연결 검증', childClass: teacher.className,
+      teacherId: teacher.id, teacherName: teacher.name, rawMemo, result }, env);
+    pageId = saved.pageId;
+    const detail = await getLogDetail(env, pageId, teacher.className);
+    if (detail.memo !== rawMemo || JSON.stringify(detail.parsedData) !== JSON.stringify(result)) throw new ApiError('검수본 저장·조회가 일치하지 않습니다.', 502);
+    return { success: true, ai: false, notionWriteRead: true, reviewedTextPreserved: true, archived: true };
+  } finally {
+    if (pageId) await callNotionApi(env, '/pages/' + pageId, 'PATCH', { archived: true });
+  }
 }
 function childProperties(child) {
   if (!child.name?.trim()) throw new ApiError('원아 이름을 입력해 주세요.');
