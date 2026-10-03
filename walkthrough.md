@@ -1,5 +1,38 @@
 # 보육비서 현장 오류 복구 검증 보고서
 
+## 저장 버튼 추가 복구 · 3.5.2 · 2026-10-03
+
+사용자가 저장 버튼이 눌리지 않았다고 전달했다. 첨부는 로그인 화면으로 어떤 저장 버튼인지 아직 확인하지 못했다. 교사 선택 DOM은 이전 화면과 같지만 촬영 시점·캐시 여부는 단정하지 않는다.
+
+### 재현한 원인과 조치
+
+- 중복 선택 Promise를 기다리는 동안 인증 잠금이 모달만 숨겨 저장 상태가 계속 남았다. 수정 전 회귀 검사에서 savingNotion=true가 남는 것을 재현했다. 잠금 시 선택 Promise와 진행 통신을 취소하고 finally로 버튼 상태를 복구한다.
+- 브라우저 fetch와 본문 수신에 제한 시간이 없었다. DaycareRecords.requestJson으로 읽기·인증 60초, 쓰기 120초 제한과 취소를 공통 적용했다. 저장 시간 초과는 보관함 확인을 안내하며 자동 재전송하지 않는다.
+- 늦게 도착한 저장·원아·보관함 응답은 이전 교사 화면의 결과로만 취급하고 다른 학급 화면에 반영하지 않는다. 인증 로딩·키패드 대기·연결 재확인과 로그인 버전 표시를 추가했다.
+- 클라이언트 취소는 이미 서버에서 진행한 쓰기를 되돌리지 않는다. 쓰기 중 잠김·응답 누락은 해당 날짜 보관함을 먼저 확인해야 한다.
+
+### 실제 확인한 범위
+
+- node --test tests/*.test.js: 20개 통과. 중복 대기 잠금 복구, 본문 수신 멈춤·시간 초과·취소, 쓰기 미재전송과 늦은 이전 응답 격리를 추가했다.
+- scripts/verify_js_modules.py: 6개 프론트 코어의 실제 Node 문법과 800줄 상한 통과. git diff --check 통과.
+- 전사 scripts/ai_verify.py daycare-helper/public/index.html --mode verify: 통과. 공개 화면 HTML만 검사했으며 비밀값·원아 기록을 보내지 않았다.
+- 가상 노션/AI 로컬 브라우저: 중복 선택 → 키보드 잠금 → 기존 가상 PIN → 암호화 초안 복원 → 다시 저장 → 별도 저장 완료 → 보관함 조회·복원 → 검수 문장 일치 확인.
+- 모바일 390×844에서 문서 폭과 스크롤 폭 모두 375px, PC 1280×900에서 두 폭 모두 1265px. 가로 넘침 없음. 모바일에서 덮어쓰기 저장 완료와 버튼 복구도 확인했다.
+
+![가상 자료로 확인한 잠금 해제 후 모바일 저장 성공](docs/verification/save-button-mobile.png)
+
+PC 확인: [save-button-desktop.png](docs/verification/save-button-desktop.png)
+
+### 운영 반영
+
+- v3.5.2 배포 완료. Worker 버전 ced23802-8365-4fe4-8841-e79ad357808c, 정적 자원 20261003_v43.
+- 운영 index.html 및 변경 JS 3종의 SHA-256이 로컬 검증본과 일치하고 모두 HTTP 200 / Cache-Control: no-cache였다.
+- 운영 노션 단독 검증: HTTP 200, success=true, ai=false, notionWriteRead=true, reviewedTextPreserved=true, archived=true. 실제 원아 기록을 고치지 않았다.
+
+작업 이력은 한국어 Git 커밋과 기존 전사 타임라인·당일 일상·현황판에 누적 기록한다. 선생님 휴대폰의 실제 실패 원인은 버튼·오류 화면 확인이 남아 있다. 이전 운영 AI 검증의 Google 503 UNAVAILABLE는 이번 저장 수리로 해결했다고 보고하지 않는다.
+
+---
+
 2026-10-03 · 버전 3.5.1 · 운영 앱 https://daycare-helper.awslike6.workers.dev/
 
 ## 현재 결과

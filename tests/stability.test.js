@@ -65,10 +65,11 @@ async function authFixture({ expired = false, session = false } = {}) {
   const context = vm.createContext({ window, document: { body: { dataset: {} }, getElementById: id => nodes.get(id), createElement: element,
     querySelectorAll() { return []; }, addEventListener() {} }, location: { hash: '#register=가상토큰', pathname: '/', search: '' },
     history: { replaceState(...args) { historyCalls.push(args); } }, URLSearchParams, HTMLInputElement: class {},
-    localStorage: { getItem() { return null; }, setItem() {} }, setInterval() { return 1; }, clearInterval() {}, console,
+    localStorage: { getItem() { return null; }, setItem() {} }, setInterval() { return 1; }, clearInterval() {}, setTimeout, clearTimeout, AbortController, DOMException, console,
     fetch: async path => path === '/api/auth/profiles' ? Response.json({ profiles: [profile] }) :
       path === '/api/auth/invite-status' ? expired ? Response.json({ error: '만료' }, { status: 403 }) : Response.json({ teacherId: profile.id, initial: false }) :
       path === '/api/session' ? session ? Response.json({ profile, expiresAt: Date.now() + 1000 }) : Response.json({ error: '인증 필요' }, { status: 401 }) : Response.json({ success: true }) });
+  vm.runInContext(await readFile(new URL('../public/js/records-flow.js', import.meta.url), 'utf8'), context);
   vm.runInContext(authSource, context); await window.DaycareAuth.initAuthGate(); return { nodes, historyCalls, window };
 }
 test('유효한 등록 링크는 PIN 성공 전 보존되고 교사 선택 스타일 구조를 유지한다', async () => {
@@ -89,7 +90,7 @@ test('검수 누락·저장 실패를 지속 표시하고 연속 저장을 한 �
   const window = { state, addEventListener() {} }; let requests = 0, release;
   const wait = new Promise(resolve => { release = resolve; });
   const context = vm.createContext({ window, document: { getElementById: id => nodes.get(id), querySelectorAll: () => [nodes.get('generateBtn')], addEventListener() {} },
-    structuredClone, console, localStorage: { removeItem() {} }, fetch: async () => { requests++; await wait; return Response.json({ error: '가상 저장 오류' }, { status: 502 }); } });
+    structuredClone, AbortController, DOMException, setTimeout, clearTimeout, console, localStorage: { removeItem() {} }, fetch: async () => { requests++; await wait; return Response.json({ error: '가상 저장 오류' }, { status: 502 }); } });
   vm.runInContext(await readFile(new URL('../public/js/records-flow.js', import.meta.url), 'utf8'), context);
   const options = { extractCleanObsSummary: () => '검수 요약', checkDuplicateAndSave: async (_date, _name, callback) => callback({ overwrite: false }) };
   await window.DaycareRecords.saveNotion(options); assert.match(nodes.get('notionSaveStatus').textContent, /검수 확인/); assert.equal(requests, 0);
@@ -97,4 +98,60 @@ test('검수 누락·저장 실패를 지속 표시하고 연속 저장을 한 �
   await second; release(); await first; assert.equal(requests, 1); assert.equal(state.savingNotion, false);
   assert.match(nodes.get('notionSaveStatus').textContent, /가상 저장 오류/); assert.equal(state.lastResult.kidsnote.content, '교사가 검수한 문장');
   assert.equal(nodes.get('generateBtn').disabled, false);
+});
+
+test('중복 선택 대기 중 잠금이 저장 대기를 끝내고 다음 저장 버튼을 복구한다', async () => {
+  const nodes = new Map();
+  for (const id of ['rawMemoInput', 'kidsnoteContent', 'reviewConfirmed', 'notionSaveStatus', 'generateBtn', 'saveAllUnifiedNotionBtn',
+    'duplicateLogModal', 'btnDupCancel', 'btnDupNew', 'authGateModal']) nodes.set(id, element());
+  nodes.get('reviewConfirmed').checked = true; nodes.get('rawMemoInput').value = '가상 메모'; nodes.get('kidsnoteContent').value = '검수본';
+  const state = { authenticated: true, teacherId: 'teacher-a', selectedDate: '2026-10-03', selectedChild: { id: 'class-all' }, lastResult: { kidsnote: { content: '초안' } } };
+  const buttons = [nodes.get('generateBtn'), nodes.get('saveAllUnifiedNotionBtn')];
+  const window = { state, addEventListener() {} }; let writes = 0;
+  const context = vm.createContext({ window, document: { body: { dataset: {} }, getElementById: id => nodes.get(id), addEventListener() {},
+    querySelectorAll: selector => selector.includes('NotionBtn') ? buttons : selector === '.modal-overlay' ? [nodes.get('duplicateLogModal')] : [] },
+    structuredClone, AbortController, DOMException, setTimeout, clearTimeout, setInterval, clearInterval, URLSearchParams, console,
+    localStorage: { removeItem() {} }, fetch: async path => path.startsWith('/api/history') ? Response.json({ data: [{ id: 'existing', date: state.selectedDate }] }) :
+      path === '/api/logs/save' ? (writes++, Response.json({ success: true, source: 'notion', pageId: 'saved' })) : Response.json({ success: true }) });
+  for (const file of ['records-flow', 'notion-store', 'auth-security']) vm.runInContext(await readFile(new URL(`../public/js/${file}.js`, import.meta.url), 'utf8'), context);
+  const pending = window.DaycareNotion.handleSaveNotion();
+  await new Promise(resolve => setImmediate(resolve)); assert.equal(nodes.get('duplicateLogModal').style.display, 'flex');
+  await window.DaycareAuth.lock(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(state.savingNotion, false); assert.equal(buttons[1].disabled, false); assert.equal(writes, 0); await pending;
+  Object.assign(state, { authenticated: true, selectedChild: { id: 'class-all' }, lastResult: { kidsnote: { content: '검수본' } } });
+  const next = window.DaycareNotion.handleSaveNotion(); await new Promise(resolve => setImmediate(resolve));
+  nodes.get('btnDupNew').onclick(); await next; assert.equal(writes, 1); assert.equal(state.savingNotion, false);
+});
+
+test('응답·본문 수신 지연과 취소는 제한 시간 안에 끝나며 쓰기를 재전송하지 않는다', async () => {
+  const window = { addEventListener() {} }; let calls = 0;
+  const context = vm.createContext({ window, document: { getElementById() {}, addEventListener() {} },
+    AbortController, DOMException, setTimeout, clearTimeout, console, fetch: async () => { calls++; return { ok: true, json: () => new Promise(() => {}) }; } });
+  vm.runInContext(await readFile(new URL('../public/js/records-flow.js', import.meta.url), 'utf8'), context);
+  await assert.rejects(window.DaycareRecords.requestJson('/api/logs/save', { method: 'POST', body: {}, timeoutMs: 15 }), error => error.name === 'TimeoutError' && /보관함/.test(error.message));
+  assert.equal(calls, 1);
+  const controller = new AbortController();
+  const pending = window.DaycareRecords.requestJson('/api/history', { signal: controller.signal }); controller.abort();
+  await assert.rejects(pending, { name: 'AbortError' }); assert.equal(calls, 2);
+  const before = new AbortController(); before.abort();
+  await assert.rejects(window.DaycareRecords.requestJson('/api/history', { signal: before.signal }), { name: 'AbortError' }); assert.equal(calls, 2);
+});
+
+test('잠금이 진행 중 쓰기와 개별 저장을 취소하며 늦은 응답을 새 화면에 반영하지 않는다', async () => {
+  const nodes = new Map(); for (const id of ['reviewConfirmed', 'rawMemoInput', 'kidsnoteContent', 'notionSaveStatus', 'generateBtn', 'saveAllUnifiedNotionBtn']) nodes.set(id, element());
+  nodes.get('reviewConfirmed').checked = true; nodes.get('rawMemoInput').value = '가상 메모';
+  const state = { authenticated: true, teacherId: 'teacher-a', selectedDate: '2026-10-03', selectedChild: { id: 'class-all' }, lastResult: { kidsnote: { content: '검수본' } } };
+  const buttons = [nodes.get('generateBtn'), nodes.get('saveAllUnifiedNotionBtn')];
+  const window = { state, addEventListener() {} }; let release, posted = false;
+  const context = vm.createContext({ window, document: { getElementById: id => nodes.get(id), querySelectorAll: () => buttons, addEventListener() {} },
+    structuredClone, AbortController, DOMException, setTimeout, clearTimeout, console, fetch: () => { posted = true; return new Promise(resolve => { release = resolve; }); } });
+  vm.runInContext(await readFile(new URL('../public/js/records-flow.js', import.meta.url), 'utf8'), context);
+  const options = { extractCleanObsSummary: () => '', checkDuplicateAndSave: async (_date, _child, callback) => callback({ overwrite: false }) };
+  const first = window.DaycareRecords.saveNotion(options); await new Promise(resolve => setImmediate(resolve)); assert.equal(posted, true);
+  state.individualAbortController = new AbortController(); window.DaycareRecords.cancelSave();
+  Object.assign(state, { authenticated: false, teacherId: 'teacher-b', lastResult: null });
+  nodes.get('notionSaveStatus').textContent = ''; await first;
+  assert.equal(state.savingNotion, false); assert.equal(state.individualAbortController.signal.aborted, true); assert.equal(buttons[1].disabled, false);
+  release(Response.json({ success: true, source: 'notion', pageId: 'late' })); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(nodes.get('notionSaveStatus').textContent, ''); assert.equal(state.lastResult, null);
 });

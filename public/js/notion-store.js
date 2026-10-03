@@ -11,6 +11,7 @@
 (function () {
   const safeHTML = (...args) => window.DaycareHTML(...args);
   const showToast = (msg) => (typeof window.showToast === 'function' ? window.showToast(msg) : console.log(msg));
+  const requestJson = (...args) => window.DaycareRecords.requestJson(...args);
 
   // ============================================================================
   // 1. 개인정보 실명 마스킹 및 안전 가명화 가드 (Privacy Guard)
@@ -59,9 +60,9 @@
   async function loadChildren(selectedId = null) {
     const state = window.state || {};
     if (!state.authenticated) { state.children = []; return; }
-    const response = await fetch('/api/children');
-    const json = await response.json();
-    if (!response.ok) { state.children = []; throw new Error(json.error || '원아 목록 조회 실패'); }
+    const teacherId = state.teacherId;
+    const json = await requestJson('/api/children');
+    if (!state.authenticated || state.teacherId !== teacherId) return;
     state.children = json.children || [];
     renderChildrenChips(selectedId);
   }
@@ -222,12 +223,7 @@
     try {
       const url = id ? `/api/children/${id}` : '/api/children';
       const method = id ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error('저장에 실패했습니다.');
+      await requestJson(url, { method, body: payload, timeoutMs: 120000 });
 
       showToast(`🎉 [${payload.name}] 원아 정보가 성공적으로 저장되었습니다!`);
       const modal = document.getElementById('childManageModal');
@@ -245,9 +241,7 @@
     const badge = document.getElementById('notionStatusBadge');
     const text = document.getElementById('notionStatusText');
     try {
-      const res = await fetch('/api/connection', { method: 'GET' });
-      if (!res.ok) throw new Error('서버 응답 없음');
-      const data = await res.json();
+      const data = await requestJson('/api/connection');
       if (data.status === 'ok') {
         if (badge) { badge.className = 'badge badge-connected'; }
         if (text) { text.textContent = '노션 정상 연동'; }
@@ -263,16 +257,25 @@
   // 노션 일지 중복 저장 확인 및 처리
   let pendingSaveAction = null;
 
-  async function checkDuplicateAndSave(date, childName, saveCallback) {
+  function finishDuplicate(choice = null) {
+    const callback = pendingSaveAction; pendingSaveAction = null;
+    const modal = document.getElementById('duplicateLogModal'); if (modal) modal.style.display = 'none';
+    callback?.(choice);
+  }
+
+  async function checkDuplicateAndSave(date, childName, saveCallback, signal) {
     try {
       const childId = window.state?.selectedChild?.id;
       const params = new URLSearchParams({ from: date, to: date, limit: '100', ...(childId && childId !== 'class-all' ? { childId } : {}) });
-      const response = await fetch('/api/history?' + params); const json = await response.json();
-      if (!response.ok) throw new Error(json.error || '중복 확인 실패');
+      const json = await requestJson('/api/history?' + params, { signal });
+      if (signal?.aborted) return false;
       const existing = (json.data || []).find(l => childId === 'class-all' ? !l.childId : l.childId === childId);
       if (existing) {
         window.DaycareRecords?.saveStatus('같은 날짜의 기록이 있습니다. 열린 창에서 저장 방식을 선택해 주세요.');
-        const choice = await new Promise(resolve => openDuplicateModal(existing, resolve));
+        const cancel = () => finishDuplicate(); let choice;
+        signal?.addEventListener('abort', cancel, { once: true });
+        try { choice = await new Promise(resolve => openDuplicateModal(existing, resolve)); }
+        finally { signal?.removeEventListener('abort', cancel); }
         return choice ? await saveCallback(choice) : false;
       }
       return await saveCallback({ overwrite: false });
@@ -284,7 +287,7 @@
     const modal = document.getElementById('duplicateLogModal');
     const metaEl = document.getElementById('duplicateModalDesc');
     if (!modal) {
-      callback({ overwrite: false });
+      pendingSaveAction = null; callback(null);
       return;
     }
     if (metaEl) {
@@ -300,26 +303,23 @@
     const btnNew = document.getElementById('btnDupNew');
     const modal = document.getElementById('duplicateLogModal');
     const close = document.getElementById('btnDuplicateModalClose');
-    if (close) close.onclick = () => { modal.style.display = 'none'; pendingSaveAction?.(null); pendingSaveAction = null; };
+    if (close) close.onclick = () => finishDuplicate();
     const append = document.getElementById('btnDupAppend');
-    if (append) append.onclick = () => { modal.style.display = 'none'; pendingSaveAction?.({ append: true, pageId: existingPageId }); };
+    if (append) append.onclick = () => finishDuplicate({ append: true, pageId: existingPageId });
 
     if (btnCancel) {
       btnCancel.onclick = () => {
-        if (modal) modal.style.display = 'none';
-        pendingSaveAction?.(null); pendingSaveAction = null;
+        finishDuplicate();
       };
     }
     if (btnOverwrite) {
       btnOverwrite.onclick = () => {
-        if (modal) modal.style.display = 'none';
-        if (pendingSaveAction) pendingSaveAction({ overwrite: true, pageId: existingPageId });
+        finishDuplicate({ overwrite: true, pageId: existingPageId });
       };
     }
     if (btnNew) {
       btnNew.onclick = () => {
-        if (modal) modal.style.display = 'none';
-        if (pendingSaveAction) pendingSaveAction({ overwrite: false });
+        finishDuplicate({ overwrite: false });
       };
     }
   }
@@ -424,11 +424,12 @@
 
     const todayStr = state.selectedDate || new Date().toISOString().split('T')[0];
     const teacherId = state.teacherId; state.savingIndividual = true;
+    const controller = new AbortController(); state.individualAbortController = controller;
     let successCount = 0;
 
     try {
       for (let i = 0; i < checkedBoxes.length; i++) {
-        if (!state.authenticated || state.teacherId !== teacherId || state.selectedDate !== todayStr) throw new Error('교사 또는 날짜가 변경됐습니다. 미저장 항목을 다시 확인해 주세요.');
+        if (controller.signal.aborted || !state.authenticated || state.teacherId !== teacherId || state.selectedDate !== todayStr) throw new Error('교사 또는 날짜가 변경됐습니다. 미저장 항목을 다시 확인해 주세요.');
         window.DaycareRecords.saveStatus(`원아별 요약 저장 중 · ${successCount}/${checkedBoxes.length}건 완료`);
         const chk = checkedBoxes[i];
         const idx = chk.dataset.idx;
@@ -466,14 +467,9 @@
           citationSummary: `한그루 보육일지 내 ${childName} 놀이 팩트 자동 추출`
         };
 
-        const res = await fetch('/api/logs/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const saved = await res.json();
-        if (!res.ok || !saved.success || saved.source !== 'notion' || !saved.pageId) throw new Error(saved.error || '노션 저장 완료 응답을 확인하지 못했습니다.');
+        const saved = await requestJson('/api/logs/save', { method: 'POST', body: payload, signal: controller.signal, timeoutMs: 120000 });
+        if (controller.signal.aborted || !state.authenticated || state.teacherId !== teacherId) return;
+        if (!saved.success || saved.source !== 'notion' || !saved.pageId) throw new Error(saved.error || '노션 저장 완료 응답을 확인하지 못했습니다.');
         if (saved.success) {
           successCount++;
           if (state.lastResult?.individual_observations?.[idx]) state.lastResult.individual_observations[idx].saved_page_id = saved.pageId;
@@ -487,10 +483,12 @@
       showToast(`🎉 선택한 원아 ${successCount}명의 개별 관찰일지가 노션에 안전하게 분할 저장되었습니다!`);
       window.DaycareRecords.saveStatus(`원아별 관찰 요약 ${successCount}건 노션 저장 완료 · 통합 서식은 별도로 저장해 주세요.`, 'success');
     } catch (err) {
-      window.DaycareRecords.saveStatus(`원아별 요약 ${successCount}/${checkedBoxes.length}건 저장 완료 · 미저장 항목: ${err.message}`, 'error');
-      showToast(`저장 ${successCount}/${checkedBoxes.length}건 완료. 미저장 항목: ${err.message}`);
+      if (state.authenticated && state.teacherId === teacherId) {
+        window.DaycareRecords.saveStatus(`원아별 요약 ${successCount}/${checkedBoxes.length}건 저장 완료 · 미저장 항목: ${err.message}`, 'error');
+        showToast(`저장 ${successCount}/${checkedBoxes.length}건 완료. 미저장 항목: ${err.message}`);
+      }
     } finally {
-      state.savingIndividual = false;
+      state.savingIndividual = false; state.individualAbortController = null;
       if (btnSaveIndividualObs) {
         btnSaveIndividualObs.disabled = false;
         if (btnSaveIndividualObsText) btnSaveIndividualObsText.textContent = '선택한 원아 개별 관찰일지 DB에 반영';
@@ -547,9 +545,9 @@
     }
 
     try {
-      const res = await fetch('/api/history?limit=50' + (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''));
-      if (!res.ok) throw new Error('기록 조회 실패');
-      const json = await res.json();
+      const teacherId = state.teacherId;
+      const json = await requestJson('/api/history?limit=50' + (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''));
+      if (!state.authenticated || state.teacherId !== teacherId) return;
       state.historyLogs = cursor ? [...(state.historyLogs || []), ...(json.data || [])] : json.data || [];
       state.historyNextCursor = json.nextCursor;
       state.isHistoryLoaded = true;
@@ -623,9 +621,9 @@
 
   async function renderHistoryDetail(item) {
     try {
-      const response = await fetch('/api/history/' + encodeURIComponent(item.id));
-      const detail = await response.json();
-      if (!response.ok) throw new Error(detail.error);
+      const teacherId = window.state?.teacherId;
+      const detail = await requestJson('/api/history/' + encodeURIComponent(item.id));
+      if (!window.state?.authenticated || window.state.teacherId !== teacherId) return;
       item = { ...item, ...detail, child_name: detail.saved?.childName || item.child_name };
     } catch (error) { showToast(error.message); return; }
     const detailPanel = document.getElementById('historyDetailBody');
@@ -705,6 +703,7 @@
   window.DaycareNotion = {
     checkHealth,
     handleSaveNotion,
+    cancelPendingSave: () => finishDuplicate(),
     handleSaveClassReportNotion,
     handleSaveHangrooEvalNotion,
     handleSaveIndividualObs,

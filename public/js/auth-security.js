@@ -11,11 +11,13 @@
   let selected = null, digits = '', firstPin = '', invitation = null, busy = false;
   let ready = false, refreshTimer;
   const el = id => document.getElementById(id);
+  function setBusy(value) {
+    busy = value;
+    document.querySelectorAll('.keypad-btn').forEach(button => { button.disabled = value; });
+    if (el('retryAuthBtn')) el('retryAuthBtn').disabled = value;
+  }
   async function api(path, body) {
-    const response = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
-    const json = await response.json();
-    if (!response.ok) throw Object.assign(new Error(json.error || '연결을 확인해 주세요.'), { status: response.status });
-    return json;
+    return window.DaycareRecords.requestJson(path, body ? { method: 'POST', body } : {});
   }
   function error(message = '') { if (el('pinErrorMsg')) el('pinErrorMsg').textContent = message; }
   function dots() { el('pinDotsContainer')?.querySelectorAll('.pin-dot').forEach((dot, i) => dot.classList.toggle('filled', i < digits.length)); }
@@ -60,6 +62,7 @@
     });
   }
   function showGate() {
+    window.DaycareRecords?.cancelSave();
     document.body.dataset.locked = 'true'; ready = false;
     clearInterval(refreshTimer);
     if (el('authGateModal')) el('authGateModal').style.display = 'flex';
@@ -86,10 +89,11 @@
       className: profile.className, teacherName: profile.name, draftKey: session.draftKey,
       selectedChild: null, filterOnlyMyClass: true, persona: getTeacherPersona(profile.key), teacherStyle: getTeacherStyle(profile.key) });
     localStorage.setItem('daycare_active_teacher', profile.key);
-    selected = profile; ready = true;
+    selected = profile;
     syncTeacherSwitcherUI(); updatePersonaUI();
-    await window.ChildrenStore?.loadChildren();
-    await window.DaycareRecords?.restore();
+    try { await window.ChildrenStore?.loadChildren(); await window.DaycareRecords?.restore(); }
+    catch (e) { showGate(); throw e; }
+    ready = true; error();
     document.body.dataset.locked = 'false';
     if (el('authGateModal')) el('authGateModal').style.display = 'none';
     if (el('sessionUserEmailText')) el('sessionUserEmailText').textContent = profile.name;
@@ -107,15 +111,16 @@
   ['pointerdown', 'keydown', 'input'].forEach(type => document.addEventListener(type, () => { lastActivity = Date.now(); }));
   async function lock(forget = false) {
     await window.DaycareRecords?.save();
+    setBusy(true); showGate();
     try { await api('/api/auth/logout', { forget }); } catch (e) { error('서버 로그아웃 확인이 필요합니다. 연결 후 다시 잠가 주세요.'); }
-    showGate();
+    finally { setBusy(false); }
     if (forget) window.DaycareRecords?.forget();
   }
   async function submitPin() {
     if (busy || !selected || digits.length !== 4) return;
     const pin = digits; digits = ''; dots(); error();
     if (invitation?.initial && !firstPin) { firstPin = pin; error('새 PIN을 한 번 더 입력해 주세요.'); return; }
-    busy = true;
+    setBusy(true); error('PIN과 학급 정보를 확인하는 중입니다…');
     try {
       await api(invitation ? '/api/auth/register' : '/api/auth/login', invitation ? {
         invite: invitation.token, pin: invitation.initial ? firstPin : pin, confirmPin: pin,
@@ -123,7 +128,7 @@
       } : { teacherId: selected.id, pin, remember: !!el('rememberAuthCheck')?.checked });
       if (invitation) history.replaceState(null, '', location.pathname + location.search);
       invitation = null; firstPin = ''; lastActivity = Date.now(); await unlock();
-    } catch (e) { firstPin = ''; error(e.message); } finally { busy = false; }
+    } catch (e) { firstPin = ''; error(e.message); } finally { setBusy(false); }
   }
   async function handleTeacherSwitchClick(key) {
     if (ready && window.state?.activeTeacherKey === key) return;
@@ -165,7 +170,7 @@
     renderSelection(); return true;
   }
   async function initAuthGate() {
-    showGate(); busy = true;
+    showGate();
     document.querySelectorAll('.keypad-btn[data-num]').forEach(button => { button.onclick = () => { if (busy) return; if (digits.length < 4) digits += button.dataset.num; dots(); if (digits.length === 4) submitPin(); }; });
     if (el('keypadClearBtn')) el('keypadClearBtn').onclick = () => { digits = ''; dots(); };
     if (el('keypadBackspaceBtn')) el('keypadBackspaceBtn').onclick = () => { digits = digits.slice(0, -1); dots(); };
@@ -176,6 +181,14 @@
     });
     if (el('headerLogoutBtn')) el('headerLogoutBtn').onclick = () => lock();
     if (el('forgetDeviceBtn')) el('forgetDeviceBtn').onclick = () => lock(true);
+    if (el('retryAuthBtn')) el('retryAuthBtn').onclick = loadGate;
+    await loadGate();
+    window.addEventListener('hashchange', () => consumeInvitation().catch(e => error(e.message)));
+  }
+  async function loadGate() {
+    if (busy) return;
+    setBusy(true); error('기기와 학급 정보를 불러오는 중입니다…');
+    if (el('retryAuthBtn')) el('retryAuthBtn').hidden = true;
     try {
       const profiles = await api('/api/auth/profiles');
       profiles.profiles.forEach(p => { TEACHER_PROFILES[p.key] = p; });
@@ -183,10 +196,12 @@
       let inviteError = '';
       try { await consumeInvitation(); } catch (e) { inviteError = e.message; }
       renderSelection();
+      error();
       if (!invitation) try { await unlock(); } catch (e) { if (e.status !== 401) error(e.message); }
       if (inviteError && !ready) error(inviteError);
-    } catch (e) { error(e.message); } finally { busy = false; }
-    window.addEventListener('hashchange', () => consumeInvitation().catch(e => error(e.message)));
+      if (!ready && !inviteError && invitation) error();
+    } catch (e) { error(e.message); }
+    finally { setBusy(false); if (el('retryAuthBtn')) el('retryAuthBtn').hidden = ready; }
   }
   async function changePin() {
     try {

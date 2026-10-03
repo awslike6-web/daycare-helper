@@ -37,16 +37,16 @@ generateDaycareLog(options), validateFormats(data, formats), FORMAT_KEYS. 선택
 
 ### public/js/auth-security.js → DaycareAuth
 
-initAuthGate, lock, changePin, saveProfile, syncProfile, 교사 전환. 실제 인증 후 화면과 자기 반 노션 원아를 불러옵니다.
+initAuthGate, lock, changePin, saveProfile, syncProfile, 교사 전환. 실제 인증 후 화면과 자기 반 노션 원아를 불러옵니다. 로그인 로딩·버전·연결 재시도와 키패드 대기 상태를 표시하며 잠금 시 DaycareRecords.cancelSave를 호출합니다.
 
 ### public/js/records-flow.js → DaycareRecords
 
-capture, save, restore, clear, forget, invalidateResult, initEvidence, resetEvidence, monthlyOptions, saveNotion, saveStatus, generationStatus, generationProgress, availableFormats. 검수 수집·AES-GCM 초안·실제 근거 선택·대상 변경·현재 서식 인쇄본·검수 저장 상태를 담당합니다. DaycareNotion.handleSaveNotion이 저장 오케스트레이터를 호출합니다. DaycareHTML은 동적 HTML 텍스트를 이스케이프합니다.
+capture, save, restore, clear, forget, invalidateResult, initEvidence, resetEvidence, monthlyOptions, saveNotion, cancelSave, requestJson, saveStatus, generationStatus, generationProgress, availableFormats. 검수 수집·AES-GCM 초안·실제 근거 선택·대상 변경·현재 서식 인쇄본·검수 저장 상태를 담당합니다. requestJson(path, {method, body, signal, timeoutMs})은 JSON 요청·본문 수신의 제한 시간과 취소를 보장하며 쓰기를 자동 재전송하지 않습니다. cancelSave는 진행 저장과 중복 선택을 종료합니다. DaycareNotion.handleSaveNotion이 저장 오케스트레이터를 호출합니다. DaycareHTML은 동적 HTML 텍스트를 이스케이프합니다.
 
 ### public/js/notion-store.js → ChildrenStore / DaycareNotion
 
 ChildrenStore: loadChildren, renderChildrenChips, selectChild, openChildModal, handleChildFormSubmit.
-DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, openHistoryModal, loadHistoryLogs, renderHistoryList.
+DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, cancelPendingSave, openHistoryModal, loadHistoryLogs, renderHistoryList. cancelPendingSave는 중복 선택 Promise를 취소로 완료합니다.
 
 실제 원아 조회·검수본 저장·중복 처리·개별 요약 저장·보관함 조회·복원을 제공합니다.
 
@@ -63,7 +63,7 @@ DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, openHisto
 - tests/backend.test.js: 기기·PIN·학급·프록시·실제 근거·전체 저장 계약.
 - tests/draft.test.js: 암호화 초안·빈 화면 덮어쓰기 방지·검수 복원.
 - tests/frontend.test.js: 필수 DOM·모듈 경로·키 경로·파일 크기.
-- tests/stability.test.js: 만료 링크 복구·등록 주소 보존·교사 선택 DOM·AI/노션 오류 분류·검수 누락·연속 저장 제한.
+- tests/stability.test.js: 만료 링크 복구·등록 주소 보존·교사 선택 DOM·AI/노션 오류 분류·검수 누락·연속 저장 제한·중복 대기 잠금 복구·통신/본문 시간 초과·취소·이전 요청의 늦은 응답 격리.
 - scripts/verify_connections.mjs: 관리자 운영 연결 검증. --notion-only로 AI와 분리한 가상 기록 쓰기·읽기를 수행합니다.
 - tests/ui-fixture.js + .dev.vars.ui-test: 실제 자료와 분리된 가상 노션·AI(8790), 로컬 Worker(8787).
 - scripts/verify_js_modules.py: Node 실제 파서와 프론트 코어 800줄 상한.
