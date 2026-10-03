@@ -19,6 +19,8 @@
 
 AuthStore, authCall, requireSession, checkMutation, authCookies. Durable Object가 초대·PIN 해시·기기·세션·실패 횟수·교사별 초안 키를 보관합니다.
 
+AuthStore.failure(error)는 인증 예외를 응답으로 변환합니다. fetch의 직렬 실행 콜백 내부에서 호출하여 PIN 오류로 객체가 재시작되지 않도록 합니다. tests/auth-runtime.test.js와 tests/wrangler.auth-test.toml은 실제 workerd의 가상 계정 등록·오류 재시도·쿠키·세션·5회 제한을 검증하며 운영 계정을 사용하지 않습니다.
+
 ### api/notion.js
 
 callNotionApi(env, endpoint, method, body), getTeachersList, getChildrenList, requireChild, getAllDailyLogs, getRecentChildLogs, getLogDetail, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion, updateTeacherProfile, verifyNotionConnection(env, teacher, date).

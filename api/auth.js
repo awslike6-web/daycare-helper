@@ -56,12 +56,21 @@ export class AuthStore {
     try {
       // 동시 PIN 시도와 초대 사용을 직렬화하여 잠금/일회성 조건을 보장한다.
       return await this.state.blockConcurrencyWhile(async () => {
-        const data = await this.run(new URL(request.url).pathname.slice(1), await request.json());
-        return Response.json(data);
+        // 콜백 밖으로 예외가 나가면 객체가 재시작되어 안내와 실패 횟수 기록을 잃는다.
+        try {
+          const data = await this.run(new URL(request.url).pathname.slice(1), await request.json());
+          return Response.json(data);
+        } catch (error) {
+          return this.failure(error);
+        }
       });
     } catch (error) {
-      return Response.json({ error: error instanceof ApiError ? error.message : '인증 처리에 실패했습니다.' }, { status: error.status || 500 });
+      return this.failure(error);
     }
+  }
+  failure(error) {
+    return Response.json({ error: error instanceof ApiError ? error.message : '인증 처리에 실패했습니다.' },
+      { status: error instanceof ApiError ? error.status : 500 });
   }
   async getDevice(token) {
     if (!token) return null;

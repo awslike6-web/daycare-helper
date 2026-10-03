@@ -12,6 +12,8 @@ jobs:
   verify:
     name: 정적 검사와 회귀 검증
     runs-on: ubuntu-latest
+    env:
+      WRANGLER_SEND_METRICS: 'false'
     steps:
       - name: 저장소 가져오기
         uses: actions/checkout@v4
@@ -20,6 +22,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: 실제 Worker 실행기 의존성 준비
+        run: npm install --no-audit --no-fund
 
       - name: JavaScript 구문·파일 크기·인증·기록 검증
         run: |
