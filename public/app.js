@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     recognition: null,
     lastResult: null,
     originalResult: null,
-    selectedDate: new Date().toISOString().split('T')[0],
+    selectedDate: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date()),
     historyLogs: [],
     isHistoryLoaded: false,
     selectedHistoryLog: null,
@@ -154,7 +154,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   function updateRecordDate(dateStr) {
     if (!dateStr) return;
+    if (state.selectedDate !== dateStr) window.DaycareRecords?.invalidateResult();
     state.selectedDate = dateStr;
+    window.DaycareRecords?.resetEvidence();
 
     const recordDatePicker = document.getElementById('recordDatePicker');
     const headerDateText = document.getElementById('headerDateText');
@@ -166,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
     if (headerDateText) headerDateText.textContent = dt.toLocaleDateString('ko-KR', options);
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
     const isRetro = (dateStr !== todayStr);
     if (retroDateBadge) {
       retroDateBadge.style.display = isRetro ? 'inline-block' : 'none';
@@ -188,93 +190,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   // 4. 🛡️ 안심 자동 임시보관 및 복원 (Crash Guard)
   // ============================================================================
-  const DRAFT_STORAGE_KEY = 'daycare_auto_draft';
-
-  function saveAutoDraft() {
-    const rawMemoInput = document.getElementById('rawMemoInput');
-    if (!state.lastResult && (!rawMemoInput || !rawMemoInput.value.trim())) return;
-
-    try {
-      const draftData = {
-        timestamp: Date.now(),
-        date: state.selectedDate || new Date().toISOString().split('T')[0],
-        childId: state.selectedChild?.id || null,
-        childName: state.selectedChild?.name || '원아',
-        className: state.className || '',
-        rawMemo: rawMemoInput ? rawMemoInput.value : '',
-        lastResult: state.lastResult || null,
-        originalResult: state.originalResult || null,
-        selectedFormats: state.selectedFormats || []
-      };
-      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftData));
-    } catch (e) {}
-  }
-
-  function clearAutoDraft() {
-    try {
-      localStorage.removeItem(DRAFT_STORAGE_KEY);
-      const banner = document.getElementById('autoDraftRestoreBanner');
-      if (banner) banner.style.display = 'none';
-    } catch (e) {}
-  }
-
-  function checkAndRestoreAutoDraft() {
-    try {
-      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
-      if (!saved) return;
-      const draft = JSON.parse(saved);
-      if (!draft || (!draft.lastResult && !draft.rawMemo)) return;
-
-      const banner = document.getElementById('autoDraftRestoreBanner');
-      const metaEl = document.getElementById('autoDraftRestoreMeta');
-      const btnRestore = document.getElementById('btnRestoreAutoDraft');
-      const btnDiscard = document.getElementById('btnDiscardAutoDraft');
-      const rawMemoInput = document.getElementById('rawMemoInput');
-
-      if (banner) {
-        if (metaEl) {
-          metaEl.textContent = `${draft.date} [${draft.childName || '원아'}] 작성본이 안전하게 보관되어 있습니다.`;
-        }
-        banner.style.display = 'flex';
-
-        if (btnRestore) {
-          btnRestore.onclick = (e) => {
-            e.preventDefault();
-            if (rawMemoInput && draft.rawMemo) rawMemoInput.value = draft.rawMemo;
-            if (draft.lastResult) {
-              state.lastResult = draft.lastResult;
-              state.originalResult = draft.originalResult || draft.lastResult;
-              if (window.AiEngine && typeof window.AiEngine.renderResults === 'function') {
-                window.AiEngine.renderResults(draft.lastResult);
-              }
-            }
-            if (Array.isArray(draft.selectedFormats) && draft.selectedFormats.length > 0) {
-              state.selectedFormats = draft.selectedFormats;
-              syncFormatChipsUI();
-              updateGenerateBtnText();
-            }
-            banner.style.display = 'none';
-            showToast('🎉 작성 중이던 일지 내용이 복원되었습니다!');
-          };
-        }
-
-        if (btnDiscard) {
-          btnDiscard.onclick = (e) => {
-            e.preventDefault();
-            clearAutoDraft();
-            showToast('임시 저장본이 삭제되었습니다.');
-          };
-        }
-      }
-    } catch (e) {}
-  }
-
+  const saveAutoDraft = () => window.DaycareRecords?.save();
+  const clearAutoDraft = () => window.DaycareRecords?.clear();
   window.saveAutoDraft = saveAutoDraft;
   window.clearAutoDraft = clearAutoDraft;
-  window.AutoDraft = { save: saveAutoDraft, clear: clearAutoDraft, checkAndRestore: checkAndRestoreAutoDraft };
+  window.AutoDraft = { save: saveAutoDraft, clear: clearAutoDraft, checkAndRestore: () => window.DaycareRecords?.restore() };
 
-  // ============================================================================
-  // 5. 🎙️ Web Speech API 및 사진 첨부 (Media Assistant)
   // ============================================================================
   function setupSpeechRecognition() {
     const voiceMicBtn = document.getElementById('voiceMicBtn');
@@ -311,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (transcript.trim() && rawMemoInput) {
         const cur = rawMemoInput.value.trim();
         rawMemoInput.value = cur ? `${cur}\n${transcript.trim()}` : transcript.trim();
-        try { localStorage.setItem('daycare_draft_memo', rawMemoInput.value); } catch (e) {}
+        saveAutoDraft();
         showToast('🎙️ 음성 메모가 입력되었습니다.');
       }
     };
@@ -335,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  function handlePhotoUpload(e) {
+  async function handlePhotoUpload(e) {
     if (!state.photos) state.photos = [];
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -345,16 +266,24 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    files.forEach(file => {
-      if (!file.type.startsWith('image/')) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        state.photos.push(event.target.result);
-        renderPhotoPreviews();
-      };
-      reader.readAsDataURL(file);
-    });
-    e.target.value = '';
+    const teacherId = state.teacherId;
+    e.target.disabled = true;
+    try {
+      for (const file of files) {
+        if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') throw new Error('일반 사진 파일(JPEG, PNG, WebP)을 첨부해 주세요.');
+        const image = await createImageBitmap(file);
+        try {
+          const ratio = Math.min(1, 1280 / Math.max(image.width, image.height));
+          const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(image.width * ratio)); canvas.height = Math.max(1, Math.round(image.height * ratio));
+          const ctx = canvas.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          // 새 사진으로 다시 인코딩하여 용량을 줄이고 원본 위치 메타데이터를 보내지 않는다.
+          const photo = canvas.toDataURL('image/jpeg', 0.75);
+          if (!state.authenticated || state.teacherId !== teacherId) return;
+          state.photos.push(photo); renderPhotoPreviews(); await saveAutoDraft();
+        } finally { image.close(); }
+      }
+    } catch (error) { showToast('사진 첨부 실패: ' + error.message); }
+    finally { e.target.value = ''; e.target.disabled = false; }
   }
 
   function renderPhotoPreviews() {
@@ -364,17 +293,18 @@ document.addEventListener('DOMContentLoaded', () => {
     state.photos.forEach((src, idx) => {
       const wrap = document.createElement('div');
       wrap.style.cssText = 'position: relative; width: 64px; height: 64px; border-radius: 8px; overflow: hidden; border: 1px solid #CBD5E1;';
-      wrap.innerHTML = `
-        <img src="${src}" style="width: 100%; height: 100%; object-fit: cover;">
-        <button type="button" style="position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: #FFF; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; cursor: pointer;">&times;</button>
-      `;
-      wrap.querySelector('button').onclick = () => {
+      const image = document.createElement('img'); image.src = src; image.alt = '첨부 사진'; image.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+      const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '×'; remove.setAttribute('aria-label', '사진 삭제');
+      remove.style.cssText = 'position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:18px;height:18px;';
+      wrap.append(image, remove);
+      remove.onclick = () => {
         state.photos.splice(idx, 1);
-        renderPhotoPreviews();
+        renderPhotoPreviews(); saveAutoDraft();
       };
       box.appendChild(wrap);
     });
   }
+  window.renderPhotoPreviews = renderPhotoPreviews;
 
   // ============================================================================
   // 6. ⚙️ 모달 및 화면 이벤트 리스너 통합 바인딩
@@ -445,13 +375,12 @@ document.addEventListener('DOMContentLoaded', () => {
           rawMemoInput.value = '';
           state.photos = [];
           renderPhotoPreviews();
-          try { localStorage.removeItem('daycare_draft_memo'); } catch (e) {}
+          clearAutoDraft();
           showToast('🗑️ 메모와 사진이 깨끗하게 비워졌습니다.');
         }
       };
 
       rawMemoInput.oninput = () => {
-        try { localStorage.setItem('daycare_draft_memo', rawMemoInput.value); } catch (e) {}
         saveAutoDraft();
       };
     }
@@ -540,9 +469,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const personaEmojiLevel = document.getElementById('personaEmojiLevel');
 
     if (saveSettingsBtn) {
-      saveSettingsBtn.onclick = () => {
-        const newClassName = settingClassNameInput ? settingClassNameInput.value.trim() : state.className;
-        const newTeacherName = settingTeacherNameInput ? settingTeacherNameInput.value.trim() : state.teacherName;
+      saveSettingsBtn.onclick = async () => {
+        const newClassName = state.className;
+        const newTeacherName = state.teacherName;
         const classChanged = (newClassName !== state.className);
 
         state.className = newClassName;
@@ -554,8 +483,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const headerClassNameText = document.getElementById('headerClassNameText');
         if (headerClassNameText) headerClassNameText.textContent = newClassName;
-        const headerTeacherNameText = document.getElementById('headerTeacherNameText');
-        if (headerTeacherNameText) headerTeacherNameText.textContent = newTeacherName;
 
         const currentPersona = window.DaycareAuth?.getTeacherPersona(state.activeTeacherKey) || {};
         const updatedPersona = {
@@ -565,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
           emojiLevel: personaEmojiLevel ? personaEmojiLevel.value : (currentPersona.emojiLevel || 'moderate')
         };
         state.persona = updatedPersona;
-        window.DaycareAuth?.setTeacherPersona(state.activeTeacherKey, updatedPersona);
+        try { await window.DaycareAuth?.saveProfile(updatedPersona); } catch (e) { showToast('노션 문체 저장 실패: ' + e.message); return; }
 
         if (classChanged && window.ChildrenStore?.loadChildren) {
           window.ChildrenStore.loadChildren();
@@ -586,9 +513,8 @@ document.addEventListener('DOMContentLoaded', () => {
           const presetKey = chip.dataset.preset;
           const preset = PERSONA_PRESETS[presetKey];
           if (preset) {
-            if (personaSampleNote) personaSampleNote.value = preset.sampleNote || '';
-            const personaNameInput = document.getElementById('personaNameInput');
-            if (personaNameInput) personaNameInput.value = preset.name;
+            state.persona = { ...state.persona, name: preset.name, tone: preset.tone };
+            window.DaycareAuth?.updatePersonaUI();
             showToast(`✨ '${preset.name}' 스타일이 적용되었습니다. [저장]을 눌러주세요.`);
           }
         };
@@ -598,13 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 14. 노션 프로필 동기화
     const syncTeacherFromNotionBtn = document.getElementById('syncTeacherFromNotionBtn');
     if (syncTeacherFromNotionBtn) {
-      syncTeacherFromNotionBtn.onclick = () => {
-        if (typeof window.handleSyncTeacherProfile === 'function') {
-          window.handleSyncTeacherProfile();
-        } else {
-          showToast('노션 프로필 동기화는 최신 상태입니다.');
-        }
-      };
+      syncTeacherFromNotionBtn.onclick = () => window.DaycareAuth?.syncProfile();
     }
 
     // 15. 보안 세션 배너 제어
@@ -639,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 16. 모달 내부 PIN 변경 제어 및 로그아웃
     const openChangePinBtn = document.getElementById('openChangePinBtn');
-    const changePinArea = document.getElementById('changePinArea');
+    const changePinArea = document.getElementById('pinChangeBox');
     const saveNewPinBtn = document.getElementById('saveNewPinBtn');
     const cancelNewPinBtn = document.getElementById('cancelNewPinBtn');
     const modalLogoutBtn = document.getElementById('modalLogoutBtn');
@@ -658,22 +578,9 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
     if (saveNewPinBtn && newPinInput) {
-      saveNewPinBtn.onclick = () => {
-        const val = newPinInput.value.trim();
-        if (val.length !== 4 || isNaN(val)) {
-          showToast('⚠️ PIN 번호는 4자리 숫자여야 합니다.');
-          return;
-        }
-        try {
-          localStorage.setItem(`daycare_custom_pin_${state.activeTeacherKey}`, val);
-          showToast('🔒 새 PIN 번호가 안전하게 저장되었습니다!');
-          if (changePinArea) changePinArea.style.display = 'none';
-          newPinInput.value = '';
-        } catch (e) {
-          showToast('PIN 저장 중 오류가 발생했습니다.');
-        }
-      };
+      saveNewPinBtn.onclick = () => window.DaycareAuth?.changePin();
     }
+
     if (modalLogoutBtn) {
       modalLogoutBtn.onclick = () => {
         const headerLogoutBtn = document.getElementById('headerLogoutBtn');
@@ -716,11 +623,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // 7. 애플리케이션 초기화 (Init)
   // ============================================================================
   function init() {
-    // 1. 보안 게이트 초기화
-    if (window.DaycareAuth && typeof window.DaycareAuth.initAuthGate === 'function') {
-      window.DaycareAuth.initAuthGate();
-    }
-
     // 2. 소급 작성 날짜 초기화 (오늘 기본)
     updateRecordDate(state.selectedDate || new Date().toISOString().split('T')[0]);
 
@@ -732,25 +634,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. 음성 인식 초기화
     setupSpeechRecognition();
 
-    // 5. 헬스체크 및 원아 목록 로드
-    window.DaycareNotion?.checkHealth();
-    window.ChildrenStore?.loadChildren();
-
-    // 6. 작성 중 메모 복원
-    try {
-      const savedMemo = localStorage.getItem('daycare_draft_memo');
-      const rawMemoInput = document.getElementById('rawMemoInput');
-      if (savedMemo && rawMemoInput) rawMemoInput.value = savedMemo;
-    } catch (e) {}
-
-    // 7. 충돌 방지 자동 복원 배너 확인
-    checkAndRestoreAutoDraft();
-
     // 8. 전역 이벤트 리스너 통합 등록
     setupAllEventListeners();
 
     // 9. 📑 서식 선택 툴바 초기화 (이벤트 위임 바인딩)
     initFormatSelector();
+    window.DaycareAuth?.initAuthGate();
   }
 
   // 앱 실행

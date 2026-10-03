@@ -1,0 +1,5 @@
+name = "minmin-notion"
+main = "infra/notion-proxy.js"
+compatibility_date = "2026-06-26"
+compatibility_flags = ["nodejs_compat"]
+preview_urls = false

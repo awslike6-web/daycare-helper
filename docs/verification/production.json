@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "result": {
+    "success": true,
+    "ai": true,
+    "model": "gemini-3.8-flash",
+    "notionWriteRead": true,
+    "evidenceSelected": true,
+    "reviewedTextPreserved": true,
+    "formats": 7,
+    "archived": true
+  },
+  "at": "2026-10-03T14:21:02.2714658+09:00"
+}

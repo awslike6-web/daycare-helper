@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>🧸 daycare-helper | 어린이집 교사 맞춤형 AI 보육 비서</title>
   
   <!-- 모바일 웹 앱 메타 태그 및 파비콘 -->
@@ -12,17 +12,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json?v=20260920_v19">
-  <link rel="stylesheet" href="./style.css?v=20260920_v19">
+  <link rel="manifest" href="./manifest.json?v=20261003_v41">
+  <link rel="stylesheet" href="./style.css?v=20261003_v41">
 </head>
-<body>
+<body data-locked="true">
   <div class="app-container">
     <!-- 🧸 상단 미니멀 헤더 -->
     <header class="app-header">
       <div class="brand-area">
         <span class="brand-logo">🧸</span>
         <div>
-          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v3.4</span></div>
+          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v3.5</span></div>
           <div class="header-date-wrapper" id="headerDateWrapper" title="클릭하여 소급 작성 날짜 변경">
             <span class="header-date-icon">📅</span>
             <span class="brand-sub header-date-text" id="headerDateText">오늘의 보육 기록</span>
@@ -103,7 +103,7 @@
         <div style="display: flex; align-items: center; gap: 8px;">
           <span>원아 선택</span>
           <span id="selectedChildAge" style="font-weight: 500; margin-left: 2px;">만 4세</span>
-          <div id="classIsolationBadge" class="class-isolation-badge" title="담당 학급 원아만 100% 안전 격리 보호 중">
+          <div id="classIsolationBadge" class="class-isolation-badge" title="서버 인증으로 담당 학급에 접근합니다.">
             <span id="classFilterIcon">🌱</span>
             <span id="classFilterText">사랑반 전용</span>
             <span class="isolation-lock-icon">🔒</span>
@@ -191,6 +191,12 @@
         ></textarea>
         
         <!-- 📷 사진 첨부 영역 -->
+        <details class="evidence-picker">
+          <summary>📚 과거 관찰 기록 선택 <span id="evidenceStatus">0건 선택</span></summary>
+          <div class="evidence-controls"><label>시작일 <input type="date" id="evidenceFrom"></label><label>종료일 <input type="date" id="evidenceTo"></label><button type="button" id="loadEvidenceBtn" class="action-btn">기록 조회</button></div>
+          <div id="evidenceList" class="evidence-list"></div>
+        </details>
+        <label class="photo-consent"><input type="checkbox" id="photoConsentCheck"> 첨부 사진을 외부 AI에 보내는 데 동의합니다. 얼굴·이름표는 사진에서 직접 가려 주세요.</label>
         <div class="photo-area">
           <div class="photo-previews" id="photoPreviews"></div>
           <label class="photo-upload-label">
@@ -257,6 +263,14 @@
 
       <!-- 🎁 5대 보육 표준 서식 결과 섹션 -->
       <section class="results-section" id="resultsSection">
+          <!-- 📌 과거 기록 출처 (Citation) 배지 -->
+          <div class="citation-box" id="citationBox" style="display: none; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 12px; margin-top: 10px; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
+            <span class="citation-icon">📌</span>
+            <span id="citationSummaryText">과거 기록 연계 내용</span>
+          </div>
+
+
+        <label class="review-confirm"><input type="checkbox" id="reviewConfirmed"> 실제 관찰 사실과 원아별 요약을 확인했습니다.</label>
         <!-- ⭐ 마스터 노션 단일 저장 바: 오늘 생성된 모든 서식을 노션에 한 번에 완벽 저장 -->
         <div class="unified-save-banner" id="unifiedSaveBanner" style="display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #EEF2FF, #E0E7FF); border: 1.5px solid #C7D2FE; border-radius: 14px; padding: 12px 18px; margin-bottom: 14px; gap: 12px; flex-wrap: wrap; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);">
           <div style="display: flex; align-items: center; gap: 10px;">
@@ -376,17 +390,17 @@
             <div class="report-reflection-box" id="reportReflectionBox">
               <div class="report-bullet-item">
                 <span class="bullet-dot">●</span> <strong>성찰:</strong> 
-                <span id="repReflectionText">영아들이 블록으로 길게 만들던 기차 형태에 착안해 실제 조립형 레일과 다양한 기차 놀잇감을 연계해 주었더니 궤도 운동에 높은 집중력을 보였다. 야외에서는 대근육 신체놀이를 진행해 아이들의 신체 발산 욕구를 시원하게 충족시켜 주었다.</span>
+                <span id="repReflectionText" contenteditable="true" role="textbox" aria-label="교사 성찰"></span>
               </div>
               <div class="report-bullet-item" style="margin-top: 8px;">
                 <span class="bullet-dot">●</span> <strong>지원 내용:</strong>
                 <div class="report-sub-bullet">
                   <span class="sub-bullet-dash">○</span> <strong>환경 지원:</strong> 
-                  <span id="repSupportEnvText">기차 레일이 바닥에서 분리되지 않도록 넓은 공간에 안전하게 배치하고, 영아 수에 맞춰 기차 교구를 넉넉하게 꺼내주어 자리 다툼 없이 함께 굴릴 수 있도록 도움.</span>
+                  <span id="repSupportEnvText" contenteditable="true" role="textbox" aria-label="환경 지원"></span>
                 </div>
                 <div class="report-sub-bullet" style="margin-top: 4px;">
                   <span class="sub-bullet-dash">○</span> <strong>바깥놀이 안전 관리:</strong> 
-                  <span id="repSupportSafetyText">짧은 산책 시 보행 안전선을 지키도록 손잡고 이동을 지도하였으며, 광장 술래잡기 시 친구들과 부딪히거나 넘어지지 않도록 충분한 안전거리를 유지시킴.</span>
+                  <span id="repSupportSafetyText" contenteditable="true" role="textbox" aria-label="안전 지원"></span>
                 </div>
               </div>
             </div>
@@ -443,14 +457,14 @@
           <!-- 🪄 AI 실시간 다듬기 (Quick Refine) -->
           <div class="refine-box" id="kidsnoteRefineBox">
             <div class="refine-header">
-              <span>🪄 AI 실시간 다듬기 (클릭 시 1초 만에 수정)</span>
+              <span>🪄 AI 문장 다듬기 · 사실 확인 후 사용</span>
               <span id="refiningSpinner" style="display: none; color: var(--primary); font-size: 11px;">⏳ 다듬는 중...</span>
             </div>
             <div class="refine-chips">
               <button type="button" class="refine-chip" data-refine="cheerful">🎈 더 다정하고 발랄하게</button>
               <button type="button" class="refine-chip" data-refine="detailed">📏 조금 더 자세하고 길게</button>
               <button type="button" class="refine-chip" data-refine="compact">✂️ 핵심만 간결하게</button>
-              <button type="button" class="refine-chip" data-refine="meal">🍱 점심/식사 칭찬 1줄 추가</button>
+              <button type="button" class="refine-chip" data-refine="meal">🍱 기록된 식사 문장 다듬기</button>
               <button type="button" class="refine-chip refine-chip-reset" id="resetKidsnoteBtn" title="처음 생성된 초안으로 되돌립니다">↺ 원래대로 복원</button>
             </div>
             <div class="refine-custom-row">
@@ -504,11 +518,11 @@
                 <span style="font-size: 18px;">🧸</span>
                 <div>
                   <div style="font-size: 13px; font-weight: 700; color: #047857;">평가제 맞춤 월간 연속 관찰 세팅</div>
-                  <div style="font-size: 11px; color: #065F46;">월 2회 랜덤 평일 분산 + 1차 지도 후 발전적 변화 연계</div>
+                  <div style="font-size: 11px; color: #065F46;">선택한 실제 관찰일의 기록만 비교합니다.</div>
                 </div>
               </div>
-              <button type="button" class="history-refresh-btn" id="btnAutoDistributeDates" style="background: #ECFDF5; border-color: #A7F3D0; color: #065F46;" title="평일 중 1차/2차 날짜 자동 분산">
-                <span>🎲</span> <span>날짜 자동 분산</span>
+              <button type="button" class="history-refresh-btn" id="btnAutoDistributeDates" style="background: #ECFDF5; border-color: #A7F3D0; color: #065F46;" title="평일 중 1차/2차 선택한 관찰일로 다시 작성">
+                <span>🎲</span> <span>선택한 관찰일로 다시 작성</span>
               </button>
             </div>
 
@@ -521,7 +535,7 @@
 
               <!-- 1차 관찰 세팅 (상순) -->
               <div class="monthly-obs-subcard">
-                <div class="monthly-obs-subtitle">🌱 1차 관찰 (상순 평일)</div>
+                <div class="monthly-obs-subtitle">🌱 1차 실제 관찰</div>
                 <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 6px; margin-top: 4px;">
                   <input type="date" id="monthlyObsDate1" class="history-select" style="width: 100%;">
                   <select id="monthlyObsArea1" class="history-select" style="width: 100%;">
@@ -537,7 +551,7 @@
 
               <!-- 2차 관찰 세팅 (하순 · 연속성) -->
               <div class="monthly-obs-subcard" style="border-color: #93C5FD; background: #F0F9FF;">
-                <div class="monthly-obs-subtitle" style="color: #1D4ED8;">✨ 2차 관찰 (하순 · 발전적 변화 연계 ⭐)</div>
+                <div class="monthly-obs-subtitle" style="color: #1D4ED8;">✨ 2차 실제 관찰</div>
                 <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 6px; margin-top: 4px;">
                   <input type="date" id="monthlyObsDate2" class="history-select" style="width: 100%;">
                   <select id="monthlyObsArea2" class="history-select" style="width: 100%;">
@@ -555,7 +569,7 @@
 
           <!-- 📄 실제 출력 및 복사용 월간 관찰기록 시트 -->
           <div class="official-obs-sheet" id="officialObsSheet">
-            <h2 class="report-doc-title" id="monthlyObsDocTitle">[2026년 9월] 영유아 발달 관찰기록부</h2>
+            <h2 class="report-doc-title" id="monthlyObsDocTitle">영유아 발달 관찰기록부</h2>
             
             <table class="report-header-table">
               <colgroup>
@@ -567,13 +581,13 @@
               <tbody>
                 <tr>
                   <th class="rep-th">원아명</th>
-                  <td class="rep-td" id="monthlyObsChildName">김건하 (만 2세)</td>
+                  <td class="rep-td" id="monthlyObsChildName">선택한 원아</td>
                   <th class="rep-th">소속 반 / 담임</th>
                   <td class="rep-td" id="monthlyObsTeacherName">소망반 / 공가희 주임교사</td>
                 </tr>
                 <tr>
                   <th class="rep-th">관찰 주기</th>
-                  <td class="rep-td" colspan="3" id="monthlyObsPeriod">2026년 9월 (상순 1회 + 하순 1회 연속 관찰)</td>
+                  <td class="rep-td" colspan="3" id="monthlyObsPeriod">선택한 기간의 실제 관찰 기록</td>
                 </tr>
               </tbody>
             </table>
@@ -601,9 +615,9 @@
                   <td class="rep-td" style="vertical-align: top;">
                     <div style="font-weight: 600; color: #1E293B; margin-bottom: 4px;" id="obs1ActivityTitle">[놀이 활동] 블록 동물원 울타리 만들기</div>
                     <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 2px;">[객관적 행동 관찰]</div>
-                    <div style="white-space: pre-wrap; line-height: 1.5; color: #334155; margin-bottom: 8px;" id="obs1BehaviorText">객관적 행동 사실...</div>
+                    <div style="white-space: pre-wrap; line-height: 1.5; color: #334155; margin-bottom: 8px;" contenteditable="true" role="textbox" aria-label="obs1BehaviorText" id="obs1BehaviorText">객관적 행동 사실...</div>
                     <div style="font-size: 11px; font-weight: 700; color: #047857; margin-bottom: 2px;">[교사의 비계설정 및 지원]</div>
-                    <div style="white-space: pre-wrap; line-height: 1.5; color: #065F46;" id="obs1SupportText">교사의 언어 모델링 및 지원 내용...</div>
+                    <div style="white-space: pre-wrap; line-height: 1.5; color: #065F46;" contenteditable="true" role="textbox" aria-label="obs1SupportText" id="obs1SupportText">교사의 언어 모델링 및 지원 내용...</div>
                   </td>
                 </tr>
 
@@ -618,9 +632,9 @@
                   <td class="rep-td" style="vertical-align: top; background: #F8FAFC;">
                     <div style="font-weight: 600; color: #1E293B; margin-bottom: 4px;" id="obs2ActivityTitle">[놀이 활동] 기차 블록 협동 놀이</div>
                     <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 2px;">[1차 지도 이후 발전된 행동 관찰]</div>
-                    <div style="white-space: pre-wrap; line-height: 1.5; color: #334155; margin-bottom: 8px;" id="obs2BehaviorText">1차 관찰 지도 이후 나타난 긍정적 변화 사실...</div>
+                    <div style="white-space: pre-wrap; line-height: 1.5; color: #334155; margin-bottom: 8px;" contenteditable="true" role="textbox" aria-label="obs2BehaviorText" id="obs2BehaviorText">1차 관찰 지도 이후 나타난 긍정적 변화 사실...</div>
                     <div style="font-size: 11px; font-weight: 700; color: #1D4ED8; margin-bottom: 2px;">[교사의 지속 지원 및 상호작용]</div>
-                    <div style="white-space: pre-wrap; line-height: 1.5; color: #1E40AF; margin-bottom: 8px;" id="obs2SupportText">긍정적 상호작용 강화 및 지원...</div>
+                    <div style="white-space: pre-wrap; line-height: 1.5; color: #1E40AF; margin-bottom: 8px;" contenteditable="true" role="textbox" aria-label="obs2SupportText" id="obs2SupportText">긍정적 상호작용 강화 및 지원...</div>
                     <div style="background: #EFF6FF; padding: 6px 8px; border-radius: 4px; font-size: 11px; color: #1D4ED8; border-left: 3px solid #3B82F6;" id="obs2GrowthBox">
                       <b>📈 1차 대비 성장점:</b> <span id="obs2GrowthText">신체적 행동 대신 단어 표현 시도</span>
                     </div>
@@ -634,19 +648,13 @@
                   </td>
                   <td class="rep-td" style="vertical-align: top;">
                     <div style="font-size: 11px; font-weight: 700; color: #92400E; margin-bottom: 2px;">[표준보육과정 영역별 종합 발달 평가]</div>
-                    <div style="white-space: pre-wrap; line-height: 1.55; color: #334155; margin-bottom: 8px;" id="monthlySummaryDevText">1차와 2차 관찰을 종합한 발달 총평...</div>
+                    <div style="white-space: pre-wrap; line-height: 1.55; color: #334155; margin-bottom: 8px;" contenteditable="true" role="textbox" aria-label="monthlySummaryDevText" id="monthlySummaryDevText">1차와 2차 관찰을 종합한 발달 총평...</div>
                     <div style="font-size: 11px; font-weight: 700; color: #B45309; margin-bottom: 2px;">[다음 달 맞춤 지원 및 가정 연계 계획]</div>
-                    <div style="white-space: pre-wrap; line-height: 1.55; color: #78350F;" id="monthlySummaryPlanText">다음 달 원내 지도 및 가정 연계 방향...</div>
+                    <div style="white-space: pre-wrap; line-height: 1.55; color: #78350F;" contenteditable="true" role="textbox" aria-label="monthlySummaryPlanText" id="monthlySummaryPlanText">다음 달 원내 지도 및 가정 연계 방향...</div>
                   </td>
                 </tr>
               </tbody>
             </table>
-          </div>
-
-          <!-- 📌 과거 기록 출처 (Citation) 배지 -->
-          <div class="citation-box" id="citationBox" style="display: none; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 12px; margin-top: 10px; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
-            <span class="citation-icon">📌</span>
-            <span id="citationSummaryText">과거 기록 연계 내용</span>
           </div>
 
           <!-- 하단 액션 버튼 바: 전문 텍스트 복사 중심 (노션 저장은 상단 마스터 바로 통합) -->
@@ -824,7 +832,8 @@
               <button type="button" id="modalLogoutBtn" class="action-btn" style="font-size: 11px; padding: 5px 10px; border: 1px solid #FECACA; background: #FEF2F2; color: #DC2626; cursor: pointer; border-radius: 6px; font-weight: 600;">
                 🔒 로그아웃 (잠금)
               </button>
-              <button type="button" id="testBannerToggleBtn" class="action-btn" style="font-size: 11px; padding: 5px 10px; border: 1px dashed #D1D5DB; background: #F9FAFB; color: #4B5563; cursor: pointer; border-radius: 6px;">
+              <button type="button" id="forgetDeviceBtn" class="action-btn">기기 등록 해제</button>
+              <button hidden type="button" id="testBannerToggleBtn" class="action-btn" style="font-size: 11px; padding: 5px 10px; border: 1px dashed #D1D5DB; background: #F9FAFB; color: #4B5563; cursor: pointer; border-radius: 6px;">
                 🧪 D-7 배너 테스트
               </button>
             </div>
@@ -833,7 +842,9 @@
             <div id="pinChangeBox" style="display: none; margin-top: 10px; padding: 10px; background: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0;">
               <div style="font-weight: 700; color: var(--text-main); margin-bottom: 6px; font-size: 12px;">🔑 새 4자리 비밀번호 설정</div>
               <div style="display: flex; gap: 6px; align-items: center;">
-                <input type="password" id="newPinInput" maxlength="4" placeholder="새 4자리 숫자" style="width: 120px; padding: 6px 8px; font-size: 13px; text-align: center; border: 1px solid #CBD5E1; border-radius: 6px; letter-spacing: 2px;">
+                <input type="password" id="currentPinInput" inputmode="numeric" maxlength="4" placeholder="현재 PIN" autocomplete="current-password">
+                <input type="password" inputmode="numeric" autocomplete="new-password" id="newPinInput" maxlength="4" placeholder="새 4자리 숫자" style="width: 120px; padding: 6px 8px; font-size: 13px; text-align: center; border: 1px solid #CBD5E1; border-radius: 6px; letter-spacing: 2px;">
+                <input type="password" id="confirmPinInput" inputmode="numeric" maxlength="4" placeholder="새 PIN 확인" autocomplete="new-password">
                 <button type="button" id="saveNewPinBtn" class="action-btn" style="font-size: 12px; padding: 6px 12px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
                   저장
                 </button>
@@ -841,7 +852,7 @@
                   취소
                 </button>
               </div>
-              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">* 초기 비밀번호는 0000입니다. 변경 시 이 기기에 즉시 적용됩니다.</div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">PIN 변경 시 모든 기기의 기존 세션이 잠깁니다. 새 PIN으로 다시 들어가 주세요.</div>
             </div>
           </div>
 
@@ -910,7 +921,7 @@
               <label style="font-weight: 700; color: var(--text-main);">
                 2. 평소 내가 작성하는 알림장 예시문 (선택 권장)
               </label>
-              <span style="font-size: 11px; color: var(--primary); font-weight: 600;">말투 100% 모방</span>
+              <span style="font-size: 11px; color: var(--primary); font-weight: 600;">선생님 문체 참고</span>
             </div>
             <textarea 
               id="personaSampleNote" 
@@ -1134,16 +1145,6 @@
           </button>
         </div>
 
-        <!-- 2-Way 탭 스위처 -->
-        <div class="auth-tabs">
-          <button type="button" class="auth-tab-btn active" id="tabPinBtn">
-            <span>🔢 4자리 간편 PIN</span>
-          </button>
-          <button type="button" class="auth-tab-btn" id="tabEmailBtn">
-            <span>✉️ 이메일 로그인</span>
-          </button>
-        </div>
-
         <!-- 패널 1: 4자리 PIN 입력 -->
         <div class="auth-panel" id="pinPanel">
           <div class="pin-guide-text">
@@ -1177,34 +1178,14 @@
           </div>
         </div>
 
-        <!-- 패널 2: 이메일 로그인 -->
-        <div class="auth-panel" id="emailPanel" style="display: none;">
-          <div class="email-guide-text">
-            등록된 선생님 이메일 주소를 입력해 주세요.
-          </div>
-          <form id="emailLoginForm" style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
-            <input 
-              type="email" 
-              id="authEmailInput" 
-              class="auth-email-input" 
-              placeholder="예: teacher@example.com" 
-              required
-            >
-            <div class="pin-error-msg" id="emailErrorMsg"></div>
-            <button type="submit" class="submit-btn" style="padding: 12px; margin-top: 4px;">
-              🚀 이메일로 바로 시작하기
-            </button>
-          </form>
-        </div>
-
         <!-- 하단 공통 옵션 -->
         <div class="auth-gate-footer">
           <label class="remember-label">
             <input type="checkbox" id="rememberAuthCheck" checked>
-            <span>이 기기에서 30일간 로그인 유지</span>
+            <span>이 기기 등록을 30일 기억하기</span>
           </label>
           <div class="auth-hint-text">
-            * 초기 비밀번호는 <b>0000</b>이며, 진입 후 설정에서 변경 가능합니다.
+            <span id="authRegistrationHint">처음 사용하는 휴대폰은 기기 등록 링크가 필요합니다.</span>
           </div>
         </div>
       </div>
@@ -1436,58 +1417,12 @@
           <button type="button" class="modal-close-btn" id="btnDuplicateModalClose" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #92400E; line-height: 1;">&times;</button>
         </div>
         
-        <div class="modal-body" style="padding: 16px 18px; font-size: 13px; line-height: 1.6; color: #374151;">
-          <div style="background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 12.5px; color: #78350F;" id="duplicateModalDesc">
-            선생님, 오늘 <strong><span id="duplicateChildName">원아</span></strong>의 기록이 노션에 이미 등록되어 있어요.<br/>
-            현재 작성하신 내용을 어떻게 반영할까요?
-          </div>
-          
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <!-- 옵션 1: 이어서 추가 -->
-            <button type="button" id="btnDupAppend" class="action-btn" style="background: #ECFDF5; border: 1.5px solid #10B981; color: #065F46; padding: 12px 14px; border-radius: 10px; text-align: left; cursor: pointer; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s;">
-              <span style="font-size: 22px; line-height: 1;">➕</span>
-              <div style="flex: 1;">
-                <div style="font-weight: 700; font-size: 14px; color: #065F46; display: flex; align-items: center; gap: 6px;">
-                  <span>기존 내용에 이어서 추가</span>
-                  <span style="font-size: 10px; background: #059669; color: white; padding: 2px 6px; border-radius: 10px;">추천</span>
-                </div>
-                <div style="font-size: 12px; color: #047857; margin-top: 3px; line-height: 1.4;">
-                  오전에 작성한 내용 뒤에 오후 놀이 기록을 덧붙여 하나로 합칩니다.
-                </div>
-              </div>
-            </button>
-
-            <!-- 옵션 2: 덮어쓰기 -->
-            <button type="button" id="btnDupOverwrite" class="action-btn" style="background: #EFF6FF; border: 1.5px solid #3B82F6; color: #1E40AF; padding: 12px 14px; border-radius: 10px; text-align: left; cursor: pointer; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s;">
-              <span style="font-size: 22px; line-height: 1;">✏️</span>
-              <div style="flex: 1;">
-                <div style="font-weight: 700; font-size: 14px; color: #1E40AF;">최신 내용으로 덮어쓰기</div>
-                <div style="font-size: 12px; color: #2563EB; margin-top: 3px; line-height: 1.4;">
-                  오타나 문장을 수정한 최신 완성본으로 기존 일지를 깔끔하게 교체합니다.
-                </div>
-              </div>
-            </button>
-
-            <!-- 옵션 3: 별도 저장 -->
-            <button type="button" id="btnDupNew" class="action-btn" style="background: #F9FAFB; border: 1.5px solid #D1D5DB; color: #374151; padding: 12px 14px; border-radius: 10px; text-align: left; cursor: pointer; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s;">
-              <span style="font-size: 22px; line-height: 1;">📑</span>
-              <div style="flex: 1;">
-                <div style="font-weight: 700; font-size: 14px; color: #374151;">새로운 일지로 따로 저장</div>
-                <div style="font-size: 12px; color: #6B7280; margin-top: 3px; line-height: 1.4;">
-                  기존 일지는 그대로 두고, 별개의 새 카드로 저장합니다 (기존 방식).
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-        
-        <div class="modal-footer" style="padding: 10px 18px; background: #F9FAFB; border-top: 1px solid #E5E7EB; display: flex; justify-content: flex-end;">
-          <button type="button" id="btnDupCancel" class="action-btn" style="background: #E5E7EB; color: #4B5563; padding: 6px 14px; border-radius: 6px; font-size: 12px; border: none; cursor: pointer;">취소</button>
-        </div>
+        <div class="modal-body" style="padding:18px;line-height:1.7"><p id="duplicateModalDesc"></p><p>이어서 추가는 이전 검수본에 새 내용을 합칩니다. 덮어쓰기는 최신 저장본을 바꾸고, 별도 저장은 새 일지를 만듭니다.</p></div>
+        <div class="modal-footer" style="display:flex;flex-wrap:wrap;gap:8px;padding:14px"><button type="button" id="btnDupCancel" class="action-btn">취소</button><button type="button" id="btnDupAppend" class="action-btn">이어서 추가</button><button type="button" id="btnDupOverwrite" class="action-btn">덮어쓰기</button><button type="button" id="btnDupNew" class="action-btn">별도 저장</button></div>
       </div>
     </div>
 
-    <!-- 🔐 교사 프로필 전환 & 보안 잠금 4자리 PIN 인증 모달 -->
+    <!-- 이전 PIN 모달은 신규 서버 인증 화면으로 통합됨 -->
     <div class="modal-overlay" id="pinAuthModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.6); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
       <div class="modal-card" style="background: white; max-width: 360px; width: 90%; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); text-align: center; padding: 24px 20px;">
         <div style="font-size: 40px; margin-bottom: 8px;" id="pinModalAvatar">👩‍🍼</div>
@@ -1528,10 +1463,11 @@
   </div>
 
   <!-- 🛡️ 2026 골디락스 4대 완성형 코어 아키텍처 (안정성 & 효율성 극대화) -->
-  <script src="./js/auth-security.js?v=20261003_v37"></script>
-  <script src="./js/notion-store.js?v=20261003_v37"></script>
-  <script src="./js/ai-engine.js?v=20261003_v37"></script>
-  <script src="./gemini-client.js?v=20261003_v37"></script>
-  <script src="./app.js?v=20261003_v37"></script>
+  <script src="./js/records-flow.js?v=20261003_v41"></script>
+  <script src="./js/auth-security.js?v=20261003_v41"></script>
+  <script src="./js/notion-store.js?v=20261003_v41"></script>
+  <script src="./js/ai-engine.js?v=20261003_v41"></script>
+  <script src="./gemini-client.js?v=20261003_v41"></script>
+  <script src="./app.js?v=20261003_v41"></script>
 </body>
 </html>

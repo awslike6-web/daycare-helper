@@ -2381,3 +2381,48 @@ body {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+/* 서버 인증·근거 선택·검수 확인의 모바일 공통 레이아웃 */
+[hidden] { display: none !important; }
+.app-header { flex-wrap: wrap; gap: 10px; }
+.brand-area { flex: 0 0 100%; min-width: 0; }
+.header-actions { flex-wrap: wrap; gap: 6px; width: 100%; }
+.header-actions .badge, .header-date-wrapper { white-space: nowrap; flex-shrink: 0; }
+.teacher-switcher-bar { flex-wrap: wrap; }
+.teacher-tab-btn { min-width: 0; }
+@media (min-width: 900px) { .app-container { max-width: 960px; } }
+@media print { .review-confirm, .evidence-picker, .photo-consent, #authGateModal { display: none !important; } }
+body[data-locked="true"] .app-container > :not(#authGateModal):not(#toastMessage) { visibility: hidden; }
+#authGateModal { z-index: 10000; }
+.auth-gate-card { max-height: 96dvh; overflow-y: auto; }
+.auth-teacher-selector { flex-wrap: wrap; }
+.auth-teacher-chip { min-width: 0; white-space: normal; }
+.pin-dot.filled { background: var(--primary); border-color: var(--primary); }
+.evidence-picker { margin: 12px 0; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; }
+.evidence-picker summary { cursor: pointer; font-weight: 600; }
+#evidenceStatus { display: block; font-size: 12px; color: #64748b; margin-top: 4px; }
+.evidence-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 10px; }
+.evidence-controls label { display: grid; gap: 4px; font-size: 12px; }
+.evidence-controls input { max-width: 100%; min-width: 0; }
+.evidence-list { max-height: 320px; overflow-y: auto; margin-top: 8px; }
+.evidence-row { display: flex; gap: 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
+.evidence-row span { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.photo-consent, .review-confirm { display: flex; gap: 8px; align-items: start; font-size: 12px; line-height: 1.6; padding: 10px; }
+.review-confirm { margin-bottom: 12px; background: #eff6ff; border-radius: 8px; }
+#pinChangeBox > div { flex-wrap: wrap; }
+#pinChangeBox input { width: 120px; max-width: 100%; padding: 8px; }
+@media (max-width: 420px) {
+  .auth-gate-card { padding: 16px; }
+  .auth-teacher-chip { flex: 1 1 40%; }
+  .evidence-controls label { flex: 1 1 40%; }
+  .indiv-obs-top-row, .indiv-obs-meta, .indiv-obs-badges { flex-wrap: wrap; gap: 6px; }
+  .indiv-obs-name { white-space: nowrap; }
+}
+[contenteditable="true"] { white-space: pre-wrap; overflow-wrap: anywhere; }
+[contenteditable="true"]:focus { outline: 2px solid #a5b4fc; border-radius: 3px; }
+.daycare-print-output { display: none; }
+@media print {
+  body * { visibility: hidden !important; }
+  body .app-container { display: none !important; }
+  .daycare-print-output, .daycare-print-output * { visibility: visible !important; }
+  .daycare-print-output { display: block !important; position: static; width: 100%; overflow-wrap: anywhere; }
+}

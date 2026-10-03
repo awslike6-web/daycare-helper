@@ -9,11 +9,7 @@
  */
 
 (function () {
-  const NOTION_CONFIG = (window.DaycareConfig && window.DaycareConfig.NOTION_CONFIG) || {
-    DAILY_LOG_DB_ID: '320a2711-5b68-809e-ba62-f2fefaa0bc9c',
-    CHILDREN_DB_ID: '320a2711-5b68-8051-9f20-c637a7fefc65'
-  };
-
+  const safeHTML = (...args) => window.DaycareHTML(...args);
   const showToast = (msg) => (typeof window.showToast === 'function' ? window.showToast(msg) : console.log(msg));
 
   // ============================================================================
@@ -62,23 +58,11 @@
   // ============================================================================
   async function loadChildren(selectedId = null) {
     const state = window.state || {};
-    try {
-      const res = await fetch('/api/children', { method: 'GET' });
-      if (!res.ok) throw new Error('원아 목록을 불러올 수 없습니다.');
-      const json = await res.json();
-      state.children = json.children || json.data || [];
-    } catch (err) {
-      console.warn('원아 목록 로드 실패, 로컬 캐시 폴백:', err);
-      try {
-        const cached = localStorage.getItem('daycare_children_cache');
-        if (cached) state.children = JSON.parse(cached);
-      } catch (e) {}
-    }
-
-    try {
-      localStorage.setItem('daycare_children_cache', JSON.stringify(state.children || []));
-    } catch (e) {}
-
+    if (!state.authenticated) { state.children = []; return; }
+    const response = await fetch('/api/children');
+    const json = await response.json();
+    if (!response.ok) { state.children = []; throw new Error(json.error || '원아 목록 조회 실패'); }
+    state.children = json.children || [];
     renderChildrenChips(selectedId);
   }
 
@@ -89,22 +73,8 @@
 
     container.innerHTML = '';
 
-    // 학급 필터링
-    let visibleChildren = state.children || [];
-    const curClass = state.className || '사랑반';
-
-    if (state.filterOnlyMyClass && curClass) {
-      if (curClass === '연구반') {
-        const sandboxKids = visibleChildren.filter(c => (c.className || c.childClass) === '연구반');
-        visibleChildren = sandboxKids.length > 0 ? sandboxKids : visibleChildren;
-      } else {
-        visibleChildren = visibleChildren.filter(c => {
-          const cls = c.className || c.childClass || '';
-          if (!cls) return true;
-          return cls.trim() === curClass.trim();
-        });
-      }
-    }
+    const curClass = state.className || '';
+    const visibleChildren = (state.children || []).filter(c => (c.className || c.childClass) === curClass);
 
     // 0. 학급 전체 공통 일지 가상 원아 칩 (보육일지 전용)
     const allChild = {
@@ -123,16 +93,16 @@
       chip.className = 'child-chip';
       chip.dataset.id = child.id;
 
-      const isCurrentSelected = (keepSelectedId && child.id === keepSelectedId) ||
-        (state.selectedChild && state.selectedChild.id === child.id);
+      const isCurrentSelected = child.id === (keepSelectedId || state.selectedChild?.id);
 
       if (isCurrentSelected) {
         chip.classList.add('active');
+        if (state.selectedChild?.id !== child.id) window.DaycareRecords?.resetEvidence();
         state.selectedChild = child;
       }
 
       const avatar = child.isClassAll ? '🌱' : (child.gender === '여' ? '👧' : '🧒');
-      chip.innerHTML = `
+      chip.innerHTML = safeHTML`
         <span class="child-avatar">${avatar}</span>
         <span>${child.name}</span>
       `;
@@ -158,6 +128,9 @@
   function selectChild(child) {
     if (!child) return;
     const state = window.state || {};
+    if (state.selectedChild?.id !== child.id) {
+      window.DaycareRecords?.invalidateResult(); window.DaycareRecords?.resetEvidence();
+    }
     state.selectedChild = child;
 
     const chips = document.querySelectorAll('.child-chip');
@@ -170,7 +143,7 @@
     const childParentText = document.getElementById('childParentText');
     const childAlertText = document.getElementById('childAlertText');
 
-    if (selectedChildAge) selectedChildAge.textContent = child.age || '만 2세';
+    if (selectedChildAge) selectedChildAge.textContent = child.age || '연령 확인 필요';
     if (classFilterText) classFilterText.textContent = `${state.className || '우리 반'} 전용`;
     if (childTraitsText) childTraitsText.textContent = `💡 성향: ${child.traits || '특이사항 없음'}`;
 
@@ -219,7 +192,6 @@
       if (titleEl) titleEl.textContent = `✏️ ${childData.name} 원아 정보 수정`;
       document.getElementById('manageChildName').value = childData.name || '';
       document.getElementById('manageChildAge').value = childData.age || '만 2세';
-      document.getElementById('manageChildGender').value = childData.gender || '남';
       document.getElementById('manageChildTraits').value = childData.traits || '';
       document.getElementById('manageChildParentStyle').value = childData.parentStyle || '';
       document.getElementById('manageChildAllergies').value = childData.allergies || '';
@@ -237,7 +209,6 @@
       name: document.getElementById('manageChildName').value.trim(),
       className: document.getElementById('manageChildClass').value.trim(),
       age: document.getElementById('manageChildAge').value.trim(),
-      gender: document.getElementById('manageChildGender').value,
       traits: document.getElementById('manageChildTraits').value.trim(),
       parentStyle: document.getElementById('manageChildParentStyle').value.trim(),
       allergies: document.getElementById('manageChildAllergies').value.trim()
@@ -274,7 +245,7 @@
     const badge = document.getElementById('notionStatusBadge');
     const text = document.getElementById('notionStatusText');
     try {
-      const res = await fetch('/api/health', { method: 'GET' });
+      const res = await fetch('/api/connection', { method: 'GET' });
       if (!res.ok) throw new Error('서버 응답 없음');
       const data = await res.json();
       if (data.status === 'ok') {
@@ -294,27 +265,20 @@
 
   async function checkDuplicateAndSave(date, childName, saveCallback) {
     try {
-      const checkRes = await fetch(`/api/history?limit=10&child_name=${encodeURIComponent(childName)}`);
-      if (checkRes.ok) {
-        const json = await checkRes.json();
-        const logs = json.data || [];
-        const existing = logs.find(l => l.date === date);
-        if (existing) {
-          openDuplicateModal(existing, saveCallback);
-          return;
-        }
-      }
-    } catch (e) {
-      console.warn('중복 검사 건너뜀:', e);
-    }
-    // 중복 없음: 즉시 저장 실행
-    saveCallback({ overwrite: false });
+      const childId = window.state?.selectedChild?.id;
+      const params = new URLSearchParams({ from: date, to: date, limit: '100', ...(childId && childId !== 'class-all' ? { childId } : {}) });
+      const response = await fetch('/api/history?' + params); const json = await response.json();
+      if (!response.ok) throw new Error(json.error || '중복 확인 실패');
+      const existing = (json.data || []).find(l => childId === 'class-all' ? !l.childId : l.childId === childId);
+      if (existing) { openDuplicateModal(existing, saveCallback); return; }
+      await saveCallback({ overwrite: false });
+    } catch (error) { showToast('저장 전 기록 확인 실패: ' + error.message); }
   }
 
   function openDuplicateModal(existingLog, callback) {
     pendingSaveAction = callback;
-    const modal = document.getElementById('duplicateConfirmModal');
-    const metaEl = document.getElementById('dupModalMeta');
+    const modal = document.getElementById('duplicateLogModal');
+    const metaEl = document.getElementById('duplicateModalDesc');
     if (!modal) {
       callback({ overwrite: false });
       return;
@@ -330,7 +294,11 @@
     const btnCancel = document.getElementById('btnDupCancel');
     const btnOverwrite = document.getElementById('btnDupOverwrite');
     const btnNew = document.getElementById('btnDupNew');
-    const modal = document.getElementById('duplicateConfirmModal');
+    const modal = document.getElementById('duplicateLogModal');
+    const close = document.getElementById('btnDuplicateModalClose');
+    if (close) close.onclick = () => { modal.style.display = 'none'; pendingSaveAction = null; };
+    const append = document.getElementById('btnDupAppend');
+    if (append) append.onclick = () => { modal.style.display = 'none'; pendingSaveAction?.({ append: true, pageId: existingPageId }); };
 
     if (btnCancel) {
       btnCancel.onclick = () => {
@@ -415,13 +383,15 @@
       return;
     }
 
+    if (!document.getElementById('reviewConfirmed')?.checked) { showToast('실제 관찰과 맞는지 검수 확인을 눌러 주세요.'); return; }
+    window.DaycareRecords?.capture();
     const childName = state.selectedChild?.name || '우리 반';
     const date = state.selectedDate || new Date().toISOString().split('T')[0];
     const rawMemoInput = document.getElementById('rawMemoInput');
     const rawMemo = rawMemoInput ? rawMemoInput.value.trim() : '';
     const obsSummary = extractCleanObsSummary(state.lastResult, rawMemo);
 
-    await checkDuplicateAndSave(date, childName, async ({ overwrite, pageId }) => {
+    await checkDuplicateAndSave(date, childName, async ({ overwrite, pageId, append }) => {
       showToast('☁️ 노션 DB로 전송 중입니다...');
       try {
         const payload = {
@@ -435,6 +405,7 @@
           obsSummary, // 🌟 인삿말 없는 순수 관찰 요약 전송!
           result: state.lastResult,
           overwrite,
+          append,
           pageId
         };
 
@@ -444,8 +415,9 @@
           body: JSON.stringify(payload)
         });
 
-        if (!res.ok) throw new Error('노션 저장 실패');
         const json = await res.json();
+        if (!res.ok || !json.success || json.source !== 'notion') throw new Error(json.error || '노션 저장 실패');
+        state.isHistoryLoaded = false;
         showToast('🎉 노션 [DAILY_LOG_DB]에 성공적으로 저장되었습니다!');
 
         if (typeof window.clearAutoDraft === 'function') {
@@ -483,6 +455,7 @@
     const btnSaveIndividualObsText = document.getElementById('btnSaveIndividualObsText');
     const checkedBoxes = Array.from(document.querySelectorAll('.indiv-obs-checkbox:checked, .indiv-obs-check:checked'));
 
+    if (!document.getElementById('reviewConfirmed')?.checked) { showToast('원아별 요약을 검수한 뒤 확인해 주세요.'); return; }
     if (checkedBoxes.length === 0) {
       showToast('반영할 원아를 1명 이상 선택해 주세요.');
       return;
@@ -516,17 +489,20 @@
         const pool = state.children || [];
         const matchedChild = pool.find(c => c.name === childName);
         const targetChildId = matchedChild ? matchedChild.id : null;
+        if (!targetChildId) throw new Error(childName + ': 등록된 원아와 일치하지 않아 저장하지 않았습니다.');
 
         const payload = {
           date: todayStr,
+          pageId: state.lastResult?.individual_observations?.[idx]?.saved_page_id,
           childId: targetChildId,
           childName,
           className: state.className || '사랑반',
           teacherName: state.teacherName || '공가영 선생님',
           activityArea: area,
           standardArea,
-          rawMemo: summaryText,
-          obsSummary: `${childName} - ${summaryText}`.slice(0, 80),
+          rawMemo: state.lastResult?.rawMemo || document.getElementById('rawMemoInput')?.value || '',
+          result: { observation_summary: summaryText, individual_observations: [{ child_name: childName, summary: summaryText }], citation: state.lastResult?.citation, source_class_memo: true },
+          obsSummary: summaryText,
           observationText: `[원아별 행동 관찰 요약]\n${summaryText}\n\n[학급 놀이 맥락]\n${state.lastResult?.class_daily_report?.play_theme || state.activityArea || '자유놀이'}`,
           citationSummary: `한그루 보육일지 내 ${childName} 놀이 팩트 자동 추출`
         };
@@ -537,16 +513,21 @@
           body: JSON.stringify(payload)
         });
 
-        if (res.ok) {
+        const saved = await res.json();
+        if (!res.ok || !saved.success) throw new Error(saved.error || '노션 저장 실패');
+        if (saved.success) {
           successCount++;
+          if (state.lastResult?.individual_observations?.[idx]) state.lastResult.individual_observations[idx].saved_page_id = saved.pageId;
+          state.isHistoryLoaded = false;
           const statusTag = document.getElementById(`indiv-obs-status-${idx}`);
           if (statusTag) statusTag.style.display = 'inline-block';
+          await window.DaycareRecords?.save();
         }
       }
 
       showToast(`🎉 선택한 원아 ${successCount}명의 개별 관찰일지가 노션에 안전하게 분할 저장되었습니다!`);
     } catch (err) {
-      showToast(`❌ 개별 관찰일지 저장 중 오류: ${err.message}`);
+      showToast(`저장 ${successCount}/${checkedBoxes.length}건 완료. 미저장 항목: ${err.message}`);
     } finally {
       if (btnSaveIndividualObs) {
         btnSaveIndividualObs.disabled = false;
@@ -568,9 +549,22 @@
 
   function setupHistoryModalListeners() {
     const modal = document.getElementById('historyModal');
-    const closeBtn = document.getElementById('closeHistoryModalBtn');
+    const closeBtn = document.getElementById('btnCloseHistoryModal');
     const searchInput = document.getElementById('historySearchInput');
-    const classFilter = document.getElementById('historyClassFilter');
+    const classFilter = document.getElementById('historyClassSelect');
+    const childFilter = document.getElementById('historyChildSelect');
+    if (classFilter) {
+      classFilter.replaceChildren(new Option(window.state.className, window.state.className));
+      classFilter.disabled = true;
+    }
+    if (childFilter) {
+      childFilter.replaceChildren(new Option('전체 원아', 'all'), ...window.state.children.map(c => new Option(c.name, c.id)));
+      childFilter.onchange = renderHistoryList;
+    }
+    const typeFilter = document.getElementById('historyTypeSelect');
+    if (typeFilter) typeFilter.onchange = renderHistoryList;
+    const refresh = document.getElementById('btnRefreshHistory');
+    if (refresh) refresh.onclick = () => loadHistoryLogs();
 
     if (closeBtn && modal) {
       closeBtn.onclick = () => { modal.style.display = 'none'; };
@@ -583,23 +577,24 @@
     }
   }
 
-  async function loadHistoryLogs() {
+  async function loadHistoryLogs(cursor = null) {
     const state = window.state || {};
     const container = document.getElementById('historyListContainer');
-    if (container) {
+    if (container && !cursor) {
       container.innerHTML = '<div style="text-align: center; padding: 30px; color: #64748B;">⏳ 노션 지난 기록을 불러오는 중...</div>';
     }
 
     try {
-      const res = await fetch('/api/history?limit=30');
+      const res = await fetch('/api/history?limit=50' + (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''));
       if (!res.ok) throw new Error('기록 조회 실패');
       const json = await res.json();
-      state.historyLogs = json.data || [];
+      state.historyLogs = cursor ? [...(state.historyLogs || []), ...(json.data || [])] : json.data || [];
+      state.historyNextCursor = json.nextCursor;
       state.isHistoryLoaded = true;
       renderHistoryList();
     } catch (err) {
       if (container) {
-        container.innerHTML = `<div style="text-align: center; padding: 30px; color: #EF4444;">❌ 지난 기록 로드 실패: ${err.message}</div>`;
+        container.innerHTML = safeHTML`<div style="text-align: center; padding: 30px; color: #EF4444;">❌ 지난 기록 로드 실패: ${err.message}</div>`;
       }
     }
   }
@@ -608,13 +603,19 @@
     const state = window.state || {};
     const container = document.getElementById('historyListContainer');
     const searchInput = document.getElementById('historySearchInput');
-    const classFilter = document.getElementById('historyClassFilter');
+    const classFilter = document.getElementById('historyClassSelect');
     if (!container) return;
 
     const query = (searchInput?.value || '').trim().toLowerCase();
     const targetClass = classFilter?.value || 'all';
 
     let list = state.historyLogs || [];
+    const childId = document.getElementById('historyChildSelect')?.value;
+    if (childId && childId !== 'all') list = list.filter(item => item.childId === childId);
+    const type = document.getElementById('historyTypeSelect')?.value;
+    if (type === 'kidsnote') list = list.filter(item => item.kidsnoteText);
+    if (type === 'report') list = list.filter(item => !item.childId);
+    if (type === 'obs') list = list.filter(item => item.behavior || item.summary);
 
     // 필터링
     if (targetClass !== 'all') {
@@ -630,16 +631,13 @@
 
     if (list.length === 0) {
       container.innerHTML = '<div style="text-align: center; padding: 40px; color: #94A3B8;">조건에 맞는 지난 기록이 없습니다.</div>';
-      return;
-    }
-
-    container.innerHTML = '';
+    } else container.innerHTML = '';
     list.forEach(item => {
       const card = document.createElement('div');
       card.className = 'history-item-card';
       card.style.cssText = 'padding: 12px 14px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s ease;';
 
-      card.innerHTML = `
+      card.innerHTML = safeHTML`
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
           <div style="display: flex; gap: 6px; align-items: center;">
             <span style="font-weight: 700; color: #1E293B;">${item.child_name || '원아'}</span>
@@ -655,13 +653,31 @@
       card.onclick = () => renderHistoryDetail(item);
       container.appendChild(card);
     });
+    if (state.historyNextCursor) {
+      const more = document.createElement('button'); more.type = 'button'; more.className = 'action-btn'; more.textContent = '이전 기록 더 보기';
+      more.onclick = async () => { more.disabled = true; await loadHistoryLogs(state.historyNextCursor); }; container.appendChild(more);
+    }
   }
 
-  function renderHistoryDetail(item) {
-    const detailPanel = document.getElementById('historyDetailPanel');
+  async function renderHistoryDetail(item) {
+    try {
+      const response = await fetch('/api/history/' + encodeURIComponent(item.id));
+      const detail = await response.json();
+      if (!response.ok) throw new Error(detail.error);
+      item = { ...item, ...detail, child_name: detail.saved?.childName || item.child_name };
+    } catch (error) { showToast(error.message); return; }
+    const detailPanel = document.getElementById('historyDetailBody');
     if (!detailPanel) return;
+    const detailModal = document.getElementById('historyDetailModal');
+    if (detailModal) detailModal.style.display = 'flex';
+    const closeDetail = document.getElementById('btnCloseHistoryDetailModal');
+    if (closeDetail) closeDetail.onclick = () => { detailModal.style.display = 'none'; };
+    const copy = document.getElementById('btnCopyHistoryText');
+    if (copy) copy.onclick = () => window.AiEngine.copyTextToClipboard(JSON.stringify(item.parsedData || { memo: item.memo, summary: item.summary, content: item.content }, null, 2));
+    const print = document.getElementById('btnPrintHistory');
+    if (print) print.onclick = () => { window.state.printHistory = item; window.print(); };
 
-    detailPanel.innerHTML = `
+    detailPanel.innerHTML = safeHTML`
       <div style="padding: 16px; background: #F8FAFC; border-radius: 8px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
           <h4 style="margin: 0; font-size: 16px; color: #1E293B;">${item.date} [${item.child_name}] 상세 기록</h4>
@@ -681,7 +697,8 @@
         restoreHistoryToInputs(item);
         const modal = document.getElementById('historyModal');
         if (modal) modal.style.display = 'none';
-        showToast(`🎉 [${item.child_name}]의 ${item.date} 기록이 화면에 복원되었습니다!`);
+        if (detailModal) detailModal.style.display = 'none';
+        showToast(item.parsedData ? `🎉 [${item.child_name}]의 ${item.date} 기록이 화면에 복원되었습니다!` : '이전 형식의 원시 메모를 복원했습니다. 완성 문장은 상세 보기에서 확인해 주세요.');
       };
     }
   }
@@ -689,13 +706,22 @@
   function restoreHistoryToInputs(item) {
     const rawMemoInput = document.getElementById('rawMemoInput');
     const state = window.state || {};
-    if (rawMemoInput && item.memo) rawMemoInput.value = item.memo;
+    window.DaycareRecords?.invalidateResult();
+    const child = state.children.find(c => c.id === item.childId);
+    if (child) selectChild(child);
+    else if (!item.childId) renderChildrenChips('class-all');
+    if (rawMemoInput) rawMemoInput.value = item.memo || '';
     if (item.date && typeof window.updateRecordDate === 'function') {
       window.updateRecordDate(item.date);
     }
     if (item.parsedData && typeof window.renderResults === 'function') {
+      const formats = { kidsnote: 'kidsnote', class_daily_report: 'class_daily_report', monthly_observation: 'observation', hangroo_eval: 'hangroo_eval', parent_counseling: 'counseling', daily_care_log: 'daily_care', play_support: 'play_support' };
+      state.selectedFormats = Object.entries(formats).filter(([key]) => item.parsedData[key]).map(([, value]) => value);
       state.lastResult = item.parsedData;
+      state.originalResult = structuredClone(item.parsedData);
+      window.syncFormatChipsUI?.();
       window.renderResults(item.parsedData);
+      window.DaycareRecords?.save();
     }
   }
 

@@ -1,38 +1,40 @@
-name: Verify Code & Build Integrity
+name: 보육비서 코드와 인증·기록 흐름 검증
 
 on:
   push:
     branches:
       - main
+      - 'codex/**'
+  pull_request:
   workflow_dispatch:
 
 jobs:
   verify:
-    name: Code Integrity Check
+    name: 정적 검사와 회귀 검증
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: 저장소 가져오기
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Node.js 준비
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Install Dependencies
-        run: npm ci || npm install
-
-      - name: Verify JavaScript Syntax & Integrity
+      - name: JavaScript 구문·파일 크기·인증·기록 검증
         run: |
-          echo "🔍 JavaScript 4대 완성형 코어 문법 및 무결성 검사 시작..."
+          echo "JavaScript 실제 파서 검사"
           node --check worker.js
           node --check public/app.js
           node --check public/gemini-client.js
           node --check public/js/auth-security.js
           node --check public/js/notion-store.js
           node --check public/js/ai-engine.js
-          echo "🔍 정밀 골디락스 응집도 및 스코프 해석 검증..."
+          node --check public/js/records-flow.js
+          node --check api/auth.js
+          node --check api/notion.js
+          node --check api/gemini.js
+          node --check api/notion-proxy-guard.js
+          node --test tests/*.test.js
           python scripts/verify_js_modules.py
-          python scripts/audit_scope_resolution.py
-          echo "✅ 모든 코드가 오류 없이 완벽하게 검증되었습니다!"
-          echo "🚀 Cloudflare 자동 배포가 정상 진행됩니다."
+          echo "정적 검사와 회귀 검증 완료. 운영 배포와 화면 확인은 별도 수행합니다."

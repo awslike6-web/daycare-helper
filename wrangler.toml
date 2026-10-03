@@ -2,10 +2,27 @@ name = "daycare-helper"
 main = "worker.js"
 compatibility_date = "2026-06-26"
 compatibility_flags = ["nodejs_compat"]
+preview_urls = false
+
+[[services]]
+binding = "NOTION_PROXY"
+service = "minmin-notion"
 
 [assets]
 directory = "./public"
 binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+[[durable_objects.bindings]]
+name = "AUTH_STORE"
+class_name = "AuthStore"
+
+[[migrations]]
+tag = "auth-v1"
+new_sqlite_classes = ["AuthStore"]
+
+[placement]
+region = "aws:ap-northeast-2"
 
 [vars]
 DEFAULT_TEACHER_NAME = "김선생님"
@@ -16,4 +33,11 @@ NOTION_PROXY_URL = "https://minmin-notion.awslike6.workers.dev"
 NOTION_TEACHER_DB_ID = "3e0a2711-5b68-8186-ad30-cbaea7687006"
 NOTION_CHILD_DB_ID = "3e0a2711-5b68-8182-955e-f116e4174e3a"
 NOTION_DAILY_LOG_DB_ID = "3e0a2711-5b68-8122-9eea-dd49bf8a625c"
+
+# 실제 노션·AI 대신 로컬 가상 서비스를 사용하는 화면 검증 환경.
+[env.ui-test]
+services = []
+[[env.ui-test.durable_objects.bindings]]
+name = "AUTH_STORE"
+class_name = "AuthStore"
 

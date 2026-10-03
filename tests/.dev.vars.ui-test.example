@@ -1,0 +1,9 @@
+# 실제 서비스의 인증·노션·AI와 분리된 로컬 화면 검사 전용 값.
+AUTH_ADMIN_SECRET=test-only-admin
+AUTH_PEPPER=test-only-pepper
+GEMINI_API_KEY=test-only-key
+NOTION_PROXY_URL=http://127.0.0.1:8790
+NOTION_TEACHER_DB_ID=teachers
+NOTION_CHILD_DB_ID=children
+NOTION_DAILY_LOG_DB_ID=logs
+GEMINI_API_BASE=http://127.0.0.1:8790/models

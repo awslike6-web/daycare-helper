@@ -1,453 +1,186 @@
-/**
- * 🔐 daycare-helper Authentication & Security Core (auth-security.js)
- * 2026 Modern Vanilla JS (ES2024+)
- * 
- * 통합 구성:
- *  - 환경 설정 및 교사 프로필/프리셋 (구 config.js)
- *  - 2-Way PIN 보안 잠금 게이트 및 Cloudflare Access 세션 감시 (구 auth-gate.js)
- *  - 교사 프로필 원터치 스위칭 및 페르소나 스타일 관리
- */
-
-(function () {
-  // ============================================================================
-  // 1. 전역 토스트 헬퍼 폴백 (모든 모듈에서 안전하게 호출 가능하도록 보장)
-  // ============================================================================
-  if (typeof window.showToast !== 'function') {
-    window.showToast = function (message) {
-      const toastMessage = document.getElementById('toastMessage');
-      if (toastMessage) {
-        toastMessage.textContent = message;
-        toastMessage.classList.add('show');
-        setTimeout(() => toastMessage.classList.remove('show'), 2400);
-      } else {
-        console.log('[Toast]', message);
-      }
-    };
-  }
-
-  // ============================================================================
-  // 2. 환경 설정 및 프로필 프리셋 (Config)
-  // ============================================================================
+/** 서버 인증 파사드. 브라우저에 PIN·인증 토큰을 저장하지 않는다. */
+(() => {
   const PERSONA_PRESETS = {
-    warm_detailed: {
-      name: '다정하고 꼼꼼한 선생님',
-      desc: '아이의 작은 표정과 감정 변화까지 놓치지 않고 따뜻한 언어로 상세하게 담아내는 선생님입니다.',
-      tone: '다정하고 따뜻하며 감성적인 어조 (~했어요, ~보았답니다)',
-      keywords: ['눈맞춤', '도닥임', '반짝이는 눈망울', '스스로 시도', '따뜻한 격려'],
-      sampleNote: '오늘 민서가 블록을 높이 쌓다가 무너졌을 때, 울먹이지 않고 심호흡을 한 번 하더니 "다시 해볼래!" 하고 씩씩하게 웃어 보였어요. 옆에서 가만히 지켜보며 응원해 주었더니 끝내 세 층을 더 높게 완성하며 뿌듯해했답니다. 작은 실패에도 의연하게 다시 도전하는 모습이 참 대견한 하루였습니다.'
-    },
-    speedy_practical: {
-      name: '스피디 실속형 선생님',
-      desc: '학부모가 바쁜 일상 속에서도 핵심 놀이와 생활 습관을 10초 만에 파악할 수 있도록 명료하게 정리합니다.',
-      tone: '명료하고 핵심 위주의 담백한 어조 (~함, ~했습니다)',
-      keywords: ['핵심 놀이', '식습관 칭찬', '원활한 상호작용', '안정적인 일과'],
-      sampleNote: '오늘 민서는 친구들과 동물 블록을 활용한 우리 만들기 놀이에 30분 이상 몰입했습니다. 원하는 블록을 "빌려줄래?" 하고 차분히 요청하여 함께 놀이 규칙을 만들어갔습니다. 점심 식사 시에도 나물 반찬을 스스로 다 먹으며 건강한 식습관을 실천했습니다.'
-    },
-    cheer_bright: {
-      name: '밝고 활기찬 비타민 선생님',
-      desc: '아이의 귀여운 말과 행동을 생생한 이모지와 함께 경쾌하고 밝은 에너지로 전달하는 선생님입니다.',
-      tone: '밝고 경쾌하며 사랑스러운 어조 (~했지요! 😊, ~너무 기특해요!)',
-      keywords: ['까르르', '함박웃음', '방방 뛰며', '칭찬 듬뿍', '사랑스러운'],
-      sampleNote: '오늘 민서의 웃음소리가 교실 가득 울려 퍼졌어요! 🎵 비눗방울을 하늘 높이 날려주자 "선생님, 무지개 별 같아요!" 하며 두 손을 번쩍 들고 까르르 뛰는 모습이 정말 사랑스러웠답니다. 친구들에게도 비눗방울 채를 양보하며 활짝 웃는 의젓한 비타민 왕자님이었어요. 🌟'
-    },
-    growth_centered: {
-      name: '성장 관찰 중심 전문가형 선생님',
-      desc: '놀이 속 소근육 조작, 언어 표현, 사회성 발달 지표를 표준보육과정 관점에서 분석적으로 기술합니다.',
-      tone: '발달 과업 중심의 전문적이고 신뢰감 있는 어조 (~발달을 보임, ~확장 관찰됨)',
-      keywords: ['조작 능력 확장', '어휘 구사', '또래 협동', '자기조절력', '비계 설정'],
-      sampleNote: '민서는 오늘 기차 레일 블록을 곡선으로 연결하는 과정에서 정교한 양손 협응력을 발휘했습니다. 원하는 레일 조각이 부족하자 "내가 저쪽을 이어볼게"라며 또래에게 역할을 제안하는 등 언어적 문제해결 능력이 한 단계 도약한 모습을 관찰할 수 있었습니다.'
-    }
+    warm_detailed: { name: '다정하고 꼼꼼한 선생님', desc: '관찰된 사실을 따뜻한 말투로 전달합니다.', tone: '~했어요, ~보았답니다', keywords: [], sampleNote: '' },
+    speedy_practical: { name: '스피디 실속형 선생님', desc: '관찰된 핵심을 짧게 정리합니다.', tone: '~했습니다', keywords: [], sampleNote: '' },
+    cheer_bright: { name: '밝고 활기찬 비타민 선생님', desc: '밝은 말투와 적당한 이모지를 사용합니다.', tone: '~했지요!', keywords: [], sampleNote: '' },
+    growth_centered: { name: '성장 관찰 중심 전문가형 선생님', desc: '실제 누적 기록에 근거하여 작성합니다.', tone: '~관찰됨', keywords: [], sampleNote: '' }
   };
-
-  const PARENT_PRESETS = {
-    anxious: '아이가 밥은 잘 먹었는지, 친구와 다투진 않았는지 늘 염려하시는 따뜻한 부모님 (구체적인 안심 멘트와 식사/낮잠 상세 서술 필요)',
-    busy: '퇴근이 늦고 바쁘셔서 모바일로 핵심만 빠르게 확인하길 원하시는 맞벌이 부모님 (3줄 요약 및 오늘 가장 잘한 행동 1가지 위주)',
-    growth_focused: '아이의 언어 발달과 사회성, 또래 관계 형성에 깊은 관심이 있으신 학구파 부모님 (발달 관찰 포인트와 가정 연계 팁 포함)',
-    friendly: '선생님과 스스럼없이 소통하며 아이의 일상 소소한 유머나 밝은 모습을 좋아하시는 친근한 부모님 (밝은 이모지와 재미있었던 에피소드 위주)'
-  };
-
-  const TEACHER_PROFILES = {
-    wife: {
-      key: 'wife',
-      name: '공가영 선생님',
-      className: '사랑반',
-      role: '담임교사',
-      ageGroup: '만 0세 영아반',
-      avatar: '👩‍🍼',
-      pin: '1234',
-      badge: '사랑반 담임 (만 0세)',
-      defaultPersona: 'warm_detailed',
-      notionPageId: '320a27115b688005b630dc65bfeb014c',
-      desc: '사랑반 (만 0세 영아 2명: 김민서, 박지호)'
-    },
-    sister_in_law: {
-      key: 'sister_in_law',
-      name: '공가희 주임님',
-      className: '소망반',
-      role: '주임교사',
-      ageGroup: '만 2세 유아반',
-      avatar: '👩‍🏫',
-      pin: '0000',
-      badge: '소망반 주임 (만 2세) ⭐',
-      defaultPersona: 'speedy_practical',
-      notionPageId: '320a27115b6880299f2dfbe0c8c0816b',
-      desc: '소망반 (만 2세 유아 7명: 이서준, 김하은, 박도윤, 최유진, 정시우, 윤서아, 한지민)'
-    },
-    sandbox: {
-      key: 'sandbox',
-      name: '체험 · 연구반',
-      className: '연구반',
-      role: '게스트 / 테스트',
-      ageGroup: '자유 테스트 구역',
-      avatar: '👨‍💻',
-      pin: '9999',
-      badge: '체험 · 연구반 (테스트)',
-      defaultPersona: 'cheer_bright',
-      notionPageId: '',
-      desc: '자유 테스트 구역 (모든 원아 및 데이터 열람/실험 가능)'
-    }
-  };
-
-  const NOTION_CONFIG = {
-    DAILY_LOG_DB_ID: '320a2711-5b68-809e-ba62-f2fefaa0bc9c',
-    CHILDREN_DB_ID: '320a2711-5b68-8051-9f20-c637a7fefc65',
-    TEACHER_PAGE_MAP: {
-      '공가영': '320a27115b688005b630dc65bfeb014c',
-      '공가희': '320a27115b6880299f2dfbe0c8c0816b'
-    }
-  };
-
-  // ============================================================================
-  // 3. 교사 스타일 및 페르소나 헬퍼
-  // ============================================================================
-  function getTeacherPersona(teacherKey) {
-    try {
-      const saved = localStorage.getItem(`daycare_teacher_persona_${teacherKey}`);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    const profile = TEACHER_PROFILES[teacherKey] || TEACHER_PROFILES.wife;
-    return PERSONA_PRESETS[profile.defaultPersona] || PERSONA_PRESETS.warm_detailed;
+  const PARENT_PRESETS = { anxious: '확인된 생활 모습을 구체적으로 안내', busy: '관찰된 핵심을 짧게 안내', growth_focused: '실제 관찰 근거와 지원 계획 안내', friendly: '친근하고 밝은 말투' };
+  const TEACHER_PROFILES = {};
+  let selected = null, digits = '', firstPin = '', invitation = null, busy = false;
+  let ready = false, refreshTimer;
+  const el = id => document.getElementById(id);
+  async function api(path, body) {
+    const response = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+    const json = await response.json();
+    if (!response.ok) throw Object.assign(new Error(json.error || '연결을 확인해 주세요.'), { status: response.status });
+    return json;
   }
-
-  function getTeacherStyle(teacherKey) {
-    return localStorage.getItem(`daycare_teacher_style_${teacherKey}`) || getTeacherPersona(teacherKey).name;
+  function error(message = '') { if (el('pinErrorMsg')) el('pinErrorMsg').textContent = message; }
+  function dots() { el('pinDotsContainer')?.querySelectorAll('.pin-dot').forEach((dot, i) => dot.classList.toggle('filled', i < digits.length)); }
+  function getTeacherPersona(key) {
+    const profile = TEACHER_PROFILES[key] || {};
+    const style = localStorage.getItem('daycare_persona_preset_' + key);
+    const preset = PERSONA_PRESETS[style] || PERSONA_PRESETS.warm_detailed;
+    return { ...preset, sampleNote: profile.sampleNote || '', closingGreeting: profile.closing || '', emojiLevel: 'moderate' };
   }
-
-  function setTeacherPersona(teacherKey, personaObj) {
-    try {
-      localStorage.setItem(`daycare_teacher_persona_${teacherKey}`, JSON.stringify(personaObj));
-    } catch (e) {}
+  function getTeacherStyle(key) { return TEACHER_PROFILES[key]?.style || getTeacherPersona(key).name; }
+  function setTeacherPersona(key, persona) {
+    if (window.state) window.state.persona = persona;
+    const preset = Object.entries(PERSONA_PRESETS).find(([, p]) => p.name === persona.name);
+    if (preset) localStorage.setItem('daycare_persona_preset_' + key, preset[0]);
+    window.DaycareRecords?.save();
   }
-
-  function setTeacherStyle(teacherKey, styleName) {
-    try {
-      localStorage.setItem(`daycare_teacher_style_${teacherKey}`, styleName);
-    } catch (e) {}
+  function setTeacherStyle(key, name) { if (window.state) window.state.teacherStyle = name; }
+  async function saveProfile(persona) {
+    await api('/api/profile', persona);
+    setTeacherPersona(window.state.activeTeacherKey, persona);
   }
-
-  // ============================================================================
-  // 4. 2-Way PIN 보안 잠금 게이트 (Auth Gate)
-  // ============================================================================
-  let pendingTeacherKey = null;
-
-  function initAuthGate() {
-    const activeTeacherKey = localStorage.getItem('daycare_active_teacher') || 'wife';
-    const profile = TEACHER_PROFILES[activeTeacherKey] || TEACHER_PROFILES.wife;
-    const isUnlocked = sessionStorage.getItem(`daycare_unlocked_${profile.key}`) === 'true';
-
-    // 연구반(sandbox)은 기본 잠금 해제
-    sessionStorage.setItem('daycare_unlocked_sandbox', 'true');
-
-    if (!isUnlocked && activeTeacherKey !== 'sandbox') {
-      showPinModal(profile.key, false);
-    }
-
-    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
-    if (headerLogoutBtn) {
-      headerLogoutBtn.onclick = (e) => {
-        e.preventDefault();
-        const curKey = localStorage.getItem('daycare_active_teacher') || 'wife';
-        sessionStorage.removeItem(`daycare_unlocked_${curKey}`);
-        window.showToast('🔒 안전하게 잠금 처리되었습니다. PIN을 다시 입력해주세요.');
-        showPinModal(curKey, false);
-      };
-    }
-
-    setupPinModalListeners();
+  async function syncProfile() {
+    try { const data = await api('/api/session'); TEACHER_PROFILES[data.profile.key] = data.profile;
+      window.state.persona = getTeacherPersona(data.profile.key); updatePersonaUI(); window.showToast?.('노션의 교사 문체를 가져왔습니다.');
+    } catch (e) { window.showToast?.(e.message); }
   }
-
-  function showPinModal(targetKey, canCancel = true) {
-    const targetProfile = TEACHER_PROFILES[targetKey] || TEACHER_PROFILES.wife;
-    pendingTeacherKey = targetKey;
-
-    const modal = document.getElementById('pinAuthModal');
-    const titleEl = document.getElementById('pinModalTitle');
-    const descEl = document.getElementById('pinModalDesc');
-    const avatarEl = document.getElementById('pinModalAvatar');
-    const cancelBtn = document.getElementById('btnPinCancel');
-    const inputEl = document.getElementById('pinInput');
-    const errorEl = document.getElementById('pinErrorText');
-
-    if (!modal) return;
-
-    if (titleEl) titleEl.textContent = `${targetProfile.name} PIN 인증`;
-    if (descEl) descEl.textContent = `${targetProfile.className} (${targetProfile.ageGroup}) 보안 접근을 위해 4자리 PIN을 입력하세요.`;
-    if (avatarEl) avatarEl.textContent = targetProfile.avatar;
-    if (errorEl) errorEl.style.display = 'none';
-
-    if (cancelBtn) {
-      cancelBtn.style.display = canCancel ? 'inline-block' : 'none';
-    }
-
-    if (inputEl) {
-      inputEl.value = '';
-      setTimeout(() => inputEl.focus(), 150);
-    }
-
-    modal.style.display = 'flex';
-  }
-
-  function hidePinModal() {
-    const modal = document.getElementById('pinAuthModal');
-    if (modal) modal.style.display = 'none';
-    pendingTeacherKey = null;
-  }
-
-  function setupPinModalListeners() {
-    const inputEl = document.getElementById('pinInput');
-    const submitBtn = document.getElementById('btnPinSubmit');
-    const cancelBtn = document.getElementById('btnPinCancel');
-    const keypadBtns = document.querySelectorAll('.pin-keypad-btn');
-    const errorEl = document.getElementById('pinErrorText');
-
-    if (!inputEl) return;
-
-    keypadBtns.forEach(btn => {
-      btn.onclick = (e) => {
-        e.preventDefault();
-        const digit = btn.dataset.digit;
-        if (digit === 'clear') {
-          inputEl.value = '';
-        } else if (digit === 'back') {
-          inputEl.value = inputEl.value.slice(0, -1);
-        } else if (digit && inputEl.value.length < 4) {
-          inputEl.value += digit;
-          if (inputEl.value.length === 4) {
-            verifyPin(inputEl.value);
-          }
-        }
-      };
-    });
-
-    if (submitBtn) {
-      submitBtn.onclick = (e) => {
-        e.preventDefault();
-        verifyPin(inputEl.value);
-      };
-    }
-
-    if (cancelBtn) {
-      cancelBtn.onclick = (e) => {
-        e.preventDefault();
-        hidePinModal();
-      };
-    }
-
-    inputEl.onkeydown = (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        verifyPin(inputEl.value);
-      }
-    };
-  }
-
-  function verifyPin(inputPin) {
-    const targetKey = pendingTeacherKey || localStorage.getItem('daycare_active_teacher') || 'wife';
-    const profile = TEACHER_PROFILES[targetKey] || TEACHER_PROFILES.wife;
-    const errorEl = document.getElementById('pinErrorText');
-    const inputEl = document.getElementById('pinInput');
-
-    if (inputPin === profile.pin) {
-      sessionStorage.setItem(`daycare_unlocked_${profile.key}`, 'true');
-      hidePinModal();
-      executeTeacherSwitch(profile.key);
-      window.showToast(`🔓 [${profile.name}] 인증 성공! 환영합니다.`);
-    } else {
-      if (errorEl) {
-        errorEl.textContent = '❌ PIN 번호가 일치하지 않습니다. 다시 입력해주세요.';
-        errorEl.style.display = 'block';
-      }
-      if (inputEl) {
-        inputEl.value = '';
-        inputEl.focus();
-      }
-    }
-  }
-
-  // ============================================================================
-  // 5. 교사 프로필 스위처 및 화면 동기화
-  // ============================================================================
-  function handleTeacherSwitchClick(targetKey) {
-    const currentKey = localStorage.getItem('daycare_active_teacher') || 'wife';
-    if (currentKey === targetKey) {
-      window.showToast(`현재 이미 [${TEACHER_PROFILES[targetKey]?.name}] 프로필입니다.`);
-      return;
-    }
-
-    // 연구반(sandbox)은 자유 체험 구역이므로 PIN 없이 즉시 전환
-    if (targetKey === 'sandbox') {
-      sessionStorage.setItem('daycare_unlocked_sandbox', 'true');
-      executeTeacherSwitch('sandbox');
-      return;
-    }
-
-    const isUnlocked = sessionStorage.getItem(`daycare_unlocked_${targetKey}`) === 'true';
-    if (isUnlocked) {
-      executeTeacherSwitch(targetKey);
-    } else {
-      showPinModal(targetKey, true);
-    }
-  }
-
-  function executeTeacherSwitch(targetKey) {
-    const profile = TEACHER_PROFILES[targetKey] || TEACHER_PROFILES.wife;
-    localStorage.setItem('daycare_active_teacher', profile.key);
-    localStorage.setItem('daycare_class_name', profile.className);
-    localStorage.setItem('daycare_teacher_name', profile.name);
-
+  function syncTeacherSwitcherUI() {
     const state = window.state || {};
-    state.activeTeacherKey = profile.key;
-    state.className = profile.className;
-    state.teacherName = profile.name;
-    state.filterOnlyMyClass = true; // 🔒 항상 담당 학급만 100% 철통 격리
-    state.selectedChild = null;
-    state.mode = profile.key === 'sister_in_law' ? 'class_report' : 'all_suite';
-    state.persona = getTeacherPersona(profile.key);
-    state.teacherStyle = getTeacherStyle(profile.key);
-
-    syncTeacherSwitcherUI(profile.key);
-    updatePersonaUI();
-
-    if (window.ChildrenStore && typeof window.ChildrenStore.loadChildren === 'function') {
-      window.ChildrenStore.loadChildren();
-    } else if (typeof window.loadChildren === 'function') {
-      window.loadChildren();
-    }
-
-    window.showToast(`👩‍🏫 [${profile.name}] 프로필로 전환되었습니다. (${profile.className})`);
+    [['btnSwitchWife', 'wife'], ['btnSwitchSisterInLaw', 'sister_in_law']].forEach(([id, key]) => {
+      const button = el(id); if (button) { button.hidden = !TEACHER_PROFILES[key]; button.classList.toggle('active', key === state.activeTeacherKey); }
+      if (button && TEACHER_PROFILES[key]) button.textContent = `${TEACHER_PROFILES[key].className} · ${TEACHER_PROFILES[key].name}`;
+    });
+    if (el('btnSwitchSandbox')) el('btnSwitchSandbox').hidden = true;
+    if (el('headerClassNameText')) el('headerClassNameText').textContent = state.className || '담당반';
   }
-
-  function syncTeacherSwitcherUI(targetKey = null) {
-    const key = targetKey || localStorage.getItem('daycare_active_teacher') || 'wife';
-    const profile = TEACHER_PROFILES[key] || TEACHER_PROFILES.wife;
-
-    const btnWife = document.getElementById('btnSwitchWife');
-    const btnSister = document.getElementById('btnSwitchSisterInLaw');
-    const btnSandbox = document.getElementById('btnSwitchSandbox');
-    const headerClassNameText = document.getElementById('headerClassNameText');
-
-    if (btnWife) btnWife.classList.toggle('active', key === 'wife');
-    if (btnSister) btnSister.classList.toggle('active', key === 'sister_in_law');
-    if (btnSandbox) btnSandbox.classList.toggle('active', key === 'sandbox');
-    if (headerClassNameText) headerClassNameText.textContent = profile.className;
-  }
-
   function updatePersonaUI() {
     const state = window.state || {};
-    const key = state.activeTeacherKey || localStorage.getItem('daycare_active_teacher') || 'wife';
-    const persona = state.persona || getTeacherPersona(key);
-
-    const headerPersonaText = document.getElementById('headerPersonaText');
-    const personaSampleNote = document.getElementById('personaSampleNote');
-    const settingClassNameInput = document.getElementById('settingClassNameInput');
-    const settingTeacherNameInput = document.getElementById('settingTeacherNameInput');
-
-    if (headerPersonaText) headerPersonaText.textContent = persona.name || '맞춤 페르소나';
-    if (personaSampleNote && !personaSampleNote.value) personaSampleNote.value = persona.sampleNote || '';
-    if (settingClassNameInput) settingClassNameInput.value = state.className || '사랑반';
-    if (settingTeacherNameInput) settingTeacherNameInput.value = state.teacherName || '공가영 선생님';
+    if (el('headerPersonaText')) el('headerPersonaText').textContent = state.persona?.name || '맞춤 문체';
+    if (el('personaSampleNote')) el('personaSampleNote').value = state.persona?.sampleNote || '';
+    ['settingClassNameInput', 'settingTeacherNameInput'].forEach((id, index) => {
+      const input = el(id); if (input) { input.value = index ? state.teacherName || '' : state.className || ''; input.readOnly = true; }
+    });
   }
-
-  // ============================================================================
-  // 6. Cloudflare Access 보안 세션 만료 모니터 (D-7 사전 경고)
-  // ============================================================================
-  async function checkSecuritySession() {
-    try {
-      const res = await fetch('/api/session', { method: 'GET' });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!data || !data.protected || !data.exp) return;
-
-      if (data.isExpiringSoon && data.remainingDays > 0) {
-        showSessionBanner(data.remainingDays, data.exp);
-      }
-    } catch (e) {
-      // 로컬 환경이나 비Access 환경에서는 조용히 넘어감
+  function showGate() {
+    document.body.dataset.locked = 'true'; ready = false;
+    clearInterval(refreshTimer);
+    if (el('authGateModal')) el('authGateModal').style.display = 'flex';
+    if (el('pinAuthModal')) el('pinAuthModal').style.display = 'none';
+    digits = ''; firstPin = ''; dots();
+    const state = window.state;
+    if (state) {
+      state.currentAbortController?.abort();
+      Object.assign(state, { authenticated: false, children: [], selectedChild: null, lastResult: null, originalResult: null, historyLogs: [], draftKey: null, photos: [], persona: null, pendingDraft: false });
     }
+    if (el('rawMemoInput')) el('rawMemoInput').value = '';
+    if (el('rawMemoInput')) el('rawMemoInput').readOnly = false;
+    if (el('generateBtn')) el('generateBtn').disabled = false;
+    if (el('resultsSection')) el('resultsSection').style.display = 'none';
+    for (const id of ['childScrollContainer', 'historyDetailBody', 'historyListContainer', 'photoPreviews']) if (el(id)) el(id).replaceChildren();
+    document.querySelectorAll('.modal-overlay').forEach(modal => { if (modal.id !== 'authGateModal') modal.style.display = 'none'; });
   }
-
-  function showSessionBanner(dDay, expTimestamp) {
-    const banner = document.getElementById('sessionExpiryBanner');
-    const badge = document.getElementById('sessionDdayBadge');
-    const desc = document.getElementById('sessionDescText');
-    if (!banner) return;
-
-    const dismissedExp = localStorage.getItem('daycare_dismissed_session_exp');
-    if (dismissedExp && String(dismissedExp) === String(expTimestamp)) return;
-
-    if (badge) badge.textContent = `D-${dDay}`;
-    if (desc) desc.textContent = `보안 인증 만료가 ${dDay}일 남았습니다. 만료 전 재인증을 권장합니다.`;
-    banner.style.display = 'flex';
+  async function unlock() {
+    const session = await api('/api/session'); const profile = session.profile;
+    TEACHER_PROFILES[profile.key] = profile;
+    const state = window.state || {};
+    Object.assign(state, { authenticated: true, teacherId: profile.id, activeTeacherKey: profile.key,
+      className: profile.className, teacherName: profile.name, draftKey: session.draftKey,
+      selectedChild: null, filterOnlyMyClass: true, persona: getTeacherPersona(profile.key), teacherStyle: getTeacherStyle(profile.key) });
+    localStorage.setItem('daycare_active_teacher', profile.key);
+    selected = profile; ready = true;
+    syncTeacherSwitcherUI(); updatePersonaUI();
+    await window.ChildrenStore?.loadChildren();
+    await window.DaycareRecords?.restore();
+    document.body.dataset.locked = 'false';
+    if (el('authGateModal')) el('authGateModal').style.display = 'none';
+    if (el('sessionUserEmailText')) el('sessionUserEmailText').textContent = profile.name;
+    if (el('sessionDaysLeftText')) el('sessionDaysLeftText').textContent = '기기 등록 최대 30일 · 1시간 미사용 시 PIN 잠금';
+    if (el('sessionExpiryDateText')) el('sessionExpiryDateText').textContent = new Date(session.expiresAt).toLocaleDateString('ko-KR');
+    // 편집 중에는 세션을 확인하고, 활동이 없으면 최대 1시간 뒤 잠근다.
+    refreshTimer = setInterval(() => {
+      if (Date.now() - lastActivity > 60 * 60000) lock();
+      else if (Date.now() - lastActivity < 5 * 60000) checkSecuritySession();
+    }, 5 * 60000);
+    window.DaycareRecords?.initEvidence();
+    window.DaycareNotion?.checkHealth();
   }
-
-  function hideSessionBanner() {
-    const banner = document.getElementById('sessionExpiryBanner');
-    if (banner) banner.style.display = 'none';
+  let lastActivity = Date.now();
+  ['pointerdown', 'keydown', 'input'].forEach(type => document.addEventListener(type, () => { lastActivity = Date.now(); }));
+  async function lock(forget = false) {
+    await window.DaycareRecords?.save();
+    try { await api('/api/auth/logout', { forget }); } catch (e) { error('서버 로그아웃 확인이 필요합니다. 연결 후 다시 잠가 주세요.'); }
+    showGate();
+    if (forget) window.DaycareRecords?.forget();
   }
-
-  // ============================================================================
-  // 7. 글로벌 노출 및 하위 호환 파사드 (Facade)
-  // ============================================================================
-  window.DaycareConfig = {
-    PERSONA_PRESETS,
-    PARENT_PRESETS,
-    TEACHER_PROFILES,
-    TEACHER_PAGE_MAP: NOTION_CONFIG.TEACHER_PAGE_MAP,
-    NOTION_CONFIG
-  };
-
-  window.DaycareAuth = {
-    initAuthGate,
-    handleTeacherSwitchClick,
-    executeTeacherSwitch,
-    switchTeacherProfile: executeTeacherSwitch, // 🌟 누락 식별자 안전 브리지
-    syncTeacherSwitcherUI,
-    updatePersonaUI,
-    getTeacherPersona,
-    getTeacherStyle,
-    setTeacherPersona,
-    setTeacherStyle,
-    checkSecuritySession,
-    showSessionBanner,
-    hideSessionBanner
-  };
-
-  // 하위 호환 단독 전역 함수 바인딩
-  window.PERSONA_PRESETS = PERSONA_PRESETS;
-  window.PARENT_PRESETS = PARENT_PRESETS;
-  window.TEACHER_PROFILES = TEACHER_PROFILES;
-  window.NOTION_CONFIG = NOTION_CONFIG;
-  window.initAuthGate = initAuthGate;
-  window.handleTeacherSwitchClick = handleTeacherSwitchClick;
-  window.executeTeacherSwitch = executeTeacherSwitch;
-  window.switchTeacherProfile = executeTeacherSwitch; // 🌟 완벽 보존
-  window.syncTeacherSwitcherUI = syncTeacherSwitcherUI;
-  window.updatePersonaUI = updatePersonaUI;
-  window.getTeacherPersona = getTeacherPersona;
-  window.getTeacherStyle = getTeacherStyle;
-  window.setTeacherPersona = setTeacherPersona;
-  window.setTeacherStyle = setTeacherStyle;
-  window.checkSecuritySession = checkSecuritySession;
-  window.showSessionBanner = showSessionBanner;
-  window.hideSessionBanner = hideSessionBanner;
+  async function submitPin() {
+    if (busy || !selected || digits.length !== 4) return;
+    const pin = digits; digits = ''; dots(); error();
+    if (invitation?.initial && !firstPin) { firstPin = pin; error('새 PIN을 한 번 더 입력해 주세요.'); return; }
+    busy = true;
+    try {
+      await api(invitation ? '/api/auth/register' : '/api/auth/login', invitation ? {
+        invite: invitation.token, pin: invitation.initial ? firstPin : pin, confirmPin: pin,
+        remember: !!el('rememberAuthCheck')?.checked
+      } : { teacherId: selected.id, pin, remember: !!el('rememberAuthCheck')?.checked });
+      invitation = null; firstPin = ''; lastActivity = Date.now(); await unlock();
+    } catch (e) { firstPin = ''; error(e.message); } finally { busy = false; }
+  }
+  async function handleTeacherSwitchClick(key) {
+    if (ready && window.state?.activeTeacherKey === key) return;
+    await lock(); selected = TEACHER_PROFILES[key] || selected; renderSelection();
+  }
+  function renderSelection() {
+    const list = el('authTeacherSelector'); if (!list) return; list.replaceChildren();
+    Object.values(TEACHER_PROFILES).forEach(profile => {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'auth-teacher-chip';
+      button.classList.toggle('active', selected?.id === profile.id); button.textContent = `${profile.className} · ${profile.name}`;
+      button.disabled = !!invitation && invitation.teacherId !== profile.id;
+      button.onclick = () => { selected = profile; digits = ''; firstPin = ''; dots(); error(); renderSelection(); };
+      list.appendChild(button);
+    });
+    if (el('pinTargetTeacherName')) el('pinTargetTeacherName').textContent = selected?.name || '선생님';
+    if (el('authRegistrationHint')) el('authRegistrationHint').textContent = invitation ?
+      (invitation.initial ? '처음 등록합니다. 사용할 새 PIN을 두 번 입력해 주세요.' : '등록할 휴대폰입니다. 기존 PIN을 입력해 주세요.') : '처음 사용하는 휴대폰은 관리자에게 기기 등록 링크를 받아 주세요.';
+  }
+  async function consumeInvitation() {
+    const token = new URLSearchParams(location.hash.slice(1)).get('register');
+    if (!token) return false;
+    history.replaceState(null, '', location.pathname + location.search);
+    if (ready) await lock();
+    invitation = { ...await api('/api/auth/invite-status', { invite: token }), token };
+    selected = Object.values(TEACHER_PROFILES).find(p => p.id === invitation.teacherId);
+    renderSelection(); return true;
+  }
+  async function initAuthGate() {
+    showGate();
+    document.querySelectorAll('.keypad-btn[data-num]').forEach(button => { button.onclick = () => { if (busy) return; if (digits.length < 4) digits += button.dataset.num; dots(); if (digits.length === 4) submitPin(); }; });
+    if (el('keypadClearBtn')) el('keypadClearBtn').onclick = () => { digits = ''; dots(); };
+    if (el('keypadBackspaceBtn')) el('keypadBackspaceBtn').onclick = () => { digits = digits.slice(0, -1); dots(); };
+    document.addEventListener('keydown', event => {
+      if (ready || busy || event.target instanceof HTMLInputElement) return;
+      if (/^\d$/.test(event.key)) { digits += event.key; dots(); if (digits.length === 4) submitPin(); }
+      else if (event.key === 'Backspace') { digits = digits.slice(0, -1); dots(); }
+    });
+    if (el('headerLogoutBtn')) el('headerLogoutBtn').onclick = () => lock();
+    if (el('forgetDeviceBtn')) el('forgetDeviceBtn').onclick = () => lock(true);
+    try {
+      const profiles = await api('/api/auth/profiles');
+      profiles.profiles.forEach(p => { TEACHER_PROFILES[p.key] = p; });
+      selected = Object.values(TEACHER_PROFILES).find(p => p.id === profiles.teacherId) || Object.values(TEACHER_PROFILES)[0];
+      await consumeInvitation();
+      renderSelection();
+      if (!invitation) try { await unlock(); } catch (e) { if (e.status !== 401) error(e.message); }
+    } catch (e) { error(e.message); }
+    window.addEventListener('hashchange', () => consumeInvitation().catch(e => error(e.message)));
+  }
+  async function changePin() {
+    try {
+      await api('/api/auth/change-pin', { currentPin: el('currentPinInput')?.value, pin: el('newPinInput')?.value, confirmPin: el('confirmPinInput')?.value });
+      ['currentPinInput', 'newPinInput', 'confirmPinInput'].forEach(id => { if (el(id)) el(id).value = ''; });
+      await lock(); error('PIN을 변경했습니다. 새 PIN으로 들어가 주세요.');
+    } catch (e) { window.showToast?.(e.message); }
+  }
+  const checkSecuritySession = async () => { if (ready) try { await api('/api/session'); } catch (e) { if (e.status === 401 || e.status === 403) await lock(); } };
+  window.DaycareConfig = { PERSONA_PRESETS, PARENT_PRESETS, TEACHER_PROFILES };
+  window.DaycareAuth = { initAuthGate, handleTeacherSwitchClick, executeTeacherSwitch: handleTeacherSwitchClick,
+    switchTeacherProfile: handleTeacherSwitchClick, syncTeacherSwitcherUI, updatePersonaUI, getTeacherPersona, getTeacherStyle,
+    setTeacherPersona, setTeacherStyle, checkSecuritySession, changePin, lock, saveProfile, syncProfile, showSessionBanner() {}, hideSessionBanner() {} };
 })();

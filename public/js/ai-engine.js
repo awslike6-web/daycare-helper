@@ -9,6 +9,7 @@
  */
 
 (function () {
+  const safeHTML = (...args) => window.DaycareHTML(...args);
   const showToast = (msg) => (typeof window.showToast === 'function' ? window.showToast(msg) : console.log(msg));
 
   // ============================================================================
@@ -46,6 +47,13 @@
       return copyTextToClipboard(options, plainFallback || successMsg);
     }
     if (!tableEl) return copyTextToClipboard(plainFallback, msg);
+    const reviewed = tableEl.cloneNode(true);
+    reviewed.querySelectorAll('textarea, input').forEach((node, index) => {
+      const original = tableEl.querySelectorAll('textarea, input')[index]; const text = document.createElement('div');
+      text.textContent = original.value; text.style.cssText = 'white-space:pre-wrap;font:inherit;line-height:1.6'; node.replaceWith(text);
+    });
+    reviewed.querySelectorAll('[contenteditable]').forEach(node => node.removeAttribute('contenteditable'));
+    tableEl = reviewed;
     const htmlBlob = new Blob([tableEl.outerHTML], { type: 'text/html' });
     const textBlob = new Blob([tableEl.innerText], { type: 'text/plain' });
     if (navigator.clipboard && window.ClipboardItem) {
@@ -146,32 +154,32 @@
                 {
                   photo_ref: '[사진 1, 2 참조]',
                   activity_title: state.activityArea || '놀이 활동',
-                  observation: `[관찰 내용] ${kn.content ? kn.content.slice(0, 180) + '...' : '유아들은 놀잇감을 탐색하며 즐겁게 몰입한다.'}`,
-                  learning_content: `[배움 읽기: ${obs.standard_area || '신체운동'}] - ${obs.evaluation || '놀이를 통해 기본 운동 능력을 기른다.'}`
+                  observation: `[관찰 내용] ${kn.content ? kn.content.slice(0, 180) + '...' : '관찰 기록 부족'}`,
+                  learning_content: `[배움 읽기: ${obs.standard_area || '신체운동'}] - ${obs.evaluation || '해당 영역의 관찰 기록 부족'}`
                 }
               ];
 
-        activities.forEach(act => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td class="rep-td" style="padding: 8px; border: 1px solid #CBD5E1; vertical-align: top;"><div style="font-weight: 700; color: #1E293B; margin-bottom: 4px;">${act.photo_ref || '[사진 참조]'} ${act.activity_title || ''}</div><div style="font-size: 12px; line-height: 1.5; color: #334155;">${act.observation || ''}</div></td><td class="rep-td" style="padding: 8px; border: 1px solid #CBD5E1; font-size: 12px; line-height: 1.5; color: #1E293B; vertical-align: top;">${act.learning_content || ''}</td>`;
+        activities.forEach((act, index) => {
+          const tr = document.createElement('tr'); tr.dataset.reviewActivity = index;
+          tr.innerHTML = safeHTML`<td class="rep-td" style="padding: 8px; border: 1px solid #CBD5E1; vertical-align: top;"><div style="font-weight: 700; color: #1E293B; margin-bottom: 4px;">${act.photo_ref || '[사진 참조]'} ${act.activity_title || ''}</div><div contenteditable="true" role="textbox" aria-label="놀이 관찰 문장" data-review-field="observation" style="font-size: 12px; line-height: 1.5; color: #334155;">${act.observation || ''}</div></td><td class="rep-td" contenteditable="true" role="textbox" aria-label="배움 읽기 문장" data-review-field="learning_content" style="padding: 8px; border: 1px solid #CBD5E1; font-size: 12px; line-height: 1.5; color: #1E293B; vertical-align: top;">${act.learning_content || ''}</td>`;
           reportCurriculumTbody.appendChild(tr);
         });
       }
 
       if (repReflectionText) {
-        repReflectionText.value = rep?.reflection ? rep.reflection.replace(/^●\s*성찰:\s*/, '') : (rep?.weekly_evaluation || dc.play_evaluation || '유아들의 흥미를 반영한 놀이 연계로 높은 몰입도를 보였다.');
+        repReflectionText.textContent = rep?.reflection ? rep.reflection.replace(/^●\s*성찰:\s*/, '') : (rep?.weekly_evaluation || dc.play_evaluation || '');
       }
       if (repSupportEnvText) {
-        repSupportEnvText.value = rep?.support?.environment ? rep.support.environment.replace(/^○\s*환경\s*지원:\s*/, '') : (rep?.support_environment || dc.next_support_plan || '안전한 공간 확보 및 충분한 놀이 교구 배치 지원.');
+        repSupportEnvText.textContent = rep?.support?.environment ? rep.support.environment.replace(/^○\s*환경\s*지원:\s*/, '') : (rep?.support_environment || dc.next_support_plan || '');
       }
       if (repSupportSafetyText) {
-        if (rep?.outdoor_play) {
+        if (rep?.reviewed_safety_text !== undefined) { repSupportSafetyText.textContent = rep.reviewed_safety_text; } else if (rep?.outdoor_play) {
           const outdoorStatus = rep.outdoor_check || '진행(O)';
           const outdoorNote = rep.outdoor_note ? ` (사유: ${rep.outdoor_note})` : '';
           const safetyText = rep.safety_nutrition ? ` / [안전·영양교육] ${rep.safety_nutrition}` : '';
-          repSupportSafetyText.value = `<바깥놀이: ${outdoorStatus}${outdoorNote}> ${rep.outdoor_play}${safetyText}`;
+          repSupportSafetyText.textContent = `<바깥놀이: ${outdoorStatus}${outdoorNote}> ${rep.outdoor_play}${safetyText}`;
         } else {
-          repSupportSafetyText.value = rep?.support_safety || (rep?.support?.safety ? rep.support.safety.replace(/^○\s*바깥놀이\s*안전\s*관리:\s*/, '') : '짧은 산책 시 보행 안전선을 지키고 상호작용 간 안전거리를 유지하도록 지도함.');
+          repSupportSafetyText.textContent = rep?.support_safety || (rep?.support?.safety ? rep.support.safety.replace(/^○\s*바깥놀이\s*안전\s*관리:\s*/, '') : '');
         }
       }
     }
@@ -198,7 +206,7 @@
           const activityName = item.activity || item.activity_name || state.activityArea || '놀이 활동';
           const summary = item.summary || item.observation_summary || '';
 
-          itemEl.innerHTML = `<div class="indiv-obs-top-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;"><div class="indiv-obs-meta" style="display: flex; align-items: center; gap: 8px;"><label class="indiv-obs-check-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" class="indiv-obs-checkbox indiv-obs-check" checked data-idx="${idx}" data-child-name="${childName}" data-area="${standardArea}" data-standard-area="${standardArea}" data-activity="${activityName}" data-play-text="${summary.replace(/"/g, '&quot;')}"><span class="indiv-obs-name" style="font-weight: 700; color: #1E293B;">👶 ${childName}</span></label><div class="indiv-obs-badges" style="display: flex; gap: 4px;"><span class="indiv-obs-badge-area" style="font-size: 11px; background: #EEF2FF; color: #4F46E5; padding: 2px 6px; border-radius: 4px;">${standardArea}</span><span class="indiv-obs-badge-activity" style="font-size: 11px; background: #F1F5F9; color: #475569; padding: 2px 6px; border-radius: 4px;">${activityName}</span></div></div><span class="indiv-obs-status-tag" id="indiv-obs-status-${idx}" style="display: none; background: #DEF7EC; color: #03543F; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">✓ 저장됨</span></div><div class="indiv-obs-input-row"><input type="text" class="indiv-obs-input" id="indiv-obs-input-${idx}" value="${summary.replace(/"/g, '&quot;')}" placeholder="원아의 관찰 요약 (1초 수정 가능)" data-original="${summary.replace(/"/g, '&quot;')}" style="width: 100%; padding: 6px 10px; font-size: 12.5px; border: 1px solid #CBD5E1; border-radius: 6px; background: #FFF;"></div>`;
+          itemEl.innerHTML = safeHTML`<div class="indiv-obs-top-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;"><div class="indiv-obs-meta" style="display: flex; align-items: center; gap: 8px;"><label class="indiv-obs-check-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" class="indiv-obs-checkbox indiv-obs-check" checked data-idx="${idx}" data-child-name="${childName}" data-area="${standardArea}" data-standard-area="${standardArea}" data-activity="${activityName}" data-play-text="${summary}"><span class="indiv-obs-name" style="font-weight: 700; color: #1E293B;">👶 ${childName}</span></label><div class="indiv-obs-badges" style="display: flex; gap: 4px;"><span class="indiv-obs-badge-area" style="font-size: 11px; background: #EEF2FF; color: #4F46E5; padding: 2px 6px; border-radius: 4px;">${standardArea}</span><span class="indiv-obs-badge-activity" style="font-size: 11px; background: #F1F5F9; color: #475569; padding: 2px 6px; border-radius: 4px;">${activityName}</span></div></div><span class="indiv-obs-status-tag" id="indiv-obs-status-${idx}" style="display: none; background: #DEF7EC; color: #03543F; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">✓ 저장됨</span></div><div class="indiv-obs-input-row"><input type="text" class="indiv-obs-input" id="indiv-obs-input-${idx}" value="${summary}" placeholder="원아의 관찰 요약 (1초 수정 가능)" data-original="${summary}" style="width: 100%; padding: 6px 10px; font-size: 12.5px; border: 1px solid #CBD5E1; border-radius: 6px; background: #FFF;"></div>`;
 
           const chk = itemEl.querySelector('.indiv-obs-checkbox');
           if (chk) {
@@ -264,18 +272,18 @@
       const monthlySummaryDevText = document.getElementById('monthlySummaryDevText');
       const monthlySummaryPlanText = document.getElementById('monthlySummaryPlanText');
 
-      const targetMonthStr = state.selectedDate ? `${state.selectedDate.slice(0, 7).replace('-', '년 ')}월` : '2026년 9월';
+      const targetMonthStr = state.selectedDate ? `${state.selectedDate.slice(0, 7).replace('-', '년 ')}월` : '작성 월';
       const childDisplayName = state.selectedChild ? `${state.selectedChild.name} (${state.selectedChild.age || '만 2세'})` : '원아 (만 2세)';
       const teacherDisplayName = `${state.className || '소망반'} / ${state.teacherName || '담당교사'}`;
 
       if (monthlyObsDocTitle) monthlyObsDocTitle.textContent = mob?.title || `[${targetMonthStr}] 영유아 발달 관찰기록부`;
       if (monthlyObsChildName) monthlyObsChildName.textContent = childDisplayName;
       if (monthlyObsTeacherName) monthlyObsTeacherName.textContent = teacherDisplayName;
-      if (monthlyObsPeriod) monthlyObsPeriod.textContent = `${targetMonthStr} (상순 1회 + 하순 1회 연속 관찰)`;
+      if (monthlyObsPeriod) monthlyObsPeriod.textContent = `${targetMonthStr} · 실제 관찰일 기준`;
 
       // 1차 관찰 바인딩
       const playObs = mob?.play_obs || mob?.obs_1 || mob || {};
-      const obs1Date = playObs.date || state.selectedDate || '2026-09-08';
+      const obs1Date = playObs.date || state.selectedDate || '';
       const obs1Area = playObs.area || (mob?.play_obs ? '놀이' : (obs.standard_area || '의사소통'));
       if (obs1DateMeta) obs1DateMeta.textContent = `${obs1Date} (${getDayOfWeekName(obs1Date)})`;
       if (obs1AreaBadge) obs1AreaBadge.textContent = obs1Area;
@@ -285,21 +293,21 @@
 
       // 2차 관찰 바인딩
       const dailyObs = mob?.daily_obs || mob?.obs_2 || {};
-      const obs2Date = dailyObs.date || '2026-09-22';
+      const obs2Date = dailyObs.date || '';
       const obs2Area = dailyObs.area || (mob?.daily_obs ? '일상생활' : '사회관계');
-      if (obs2DateMeta) obs2DateMeta.textContent = `${obs2Date} (${getDayOfWeekName(obs2Date)})`;
+      if (obs2DateMeta) obs2DateMeta.textContent = obs2Date ? `${obs2Date} (${getDayOfWeekName(obs2Date)})` : '관찰일 확인 필요';
       if (obs2AreaBadge) obs2AreaBadge.textContent = obs2Area;
       if (obs2ActivityTitle) obs2ActivityTitle.textContent = dailyObs.activity_title || state.activityArea || '일상생활';
-      if (obs2BehaviorText) obs2BehaviorText.textContent = dailyObs.behavior || (obs.behavior ? `1차 지도 이후 ${obs.behavior}` : '');
+      if (obs2BehaviorText) obs2BehaviorText.textContent = dailyObs.behavior || '해당 시점의 관찰 기록 부족';
       if (obs2SupportText) obs2SupportText.textContent = dailyObs.teacher_support || obs.evaluation || '';
-      if (obs2GrowthText) obs2GrowthText.textContent = dailyObs.growth_continuity || mob?.growth_continuity || '1차 상호작용 지원 이후 상황을 수용하고 긍정적으로 반응하는 발전적 행동 변화를 보임.';
+      if (obs2GrowthText) obs2GrowthText.textContent = dailyObs.growth_continuity || mob?.growth_continuity || '비교할 실제 관찰 기록 부족';
 
       // 월말 종합 총평 바인딩
       if (monthlySummaryDevText) {
-        monthlySummaryDevText.textContent = mob?.monthly_summary?.development_summary || `${obs1Area} 및 ${obs2Area} 영역에서 또래 및 교사와의 상호작용에 적극적으로 참여하며 전반적인 발달 과업을 원활히 수행함.`;
+        monthlySummaryDevText.textContent = mob?.monthly_summary?.development_summary || '종합할 관찰 기록 부족';
       }
       if (monthlySummaryPlanText) {
-        monthlySummaryPlanText.textContent = mob?.monthly_summary?.next_month_plan || '다음 달에는 유아의 자율적 탐색을 격려하고 성공 경험을 누적할 수 있도록 칭찬과 비계를 지속 지원할 계획임.';
+        monthlySummaryPlanText.textContent = mob?.monthly_summary?.next_month_plan || '';
       }
     }
 
@@ -314,10 +322,10 @@
       const evalChildName = state.selectedChild ? `${state.selectedChild.name} (${state.selectedChild.age || '만 2세'})` : '원아 (만 2세)';
       if (hangrooEvalDocTitle) hangrooEvalDocTitle.textContent = he?.title || `${evalChildName} 1학기 발달평가서 (한그루 ERP 규격)`;
       if (hangrooEvalSummaryText) {
-        hangrooEvalSummaryText.value = he?.development_summary || (mob?.monthly_summary?.development_summary ? `${mob.monthly_summary.development_summary}\n\n신체운동 및 기본생활 영역에서 능동적인 태도를 보이며 고른 발달을 나타냄.` : '');
+        hangrooEvalSummaryText.value = he?.development_summary || (mob?.monthly_summary?.development_summary ? mob.monthly_summary.development_summary : '');
       }
       if (hangrooEvalSupportText) {
-        hangrooEvalSupportText.value = he?.support_plan || (mob?.monthly_summary?.next_month_plan ? `${mob.monthly_summary.next_month_plan}\n\n또래 간 긍정적인 상호작용과 언어 표현 확장을 돕기 위한 모델링 및 환경 구성을 지속 지원함.` : '');
+        hangrooEvalSupportText.value = he?.support_plan || (mob?.monthly_summary?.next_month_plan ? mob.monthly_summary.next_month_plan : '');
       }
     }
 
@@ -376,7 +384,7 @@
 
     resultTabBtns.forEach(b => {
       const tab = b.dataset.tab;
-      b.style.display = 'inline-flex';
+      b.style.display = validFormats.includes(tab) ? 'inline-flex' : 'none';
       if (validFormats.includes(tab)) {
         b.style.opacity = '1';
         b.style.fontWeight = '700';
@@ -464,21 +472,11 @@
         rawMemo: memoText, images: state.photos || [], mode: state.mode || 'all_suite',
         activityArea: state.activityArea || '자유놀이', teacherStyle: state.teacherStyle || '다정하고 꼼꼼한 선생님',
         className: state.className || '사랑반', teacherName: state.teacherName || '공가영 선생님', persona: state.persona,
-        selectedFormats: state.selectedFormats || ['class_daily_report', 'kidsnote']
+        selectedFormats: state.selectedFormats || ['class_daily_report', 'kidsnote'], date: state.selectedDate,
+        evidenceIds: state.evidenceIds || [], evidenceFrom: state.evidenceFrom, photoConsent: !!document.getElementById('photoConsentCheck')?.checked, monthlyObsOptions: state.selectedFormats?.includes('observation') ? window.DaycareRecords.monthlyOptions() : null
       };
 
       let resultData = null;
-
-      // 1. 브라우저 클라이언트 직통 생성 시도
-      if (window.GeminiClient?.generate) {
-        try {
-          const clientRes = await window.GeminiClient.generate(payload, { signal: abortController.signal });
-          if (clientRes?.success) resultData = clientRes.data;
-        } catch (e) {
-          if (e.name === 'AbortError' || state.isGenerationAborted) throw e;
-          console.warn('클라이언트 직통 실패, 서버 폴백 전환:', e);
-        }
-      }
 
       // 2. 서버 폴백
       if (!resultData && !state.isGenerationAborted) {
@@ -494,6 +492,8 @@
         resultData = json.data;
       }
 
+      if (payload.childId !== state.selectedChild?.id || payload.date !== state.selectedDate || !state.authenticated) throw new Error('대상이 바뀌어 이전 생성 결과를 표시하지 않았습니다.');
+      if (document.getElementById('reviewConfirmed')) document.getElementById('reviewConfirmed').checked = false;
       state.lastResult = resultData;
       state.originalResult = JSON.parse(JSON.stringify(resultData));
       renderResults(resultData);
@@ -523,9 +523,9 @@
         const title = document.getElementById('repDocTitle')?.textContent || '보육일지';
         const date = document.getElementById('repHdrDate')?.textContent || '';
         const theme = document.getElementById('repHdrTheme')?.textContent || '';
-        const ref = document.getElementById('repReflectionText')?.value || '';
-        const env = document.getElementById('repSupportEnvText')?.value || '';
-        const safe = document.getElementById('repSupportSafetyText')?.value || '';
+        const ref = document.getElementById('repReflectionText')?.textContent || '';
+        const env = document.getElementById('repSupportEnvText')?.textContent || '';
+        const safe = document.getElementById('repSupportSafetyText')?.textContent || '';
 
         const text = `[${title}]\n일시: ${date}\n놀이주제: ${theme}\n\n[놀이 관찰 및 반성평가]\n${ref}\n\n[환경 지원]\n${env}\n\n[안전 및 기본생활 지도]\n${safe}`;
         copyTextToClipboard(text, '📋 보육일지 텍스트가 복사되었습니다!');
@@ -581,11 +581,11 @@
 
     if (kidsnoteRefineBox) {
       const refinePrompts = {
-        warmer: '아이의 표정과 감정, 교사의 따뜻한 눈맞춤을 더 다정하고 포근한 어조로 보강해줘',
+        warmer: '실제 관찰 사실을 유지하면서 말투만 다정하게 바꿔줘. 표정·감정·눈맞춤을 추가하지 마.',
         concise: '문맥의 핵심 놀이 몰입 장면 위주로 군더더기 없이 3~4줄로 명료하고 간결하게 다듬어줘',
-        growth: '소근육 조작, 또래와의 언어적 상호작용 등 발달적 성장 관점을 1~2줄 더 돋보이게 보강해줘',
-        safe: '오늘 안전하게 놀이하고 친구와 다투지 않고 양보하며 잘 지냈다는 안심 멘트를 자연스럽게 보강해줘',
-        meal: '본문 끝부분에 오늘 점심 식사 시간에 스스로 숟가락으로 골고루 맛있게 잘 먹었다는 기특한 식습관 칭찬 1줄을 자연스럽게 덧붙여줘'
+        growth: '기록에 있는 행동만 구체적으로 풀어줘. 성장이나 지도 효과는 근거 없이 단정하지 마.',
+        safe: '기록된 안전 관련 사실만 정리해줘. 기록이 없으면 안심 멘트를 추가하지 마.',
+        meal: '원시 메모에 식사 기록이 있을 때 그 사실만 다정한 문장으로 다듬어줘. 식사 기록이 없으면 추가하지 마.'
       };
 
       kidsnoteRefineBox.querySelectorAll('.refine-chip[data-refine]').forEach(chip => {
@@ -694,13 +694,7 @@
     if (printMonthlyObsBtn) printMonthlyObsBtn.onclick = () => window.print();
 
     const btnAutoDistributeDates = document.getElementById('btnAutoDistributeDates');
-    if (btnAutoDistributeDates) btnAutoDistributeDates.onclick = () => {
-      const m = document.getElementById('monthlyObsTargetMonth')?.value || '2026-09';
-      const d1 = document.getElementById('monthlyObsDate1'), d2 = document.getElementById('monthlyObsDate2');
-      if (d1) d1.value = `${m}-08`;
-      if (d2) d2.value = `${m}-22`;
-      showToast('📅 1차(상순) 및 2차(하순) 관찰일자가 자동 설정되었습니다.');
-    };
+    if (btnAutoDistributeDates) btnAutoDistributeDates.onclick = () => handleGenerate();
   }
 
   // ============================================================================
@@ -721,7 +715,7 @@
 
     const currentTitle = kidsnoteTitle ? kidsnoteTitle.textContent : '';
     const currentContent = kidsnoteContent.value;
-    const childName = state.selectedChild ? state.selectedChild.name : '김민서';
+    const childName = state.selectedChild ? state.selectedChild.name : '선택 원아';
 
     if (refiningSpinner) refiningSpinner.style.display = 'inline';
     const chips = kidsnoteRefineBox ? kidsnoteRefineBox.querySelectorAll('.refine-chip, .refine-custom-btn') : [];
@@ -734,10 +728,13 @@
           currentContent,
           instruction,
           childName,
-          persona: state.persona
+          persona: state.persona, childId: state.selectedChild?.id, date: state.selectedDate,
+          rawMemo: document.getElementById('rawMemoInput')?.value || '', evidenceIds: state.evidenceIds || [], evidenceFrom: state.evidenceFrom
         });
         if (kidsnoteTitle && refined.title) kidsnoteTitle.textContent = refined.title;
         if (kidsnoteContent && refined.content) kidsnoteContent.value = refined.content;
+        window.DaycareRecords?.capture(); window.DaycareRecords?.save();
+        if (document.getElementById('reviewConfirmed')) document.getElementById('reviewConfirmed').checked = false;
         showToast('✨ 요청하신 내용으로 자연스럽게 다듬어졌습니다!');
       } else {
         throw new Error('다듬기 엔진(GeminiClient)이 준비되지 않았습니다.');
