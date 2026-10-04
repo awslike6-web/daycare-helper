@@ -1,6 +1,6 @@
 # 보육비서 명세서 (SSOT)
 
-버전: 3.6.3 · 개정: 2026-10-04 · 로컬 검증 완료, 운영 반영 전
+버전: 3.6.3 · 개정: 2026-10-04 · 운영 배포·공개 파일 일치 확인 완료
 
 공식 앱: https://daycare-helper.awslike6.workers.dev/
 공식 저장소: https://github.com/awslike6-web/daycare-helper
