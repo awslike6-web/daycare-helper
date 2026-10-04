@@ -159,11 +159,20 @@ export default {
           const teachers = await getTeachersList(env);
           return json({ profiles: teachers.map(publicProfile), ...await authCall(env, 'status', { deviceToken: c.daycare_device }) });
         }
+        if (op === 'device-invite' && request.method !== 'POST') throw new ApiError('등록 링크는 발급 버튼으로 요청해 주세요.', 405);
         const body = await bodyOf(request);
         if (op === 'invite') {
           if (!env.AUTH_ADMIN_SECRET || request.headers.get('Authorization') !== 'Bearer ' + env.AUTH_ADMIN_SECRET) throw new ApiError('관리자 인증이 필요합니다.', 403);
           const teacher = profileOf(await getTeachersList(env), body.teacherId);
           return json(await authCall(env, 'invite', { teacherId: teacher.id, className: teacher.className }));
+        }
+        if (op === 'device-invite') {
+          const session = await requireSession(request, env);
+          const teacher = profileOf(await getTeachersList(env), session.teacherId);
+          if (teacher.className !== session.className) throw new ApiError('담당반이 변경되어 기기 재등록이 필요합니다.', 403);
+          const data = await authCall(env, op, { currentPin: body.currentPin,
+            sessionToken: c.daycare_session, deviceToken: c.daycare_device });
+          return json({ url: url.origin + '/#register=' + data.token, expiresAt: data.expiresAt });
         }
         if (!['register', 'login', 'logout', 'change-pin', 'invite-status'].includes(op)) throw new ApiError('없는 인증 기능입니다.', 404);
         const data = await authCall(env, op, { ...body, sessionToken: c.daycare_session, deviceToken: c.daycare_device });

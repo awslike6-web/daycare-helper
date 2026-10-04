@@ -10,6 +10,7 @@
 
 - 공개: GET /api/health, GET /api/auth/profiles(최소 교사 목록), POST /api/auth/invite-status(유효 초대 필요).
 - 관리자 비밀값: POST /api/auth/invite, POST /api/admin/verify.
+- 추가 기기 링크: POST /api/auth/device-invite. 등록 기기·세션·현재 PIN과 실제 노션 교사·담당반을 확인하여 자기 계정의 url/expiresAt를 no-store 응답으로 반환합니다.
 - 인증: POST /api/auth/register(초대와 PIN), login(등록 기기와 PIN), logout, change-pin.
 - 세션 필요: GET /api/session, /api/connection, /api/children, /api/history, /api/history/:id, /api/children/:id/recent-logs.
 - 세션과 동일 출처 JSON 필요: POST /api/generate, /api/logs/save, /api/profile, /api/children; PUT /api/children/:id.
@@ -21,9 +22,11 @@ AuthStore, authCall, requireSession, checkMutation, authCookies. Durable Object�
 
 login은 유효 기기의 PIN 확인·세션 저장 성공 후 기기 만료를 30일로 갱신하며 deviceToken/deviceMaxAge를 기존 Worker의 HttpOnly 쿠키 발급 경로에 반환합니다. 조회·실패·만료·해제 기기는 연장하지 않습니다. 세션 유지 옵션은 기기 연장과 별도로 적용합니다.
 
+createInvite(teacherId, className, deviceToken?)는 기존 관리자 초대와 직접 발급의 30분·일회용 저장을 통합합니다. device-invite는 유효 세션과 currentPin을 재확인해 발급합니다. getInvite(token)는 발급 기기의 현재 등록·최근 inviteKey·계정 PIN 버전을 확인하여 재발급·해제·만료·PIN 변경 후 미사용 링크를 거부합니다.
+
 AuthStore.failure(error)는 인증 예외를 응답으로 변환합니다. fetch의 직렬 실행 콜백 내부에서 호출하여 PIN 오류로 객체가 재시작되지 않도록 합니다. tests/auth-runtime.test.js와 tests/wrangler.auth-test.toml은 실제 workerd의 가상 계정 등록·오류 재시도·쿠키·세션·5회 제한을 검증하며 운영 계정을 사용하지 않습니다.
 
-tests/auth-fixture-worker.js는 독립 로컬 인증 저장소에서만 기기 만료·해제 조건을 구성하는 검증용 Worker입니다. 운영 worker.js는 이 파일을 가져오지 않으며 공개 API는 검증 제어 기능을 제공하지 않습니다. 실제 실행기 검증은 서버/쿠키 연장 일치와 원래 만료일 이후 진입, 실패 미연장, 만료·해제 거부, 같은 교사의 여러 기기 등록 유지와 연장·해제의 독립 적용을 포함합니다.
+tests/auth-fixture-worker.js는 독립 로컬 인증 저장소에서만 기기 만료·해제와 초대 만료 조건을 구성하는 검증용 Worker입니다. 운영 worker.js는 이 파일을 가져오지 않으며 공개 API는 검증 제어 기능을 제공하지 않습니다. 실제 실행기 검증은 서버/쿠키 연장 일치와 원래 만료일 이후 진입, 실패 미연장, 만료·해제 거부, 같은 교사의 여러 기기 등록 유지와 연장·해제의 독립 적용, 직접 발급→새 기기 등록→세션 및 초대 무효화를 포함합니다.
 
 ### api/notion.js
 
@@ -43,7 +46,7 @@ generateDaycareLog(options), validateFormats(data, formats), FORMAT_KEYS. 선택
 
 ### public/js/auth-security.js → DaycareAuth
 
-initAuthGate, lock, changePin, saveProfile, syncProfile, 교사 전환. 실제 인증 후 화면과 자기 반 노션 원아를 불러옵니다. 로그인 로딩·버전·연결 재시도와 키패드 대기 상태를 표시하며 잠금 시 DaycareRecords.cancelSave를 호출합니다.
+initAuthGate, lock, changePin, saveProfile, syncProfile, 교사 전환. 실제 인증 후 화면과 자기 반 노션 원아를 불러옵니다. 로그인 로딩·버전·연결 재시도와 키패드 대기 상태를 표시하며 잠금 시 DaycareRecords.cancelSave를 호출합니다. createDeviceInvite는 PIN 확인→링크 표시·복사·공유를 담당하고 clearDeviceInvite는 PIN·링크·만료 타이머·대기 요청을 제거합니다. 잠금·설정 닫기·교사 전환 뒤 늦은 응답은 표시하지 않습니다.
 
 ### public/js/records-flow.js → DaycareRecords
 

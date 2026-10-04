@@ -431,6 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeSettingsBtn = document.getElementById('closeSettingsBtn');
 
     const openSettings = () => {
+      window.DaycareAuth?.clearDeviceInvite();
       if (settingsModal) settingsModal.style.display = 'flex';
       window.DaycareAuth?.updatePersonaUI();
     };
@@ -439,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (headerPersonaBtn) headerPersonaBtn.onclick = openSettings;
     if (settingsBtn) settingsBtn.onclick = openSettings;
     if (closeSettingsBtn && settingsModal) {
-      closeSettingsBtn.onclick = () => { settingsModal.style.display = 'none'; };
+      closeSettingsBtn.onclick = () => { settingsModal.style.display = 'none'; window.DaycareAuth?.clearDeviceInvite(); };
     }
 
     // 10. 가이드 모달 확인 버튼
@@ -498,6 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
           window.ChildrenStore.loadChildren();
         }
         if (settingsModal) settingsModal.style.display = 'none';
+        window.DaycareAuth?.clearDeviceInvite();
         showToast(`🌱 '${newClassName}' (${newTeacherName}) 맞춤 설정이 성공적으로 저장되었습니다!`);
       };
     }
@@ -586,6 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const headerLogoutBtn = document.getElementById('headerLogoutBtn');
         if (headerLogoutBtn) headerLogoutBtn.click();
         if (settingsModal) settingsModal.style.display = 'none';
+        window.DaycareAuth?.clearDeviceInvite();
       };
     }
 

@@ -55,23 +55,69 @@ function element() {
   return { value: '', textContent: '', style: {}, dataset: {}, children: [], checked: false, disabled: false,
     classList: { toggle(key, on) { if (on) classes.add(key); else classes.delete(key); } },
     append(...nodes) { this.children.push(...nodes); }, appendChild(node) { this.children.push(node); },
-    replaceChildren(...nodes) { this.children = nodes; }, querySelectorAll() { return []; }, focus() {} };
+    replaceChildren(...nodes) { this.children = nodes; }, querySelectorAll() { return []; }, focus() {}, select() {} };
 }
 const authSource = await readFile(new URL('../public/js/auth-security.js', import.meta.url), 'utf8');
-async function authFixture({ expired = false, session = false } = {}) {
+async function authFixture({ expired = false, session = false, registration = true, inviteReply, copyFails = false } = {}) {
   const nodes = new Map(); for (const id of ['authTeacherSelector', 'authGateModal', 'pinErrorMsg', 'rawMemoInput', 'generateBtn', 'resultsSection', 'authRegistrationHint']) nodes.set(id, element());
   const historyCalls = []; const profile = { id: 'teacher-a', key: 'wife', className: '검증반', name: '검증교사' };
+  for (const id of ['openDeviceInviteBtn', 'deviceInviteBox', 'deviceInviteForm', 'deviceInvitePinInput', 'deviceInviteUrl',
+    'deviceInviteResult', 'deviceInviteStatus', 'createDeviceInviteBtn', 'closeDeviceInviteBtn', 'copyDeviceInviteBtn', 'shareDeviceInviteBtn']) nodes.set(id, element());
+  const copies = [], storage = [], inviteRequests = [], timers = [];
   const window = { state: {}, addEventListener() {} };
   const context = vm.createContext({ window, document: { body: { dataset: {} }, getElementById: id => nodes.get(id), createElement: element,
     querySelectorAll() { return []; }, addEventListener() {} }, location: { hash: '#register=가상토큰', pathname: '/', search: '' },
-    history: { replaceState(...args) { historyCalls.push(args); } }, URLSearchParams, HTMLInputElement: class {},
-    localStorage: { getItem() { return null; }, setItem() {} }, setInterval() { return 1; }, clearInterval() {}, setTimeout, clearTimeout, AbortController, DOMException, console,
-    fetch: async path => path === '/api/auth/profiles' ? Response.json({ profiles: [profile] }) :
+    history: { replaceState(...args) { historyCalls.push(args); } }, URL, URLSearchParams, HTMLInputElement: class {},
+    navigator: { clipboard: { async writeText(value) { if (copyFails) throw new Error('복사 권한 없음'); copies.push(value); } } },
+    localStorage: { getItem() { return null; }, setItem(...args) { storage.push(args); } }, setInterval(fn) { timers.push(fn); return timers.length; }, clearInterval() {}, setTimeout, clearTimeout, AbortController, DOMException, console,
+    fetch: async (path, options) => path === '/api/auth/device-invite' ? (inviteRequests.push(JSON.parse(options.body)), inviteReply()) :
+      path === '/api/auth/profiles' ? Response.json({ profiles: [profile] }) :
       path === '/api/auth/invite-status' ? expired ? Response.json({ error: '만료' }, { status: 403 }) : Response.json({ teacherId: profile.id, initial: false }) :
       path === '/api/session' ? session ? Response.json({ profile, expiresAt: Date.now() + 1000 }) : Response.json({ error: '인증 필요' }, { status: 401 }) : Response.json({ success: true }) });
+  context.location.origin = 'https://daycare.test';
+  if (!registration) context.location.hash = '';
   vm.runInContext(await readFile(new URL('../public/js/records-flow.js', import.meta.url), 'utf8'), context);
-  vm.runInContext(authSource, context); await window.DaycareAuth.initAuthGate(); return { nodes, historyCalls, window };
+  vm.runInContext(authSource, context); await window.DaycareAuth.initAuthGate(); return { nodes, historyCalls, window, copies, storage, inviteRequests, timers, context };
 }
+
+test('직접 발급 화면은 PIN 실패 후 재시도·링크 복사를 제공하고 PIN·링크를 저장하지 않는다', async () => {
+  const link = 'https://daycare.test/#register=' + 'a'.repeat(64); let attempts = 0;
+  const fixture = await authFixture({ session: true, registration: false, inviteReply: () => ++attempts === 1 ?
+    Response.json({ error: 'PIN이 맞지 않습니다.' }, { status: 401 }) : Response.json({ url: link, expiresAt: Date.now() + 1800000 }) });
+  const { nodes, window } = fixture;
+  nodes.get('openDeviceInviteBtn').onclick(); nodes.get('deviceInvitePinInput').value = '0009';
+  await window.DaycareAuth.createDeviceInvite();
+  assert.match(nodes.get('deviceInviteStatus').textContent, /PIN이 맞지/);
+  assert.equal(nodes.get('deviceInvitePinInput').value, ''); assert.equal(nodes.get('createDeviceInviteBtn').disabled, false);
+  nodes.get('deviceInvitePinInput').value = '4826'; await window.DaycareAuth.createDeviceInvite();
+  assert.equal(nodes.get('deviceInviteUrl').value, link); assert.equal(nodes.get('deviceInviteResult').hidden, false);
+  await nodes.get('copyDeviceInviteBtn').onclick(); assert.deepEqual(fixture.copies, [link]);
+  assert.equal(JSON.stringify(fixture.storage).includes(link), false); assert.equal(JSON.stringify(fixture.storage).includes('4826'), false);
+  nodes.get('closeDeviceInviteBtn').onclick(); assert.equal(nodes.get('deviceInviteUrl').value, '');
+});
+
+test('링크 만료와 복사 권한 거부를 안내하고 오래된 링크를 숨긴다', async () => {
+  const deadline = Date.now() + 1800000;
+  const fixture = await authFixture({ session: true, registration: false, copyFails: true,
+    inviteReply: () => Response.json({ url: 'https://daycare.test/#register=' + 'b'.repeat(64), expiresAt: deadline }) });
+  fixture.nodes.get('deviceInvitePinInput').value = '4826'; await fixture.window.DaycareAuth.createDeviceInvite();
+  await fixture.nodes.get('copyDeviceInviteBtn').onclick(); assert.match(fixture.nodes.get('deviceInviteStatus').textContent, /길게 눌러/);
+  vm.runInContext(`Date.now = () => ${deadline + 1}`, fixture.context); fixture.timers.at(-1)();
+  assert.equal(fixture.nodes.get('deviceInviteResult').hidden, true); assert.equal(fixture.nodes.get('deviceInviteUrl').value, '');
+  assert.match(fixture.nodes.get('deviceInviteStatus').textContent, /만료/);
+});
+
+test('발급 연속 탭을 제한하고 잠금 뒤 늦은 응답으로 링크가 다시 보이지 않는다', async () => {
+  let release;
+  const fixture = await authFixture({ session: true, registration: false, inviteReply: () => new Promise(resolve => { release = resolve; }) });
+  fixture.nodes.get('deviceInvitePinInput').value = '4826'; const pending = fixture.window.DaycareAuth.createDeviceInvite();
+  await fixture.window.DaycareAuth.createDeviceInvite(); assert.equal(fixture.inviteRequests.length, 1);
+  await fixture.window.DaycareAuth.lock();
+  release(Response.json({ url: 'https://daycare.test/#register=' + 'c'.repeat(64), expiresAt: Date.now() + 1800000 }));
+  await pending;
+  assert.equal(fixture.nodes.get('deviceInviteUrl').value, ''); assert.equal(fixture.nodes.get('deviceInviteResult').hidden, true);
+  assert.equal(fixture.nodes.get('createDeviceInviteBtn').disabled, false);
+});
 test('유효한 등록 링크는 PIN 성공 전 보존되고 교사 선택 스타일 구조를 유지한다', async () => {
   const fixture = await authFixture(); assert.equal(fixture.historyCalls.length, 0);
   const button = fixture.nodes.get('authTeacherSelector').children[0];

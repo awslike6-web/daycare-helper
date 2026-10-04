@@ -10,6 +10,7 @@
   const TEACHER_PROFILES = {};
   let selected = null, digits = '', firstPin = '', invitation = null, busy = false;
   let ready = false, refreshTimer;
+  let deviceInvite = null, inviteRequest = null, inviteTimer, inviteGeneration = 0;
   const el = id => document.getElementById(id);
   function setBusy(value) {
     busy = value;
@@ -62,6 +63,7 @@
     });
   }
   function showGate() {
+    clearDeviceInvite();
     window.DaycareRecords?.cancelSave();
     document.body.dataset.locked = 'true'; ready = false;
     clearInterval(refreshTimer);
@@ -171,6 +173,14 @@
   }
   async function initAuthGate() {
     showGate();
+    if (el('openDeviceInviteBtn')) el('openDeviceInviteBtn').onclick = () => {
+      if (!ready) return;
+      clearDeviceInvite(); el('deviceInviteBox').hidden = false; el('deviceInvitePinInput').focus();
+    };
+    if (el('deviceInviteForm')) el('deviceInviteForm').onsubmit = event => { event.preventDefault(); createDeviceInvite(); };
+    if (el('closeDeviceInviteBtn')) el('closeDeviceInviteBtn').onclick = clearDeviceInvite;
+    if (el('copyDeviceInviteBtn')) el('copyDeviceInviteBtn').onclick = copyDeviceInvite;
+    if (el('shareDeviceInviteBtn')) el('shareDeviceInviteBtn').onclick = shareDeviceInvite;
     document.querySelectorAll('.keypad-btn[data-num]').forEach(button => { button.onclick = () => { if (busy) return; if (digits.length < 4) digits += button.dataset.num; dots(); if (digits.length === 4) submitPin(); }; });
     if (el('keypadClearBtn')) el('keypadClearBtn').onclick = () => { digits = ''; dots(); };
     if (el('keypadBackspaceBtn')) el('keypadBackspaceBtn').onclick = () => { digits = digits.slice(0, -1); dots(); };
@@ -210,9 +220,73 @@
       await lock(); error('PIN을 변경했습니다. 새 PIN으로 들어가 주세요.');
     } catch (e) { window.showToast?.(e.message); }
   }
+  function inviteStatus(message) { if (el('deviceInviteStatus')) el('deviceInviteStatus').textContent = message; }
+  function clearDeviceInvite() {
+    inviteGeneration++; inviteRequest?.abort(); inviteRequest = null; deviceInvite = null; clearInterval(inviteTimer);
+    for (const id of ['deviceInvitePinInput', 'deviceInviteUrl']) if (el(id)) el(id).value = '';
+    for (const id of ['deviceInviteBox', 'deviceInviteResult']) if (el(id)) el(id).hidden = true;
+    if (el('createDeviceInviteBtn')) el('createDeviceInviteBtn').disabled = false;
+    inviteStatus('');
+  }
+  function inviteIsValid() {
+    if (!deviceInvite || !ready) return false;
+    if (deviceInvite.expiresAt > Date.now()) return true;
+    deviceInvite = null; clearInterval(inviteTimer);
+    if (el('deviceInviteUrl')) el('deviceInviteUrl').value = '';
+    if (el('deviceInviteResult')) el('deviceInviteResult').hidden = true;
+    inviteStatus('링크가 만료되었습니다. 현재 PIN으로 다시 발급해 주세요.'); return false;
+  }
+  async function createDeviceInvite() {
+    if (!ready || inviteRequest) return;
+    const currentPin = el('deviceInvitePinInput')?.value || '';
+    if (el('deviceInvitePinInput')) el('deviceInvitePinInput').value = '';
+    if (!/^\d{4}$/.test(currentPin)) { inviteStatus('현재 PIN 숫자 4자리를 입력해 주세요.'); return; }
+    const generation = ++inviteGeneration, teacherId = window.state?.teacherId;
+    const controller = new AbortController(); inviteRequest = controller;
+    clearInterval(inviteTimer); deviceInvite = null;
+    el('deviceInviteResult').hidden = true; el('deviceInviteUrl').value = '';
+    el('createDeviceInviteBtn').disabled = true; inviteStatus('현재 PIN을 확인하고 링크를 발급하는 중입니다…');
+    try {
+      const data = await window.DaycareRecords.requestJson('/api/auth/device-invite', {
+        method: 'POST', body: { currentPin }, signal: controller.signal
+      });
+      if (generation !== inviteGeneration || !ready || teacherId !== window.state?.teacherId) return;
+      const link = new URL(data.url);
+      if (link.origin !== location.origin || link.pathname !== '/' || !/^#register=[a-f0-9]{64}$/.test(link.hash) ||
+          !Number.isFinite(data.expiresAt) || data.expiresAt <= Date.now()) throw new Error('발급한 링크를 확인할 수 없습니다. 다시 시도해 주세요.');
+      deviceInvite = { url: link.href, expiresAt: data.expiresAt };
+      el('deviceInviteUrl').value = deviceInvite.url; el('deviceInviteResult').hidden = false;
+      el('shareDeviceInviteBtn').hidden = typeof navigator.share !== 'function';
+      inviteStatus(`링크가 준비됐습니다. ${new Date(data.expiresAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}까지 새 기기에서 열어 주세요.`);
+      inviteTimer = setInterval(inviteIsValid, 1000);
+    } catch (e) {
+      if (generation === inviteGeneration && e.name !== 'AbortError') inviteStatus(e.message);
+    } finally {
+      if (generation === inviteGeneration) { inviteRequest = null; el('createDeviceInviteBtn').disabled = false; }
+    }
+  }
+  async function copyDeviceInvite() {
+    if (!inviteIsValid()) return;
+    const generation = inviteGeneration;
+    try {
+      await navigator.clipboard.writeText(deviceInvite.url);
+      if (generation === inviteGeneration) inviteStatus('링크를 복사했습니다. 새 기기에 전달하고 기존 PIN으로 등록하세요.');
+    } catch {
+      if (generation !== inviteGeneration) return;
+      el('deviceInviteUrl').focus(); el('deviceInviteUrl').select();
+      inviteStatus('자동 복사를 사용할 수 없습니다. 선택된 링크를 길게 눌러 복사해 주세요.');
+    }
+  }
+  async function shareDeviceInvite() {
+    if (!inviteIsValid() || typeof navigator.share !== 'function') return;
+    const generation = inviteGeneration;
+    try { await navigator.share({ title: '보육비서 새 기기 등록', url: deviceInvite.url }); }
+    catch (e) { if (generation === inviteGeneration && e.name !== 'AbortError') inviteStatus('공유할 수 없습니다. 링크 복사를 이용해 주세요.'); }
+  }
   const checkSecuritySession = async () => { if (ready) try { await api('/api/session'); } catch (e) { if (e.status === 401 || e.status === 403) await lock(); } };
   window.DaycareConfig = { PERSONA_PRESETS, PARENT_PRESETS, TEACHER_PROFILES };
   window.DaycareAuth = { initAuthGate, handleTeacherSwitchClick, executeTeacherSwitch: handleTeacherSwitchClick,
     switchTeacherProfile: handleTeacherSwitchClick, syncTeacherSwitcherUI, updatePersonaUI, getTeacherPersona, getTeacherStyle,
-    setTeacherPersona, setTeacherStyle, checkSecuritySession, changePin, lock, saveProfile, syncProfile, showSessionBanner() {}, hideSessionBanner() {} };
+    setTeacherPersona, setTeacherStyle, checkSecuritySession, changePin, lock, saveProfile, syncProfile,
+    clearDeviceInvite, createDeviceInvite, showSessionBanner() {}, hideSessionBanner() {} };
 })();

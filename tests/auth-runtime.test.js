@@ -48,6 +48,17 @@ test('실제 Worker 실행기의 PIN 오류 안내와 재시도·등록 쿠키·
       const response = await control.fetch('http://auth.internal/test-device', { method: 'POST', body: JSON.stringify({ deviceToken, ...options }) });
       assert.equal(response.status, 200); return response.json();
     }
+    async function selfInvite(cookie, extra = {}) {
+      const response = await call('/api/auth/device-invite', { currentPin: fakePin, ...extra }, cookie);
+      assert.equal(response.status, 200); assert.equal(response.headers.get('Cache-Control'), 'no-store');
+      assert.equal(response.headers.getSetCookie().length, 0);
+      const data = await response.json(), link = new URL(data.url);
+      assert.equal(link.origin, origin); assert.equal(link.pathname, '/'); assert.equal(link.search, '');
+      assert.match(link.hash, /^#register=[a-f0-9]{64}$/);
+      assert.ok(data.expiresAt > Date.now() + 29 * 60000 && data.expiresAt <= Date.now() + 30 * 60000);
+      assert.deepEqual(Object.keys(data).sort(), ['expiresAt', 'url']);
+      return link.hash.slice('#register='.length);
+    }
     await t.test('없는 등록 링크는 서버 재시작 없이 403으로 안내한다', async () => {
       const response = await call('/api/auth/register', { invite: '가상 만료 링크', pin: fakePin });
       assert.equal(response.status, 403);
@@ -87,6 +98,66 @@ test('실제 Worker 실행기의 PIN 오류 안내와 재시도·등록 쿠키·
       assert.ok((await device(firstDeviceCookie)).expires > Date.now() + 29 * 86400000);
       assert.equal((await device(cookie)).expires, otherExpiry);
       assert.equal((await call('/api/session', undefined, cookie)).status, 200);
+    });
+    await t.test('직접 발급은 기기·세션·현재 PIN과 같은 출처 POST를 모두 요구한다', async () => {
+      assert.equal((await call('/api/auth/device-invite', { currentPin: fakePin })).status, 401);
+      for (const partialCookie of cookie.split('; ')) {
+        assert.equal((await call('/api/auth/device-invite', { currentPin: fakePin }, partialCookie)).status, 401);
+      }
+      assert.equal((await call('/api/auth/device-invite', undefined, cookie)).status, 405);
+      const foreign = await server.fetch(origin + '/api/auth/device-invite', { method: 'POST',
+        headers: { Origin: 'https://other.test', 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify({ currentPin: fakePin }) });
+      assert.equal(foreign.status, 403);
+      assert.equal((await call('/api/auth/device-invite', { currentPin: '0009' }, cookie)).status, 401);
+      assert.equal((await call('/api/auth/device-invite', { currentPin: '1' }, cookie)).status, 400);
+    });
+    await t.test('자기 링크로 새 기기를 등록하며 위조한 다른 교사·학급은 무시한다', async () => {
+      const token = await selfInvite(cookie, { teacherId: '다른 가상 교사', className: '다른 반', deviceToken: '변조 기기' });
+      const status = await call('/api/auth/invite-status', { invite: token });
+      assert.equal((await status.json()).teacherId, teacherId);
+      assert.equal((await call('/api/auth/register', { invite: token, pin: '0009' })).status, 401);
+      const registered = await call('/api/auth/register', { invite: token, pin: fakePin, remember: true });
+      assert.equal(registered.status, 200);
+      const extraCookie = cookieOf(registered);
+      const session = await call('/api/session', undefined, extraCookie);
+      assert.equal(session.status, 200); assert.equal((await session.json()).profile.className, '연구반');
+      assert.equal((await call('/api/auth/register', { invite: token, pin: fakePin })).status, 403);
+      assert.equal((await call('/api/session', undefined, cookie)).status, 200);
+    });
+    await t.test('재발급은 이전 링크를 무효화하고 만료 링크도 등록을 거부한다', async () => {
+      const previous = await selfInvite(cookie), fresh = await selfInvite(cookie);
+      assert.equal((await call('/api/auth/invite-status', { invite: previous })).status, 403);
+      assert.equal((await call('/api/auth/register', { invite: previous, pin: fakePin })).status, 403);
+      assert.equal((await call('/api/auth/device-invite', { currentPin: '0009' }, cookie)).status, 401);
+      assert.equal((await call('/api/auth/invite-status', { invite: fresh })).status, 200, '실패한 재발급은 기존 링크를 지우지 않는다');
+      const changed = await control.fetch('http://auth.internal/test-invite', { method: 'POST', body: JSON.stringify({ invite: fresh, expires: Date.now() - 1 }) });
+      assert.equal(changed.status, 200);
+      assert.equal((await call('/api/auth/invite-status', { invite: fresh })).status, 403);
+      assert.equal((await call('/api/auth/register', { invite: fresh, pin: fakePin })).status, 403);
+    });
+    await t.test('발급 기기를 해제하거나 만료시키면 미사용 링크도 사용할 수 없다', async () => {
+      const registered = await call('/api/auth/register', { invite: await invite(), pin: fakePin, remember: true });
+      const issuerCookie = cookieOf(registered), token = await selfInvite(issuerCookie);
+      await call('/api/auth/logout', { forget: true }, issuerCookie);
+      assert.equal((await call('/api/auth/invite-status', { invite: token })).status, 403);
+      assert.equal((await call('/api/auth/register', { invite: token, pin: fakePin })).status, 403);
+      const saved = await device(cookie), pending = await selfInvite(cookie);
+      await device(cookie, { expires: Date.now() - 1 });
+      assert.equal((await call('/api/auth/invite-status', { invite: pending })).status, 403);
+      assert.equal((await call('/api/auth/device-invite', { currentPin: fakePin }, cookie)).status, 401);
+      await device(cookie, { expires: saved.expires });
+    });
+    await t.test('PIN 변경은 기존 미사용 링크·세션을 무효화하고 새 PIN 확인을 요구한다', async () => {
+      const pending = await selfInvite(cookie), temporaryPin = '9371';
+      assert.equal((await call('/api/auth/change-pin', { currentPin: fakePin, pin: temporaryPin, confirmPin: temporaryPin }, cookie)).status, 200);
+      assert.equal((await call('/api/auth/invite-status', { invite: pending })).status, 403);
+      assert.equal((await call('/api/auth/device-invite', { currentPin: temporaryPin }, cookie)).status, 401);
+      cookie = cookieOf(await call('/api/auth/login', { teacherId, pin: temporaryPin, remember: true }, cookie));
+      const newLink = await selfInvite(cookie, { currentPin: temporaryPin });
+      assert.equal((await call('/api/auth/invite-status', { invite: newLink })).status, 200);
+      assert.equal((await call('/api/auth/change-pin', { currentPin: temporaryPin, pin: fakePin, confirmPin: fakePin }, cookie)).status, 200);
+      cookie = cookieOf(await call('/api/auth/login', { teacherId, pin: fakePin, remember: true }, cookie));
+      firstDeviceCookie = cookieOf(await call('/api/auth/login', { teacherId, pin: fakePin, remember: true }, firstDeviceCookie));
     });
     await t.test('재로그인 실패·다른 교사 거부 후에도 올바른 PIN으로 진입한다', async () => {
       const failed = await call('/api/auth/login', { teacherId, pin: '0009' }, cookie);
@@ -154,6 +225,7 @@ test('실제 Worker 실행기의 PIN 오류 안내와 재시도·등록 쿠키·
       assert.equal(locked.status, 429); assert.match((await locked.json()).error, /15분/);
       assert.equal(locked.headers.getSetCookie().length, 0);
       assert.equal((await device(cookie)).expires, originalExpiry);
+      assert.equal((await call('/api/auth/device-invite', { currentPin: fakePin }, cookie)).status, 429);
     });
   } finally {
     await server.close();

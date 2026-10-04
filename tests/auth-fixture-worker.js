@@ -4,9 +4,9 @@ import { AuthStore as ProductionAuthStore } from '../api/auth.js';
 export default worker;
 export class AuthStore extends ProductionAuthStore {
   async run(op, body) {
-    if (op !== 'test-device') return super.run(op, body);
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body.deviceToken));
-    const key = 'device:' + [...new Uint8Array(digest)].map(n => n.toString(16).padStart(2, '0')).join('');
+    if (!['test-device', 'test-invite'].includes(op)) return super.run(op, body);
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(op === 'test-device' ? body.deviceToken : body.invite));
+    const key = (op === 'test-device' ? 'device:' : 'invite:') + [...new Uint8Array(digest)].map(n => n.toString(16).padStart(2, '0')).join('');
     if (body.remove) await this.db.delete(key);
     const device = await this.db.get(key);
     if (device && Number.isFinite(body.expires)) { device.expires = body.expires; await this.db.put(key, device); }

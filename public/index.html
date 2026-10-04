@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json?v=20261004_v45">
-  <link rel="stylesheet" href="./style.css?v=20261004_v45">
+  <link rel="manifest" href="./manifest.json?v=20261004_v46">
+  <link rel="stylesheet" href="./style.css?v=20261004_v46">
 </head>
 <body data-locked="true">
   <div class="app-container">
@@ -22,7 +22,7 @@
       <div class="brand-area">
         <span class="brand-logo">🧸</span>
         <div>
-          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v3.5.4</span></div>
+          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v3.5.5</span></div>
           <div class="header-date-wrapper" id="headerDateWrapper" title="클릭하여 소급 작성 날짜 변경">
             <span class="header-date-icon">📅</span>
             <span class="brand-sub header-date-text" id="headerDateText">오늘의 보육 기록</span>
@@ -835,11 +835,33 @@
                 🔒 로그아웃 (잠금)
               </button>
               <button type="button" id="forgetDeviceBtn" class="action-btn">기기 등록 해제</button>
+              <button type="button" id="openDeviceInviteBtn" class="action-btn">🔗 새 기기 등록 링크</button>
               <button hidden type="button" id="testBannerToggleBtn" class="action-btn" style="font-size: 11px; padding: 5px 10px; border: 1px dashed #D1D5DB; background: #F9FAFB; color: #4B5563; cursor: pointer; border-radius: 6px;">
                 🧪 D-7 배너 테스트
               </button>
             </div>
             
+            <section id="deviceInviteBox" class="device-invite-box" hidden aria-labelledby="deviceInviteTitle">
+              <h3 id="deviceInviteTitle">PC·다른 휴대폰 등록하기</h3>
+              <p>현재 PIN을 확인하면 내 계정의 등록 링크를 만듭니다. 새 기기에서도 같은 PIN을 입력하세요.</p>
+              <form id="deviceInviteForm" class="device-invite-actions">
+                <label for="deviceInvitePinInput">현재 PIN</label>
+                <input type="password" id="deviceInvitePinInput" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required aria-describedby="deviceInviteStatus">
+                <button type="submit" id="createDeviceInviteBtn" class="action-btn">링크 발급</button>
+              </form>
+              <p id="deviceInviteStatus" role="status" aria-live="polite"></p>
+              <div id="deviceInviteResult" hidden>
+                <label for="deviceInviteUrl">새 기기에서 열 등록 링크</label>
+                <textarea id="deviceInviteUrl" rows="3" readonly spellcheck="false"></textarea>
+                <div class="device-invite-actions">
+                  <button type="button" id="copyDeviceInviteBtn" class="action-btn">📋 링크 복사</button>
+                  <button type="button" id="shareDeviceInviteBtn" class="action-btn" hidden>공유</button>
+                </div>
+              </div>
+              <p>30분 동안 한 번만 사용합니다. 다시 발급하면 이전 링크는 사용할 수 없습니다.</p>
+              <button type="button" id="closeDeviceInviteBtn" class="action-btn">닫기</button>
+            </section>
+
             <!-- 🔢 PIN 변경 폼 (토글) -->
             <div id="pinChangeBox" style="display: none; margin-top: 10px; padding: 10px; background: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0;">
               <div style="font-weight: 700; color: var(--text-main); margin-bottom: 6px; font-size: 12px;">🔑 새 4자리 비밀번호 설정</div>
@@ -1119,7 +1141,7 @@
         <div class="auth-gate-header">
           <div class="auth-bear-avatar">🧸</div>
           <h2 class="auth-gate-title">우리 반 보육 비서</h2>
-          <p class="auth-gate-subtitle">선생님을 위한 안심 스마트 보육 환경 · v3.5.4</p>
+          <p class="auth-gate-subtitle">선생님을 위한 안심 스마트 보육 환경 · v3.5.5</p>
         </div>
 
         <!-- 👩‍🏫 선생님 프로필 선택기 (프로필별 PIN 및 학급 완전 격리) -->
@@ -1468,11 +1490,11 @@
   </div>
 
   <!-- 🛡️ 2026 골디락스 4대 완성형 코어 아키텍처 (안정성 & 효율성 극대화) -->
-  <script src="./js/records-flow.js?v=20261004_v45"></script>
-  <script src="./js/auth-security.js?v=20261004_v45"></script>
-  <script src="./js/notion-store.js?v=20261004_v45"></script>
-  <script src="./js/ai-engine.js?v=20261004_v45"></script>
-  <script src="./gemini-client.js?v=20261004_v45"></script>
-  <script src="./app.js?v=20261004_v45"></script>
+  <script src="./js/records-flow.js?v=20261004_v46"></script>
+  <script src="./js/auth-security.js?v=20261004_v46"></script>
+  <script src="./js/notion-store.js?v=20261004_v46"></script>
+  <script src="./js/ai-engine.js?v=20261004_v46"></script>
+  <script src="./gemini-client.js?v=20261004_v46"></script>
+  <script src="./app.js?v=20261004_v46"></script>
 </body>
 </html>

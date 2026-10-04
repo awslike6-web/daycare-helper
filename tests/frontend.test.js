@@ -13,6 +13,7 @@ test('실제 화면의 인증·검수·중복 저장 요소와 상대 경로 모
   }
   assert.ok(html.indexOf('id="currentPinInput"') < html.indexOf('id="newPinInput"'));
   assert.ok(html.indexOf('id="newPinInput"') < html.indexOf('id="confirmPinInput"'));
+  for (const id of ['openDeviceInviteBtn', 'deviceInviteForm', 'deviceInvitePinInput', 'deviceInviteUrl', 'deviceInviteStatus', 'copyDeviceInviteBtn']) assert.ok(ids.includes(id), id);
 });
 
 test('프론트 코어는 800줄 상한을 지키고 AI 키를 요청하지 않는다', async () => {

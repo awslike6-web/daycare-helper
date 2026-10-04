@@ -78,6 +78,35 @@ export class AuthStore {
     const device = await this.db.get('device:' + await digest(token));
     return device && device.expires > Date.now() ? device : null;
   }
+  async getInvite(token) {
+    const key = 'invite:' + await digest(token || '');
+    const invite = await this.db.get(key);
+    if (!invite || invite.expires <= Date.now()) throw new ApiError('기기 등록 링크가 만료되었거나 사용되었습니다.', 403);
+    if (invite.issuerDeviceHash) {
+      const issuer = await this.db.get('device:' + invite.issuerDeviceHash);
+      const account = await this.db.get('account:' + invite.teacherId);
+      if (!issuer || issuer.expires <= Date.now() || issuer.teacherId !== invite.teacherId ||
+          issuer.inviteKey !== key || account?.version !== invite.version) {
+        throw new ApiError('기기 등록 링크가 무효화되었습니다. 등록된 기기에서 다시 발급해 주세요.', 403);
+      }
+    }
+    return invite;
+  }
+  async createInvite(teacherId, className, deviceToken) {
+    const token = randomToken(), key = 'invite:' + await digest(token);
+    const expires = Date.now() + 30 * 60000;
+    const invite = { teacherId, className, expires };
+    if (deviceToken) {
+      const device = await this.getDevice(deviceToken);
+      if (!device || device.teacherId !== teacherId) throw new ApiError('기기 등록을 확인해 주세요.', 403);
+      if (device.inviteKey) await this.db.delete(device.inviteKey);
+      Object.assign(invite, { issuerDeviceHash: await digest(deviceToken), version: device.version });
+      device.inviteKey = key;
+      await this.db.put('device:' + invite.issuerDeviceHash, device);
+    }
+    await this.db.put(key, invite);
+    return { token, expiresIn: 1800, expiresAt: expires };
+  }
   async throttle(key, verify) {
     const storeKey = 'attempt:' + await digest(key);
     const now = Date.now();
@@ -115,24 +144,28 @@ export class AuthStore {
   }
   async run(op, b) {
     if (op === 'invite') {
-      const token = randomToken();
-      await this.db.put('invite:' + await digest(token), { teacherId: b.teacherId, className: b.className, expires: Date.now() + 30 * 60000 });
-      return { token, expiresIn: 1800 };
+      return this.createInvite(b.teacherId, b.className);
+    }
+    if (op === 'device-invite') {
+      const session = await this.session(b);
+      requirePin(b.currentPin);
+      const account = await this.db.get('account:' + session.teacherId);
+      await this.throttle('account:' + session.teacherId,
+        async () => equal(account.hash, await pinHash(b.currentPin, account.salt, this.env.AUTH_PEPPER)));
+      return this.createInvite(session.teacherId, session.className, b.deviceToken);
     }
     if (op === 'status') {
       const device = await this.getDevice(b.deviceToken);
       return { registered: !!device, teacherId: device?.teacherId || null };
     }
     if (op === 'invite-status') {
-      const invite = await this.db.get('invite:' + await digest(b.invite || ''));
-      if (!invite || invite.expires <= Date.now()) throw new ApiError('기기 등록 링크가 만료되었거나 사용되었습니다.', 403);
+      const invite = await this.getInvite(b.invite);
       return { teacherId: invite.teacherId, initial: !await this.db.get('account:' + invite.teacherId) };
     }
     if (op === 'register') {
       requirePin(b.pin);
       const inviteKey = 'invite:' + await digest(b.invite || '');
-      const invite = await this.db.get(inviteKey);
-      if (!invite || invite.expires <= Date.now()) throw new ApiError('기기 등록 링크가 만료되었거나 사용되었습니다.', 403);
+      const invite = await this.getInvite(b.invite);
       let account = await this.db.get('account:' + invite.teacherId);
       if (account) {
         await this.throttle('account:' + invite.teacherId, async () => equal(account.hash, await pinHash(b.pin, account.salt, this.env.AUTH_PEPPER)));
