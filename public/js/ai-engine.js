@@ -230,7 +230,8 @@
       const monthlySummaryDevText = document.getElementById('monthlySummaryDevText');
       const monthlySummaryPlanText = document.getElementById('monthlySummaryPlanText');
 
-      const targetMonthStr = state.selectedDate ? `${state.selectedDate.slice(0, 7).replace('-', '년 ')}월` : '작성 월';
+      const targetMonth = mob.targetMonth || data.citation?.to?.slice(0, 7) || state.selectedDate?.slice(0, 7);
+      const targetMonthStr = targetMonth ? `${targetMonth.replace('-', '년 ')}월` : '작성 월';
       const childDisplayName = state.selectedChild ? `${state.selectedChild.name} (${state.selectedChild.age || '만 2세'})` : '원아 (만 2세)';
       const teacherDisplayName = `${state.className || '소망반'} / ${state.teacherName || '담당교사'}`;
 
@@ -241,9 +242,9 @@
 
       // 1차 관찰 바인딩
       const playObs = mob?.play_obs || mob?.obs_1 || mob || {};
-      const obs1Date = playObs.date || state.selectedDate || '';
+      const obs1Date = playObs.date || '';
       const obs1Area = playObs.area || (mob?.play_obs ? '놀이' : (obs.standard_area || '의사소통'));
-      if (obs1DateMeta) obs1DateMeta.textContent = `${obs1Date} (${getDayOfWeekName(obs1Date)})`;
+      if (obs1DateMeta) obs1DateMeta.textContent = obs1Date ? `${obs1Date} (${getDayOfWeekName(obs1Date)})` : '관찰일 확인 필요';
       if (obs1AreaBadge) obs1AreaBadge.textContent = obs1Area;
       if (obs1ActivityTitle) obs1ActivityTitle.textContent = playObs.activity_title || playObs.activity_name || obs.activity_name || state.activityArea || '놀이 활동';
       if (obs1BehaviorText) obs1BehaviorText.textContent = playObs.behavior || obs.behavior || '';
@@ -278,7 +279,8 @@
       const hangrooEvalSupportText = document.getElementById('hangrooEvalSupportText');
 
       const evalChildName = state.selectedChild ? `${state.selectedChild.name} (${state.selectedChild.age || '만 2세'})` : '원아 (만 2세)';
-      if (hangrooEvalDocTitle) hangrooEvalDocTitle.textContent = he?.title || `${evalChildName} 1학기 발달평가서 (한그루 ERP 규격)`;
+      const period = data.citation?.has_citation ? ` · ${data.citation.from || '선택 기록'} ~ ${data.citation.to}` : '';
+      if (hangrooEvalDocTitle) hangrooEvalDocTitle.textContent = (he?.title || `${evalChildName} 발달평가서`) + period;
       if (hangrooEvalSummaryText) {
         hangrooEvalSummaryText.value = he?.development_summary || (mob?.monthly_summary?.development_summary ? mob.monthly_summary.development_summary : '');
       }
@@ -389,8 +391,10 @@
       showToast('⚠️ 먼저 원아나 학급을 선택해주세요.');
       return;
     }
-    if (!memoText && (!state.photos || state.photos.length === 0)) {
-      showToast('⚠️ 놀이 관찰 메모나 사진을 입력해주세요.');
+    const historyOnly = !memoText && !state.photos?.length;
+    const formats = state.selectedFormats || ['class_daily_report', 'kidsnote'];
+    if (historyOnly && (!state.evidenceIds?.length || !formats.length || formats.some(f => !['observation', 'hangroo_eval', 'counseling'].includes(f)))) {
+      showToast('⚠️ 오늘 메모 없이 작성하려면 과거 기록과 관찰·발달평가·상담 준비 서식만 선택해 주세요.');
       if (rawMemoInput) rawMemoInput.focus();
       return;
     }
@@ -420,7 +424,7 @@
         activityArea: state.activityArea || '자유놀이', teacherStyle: state.teacherStyle || '다정하고 꼼꼼한 선생님',
         className: state.className || '사랑반', teacherName: state.teacherName || '공가영 선생님', persona: state.persona,
         selectedFormats: state.selectedFormats || ['class_daily_report', 'kidsnote'], date: state.selectedDate,
-        evidenceIds: state.evidenceIds || [], evidenceFrom: state.evidenceFrom, photoConsent: !!document.getElementById('photoConsentCheck')?.checked, monthlyObsOptions: state.selectedFormats?.includes('observation') ? window.DaycareRecords.monthlyOptions() : null
+        evidenceIds: [...(state.evidenceIds || [])], evidenceFrom: state.evidenceFrom, evidenceTo: state.evidenceTo, photoConsent: !!document.getElementById('photoConsentCheck')?.checked, monthlyObsOptions: state.selectedFormats?.includes('observation') ? window.DaycareRecords.monthlyOptions() : null
       };
 
       let resultData = null;
@@ -440,6 +444,7 @@
       }
 
       if (payload.childId !== state.selectedChild?.id || payload.date !== state.selectedDate || !state.authenticated) throw new Error('대상이 바뀌어 이전 생성 결과를 표시하지 않았습니다.');
+      if (payload.evidenceFrom !== state.evidenceFrom || payload.evidenceTo !== state.evidenceTo || JSON.stringify(payload.evidenceIds) !== JSON.stringify(state.evidenceIds || [])) throw new Error('참조 기간이나 선택 기록이 바뀌었습니다. 현재 근거로 다시 생성해 주세요.');
       if (document.getElementById('reviewConfirmed')) document.getElementById('reviewConfirmed').checked = false;
       state.lastResult = resultData;
       state.originalResult = JSON.parse(JSON.stringify(resultData));
@@ -592,20 +597,19 @@
     // 서식 복사 및 인쇄 버튼 연동
     const copyObservationBtn = document.getElementById('copyObservationBtn');
     if (copyObservationBtn) copyObservationBtn.onclick = () => {
-      const o = state.lastResult?.observation;
-      copyTextToClipboard(o ? `[관찰일지 - ${o.standard_area || '신체운동'}]\n활동명: ${o.activity_name || ''}\n\n[관찰내용]\n${o.behavior || ''}\n\n[평가 및 지원]\n${o.evaluation || ''}` : '', '📋 관찰일지가 복사되었습니다!');
+      copyTextToClipboard(document.getElementById('officialObsSheet')?.innerText || '', '📋 관찰일지가 복사되었습니다!');
     };
 
     const copyHangrooObsBtn = document.getElementById('copyHangrooObsBtn');
     if (copyHangrooObsBtn) copyHangrooObsBtn.onclick = () => {
       const mob = state.lastResult?.monthly_observation, p = mob?.play_obs || {}, d = mob?.daily_obs || {};
-      copyTextToClipboard(`[한그루 ERP 월간 관찰일지]\n■ 놀이: ${p.activity_title || ''}\n${p.behavior || ''}\n\n■ 일상생활: ${d.activity_title || ''}\n${d.behavior || ''}`, '📋 한그루 ERP 관찰일지가 복사되었습니다!');
+      copyTextToClipboard(`[한그루 ERP 월간 관찰일지 · ${mob?.targetMonth || '대상 월 확인'}]\n■ 놀이 (${p.date || '관찰일 확인 필요'}): ${p.activity_title || ''}\n${p.behavior || ''}\n지원: ${p.teacher_support || ''}\n\n■ 일상생활 (${d.date || '관찰일 확인 필요'}): ${d.activity_title || ''}\n${d.behavior || ''}\n지원: ${d.teacher_support || ''}\n\n■ 월말 총평:\n${mob?.monthly_summary?.development_summary || ''}\n${mob?.monthly_summary?.next_month_plan || ''}`, '📋 한그루 ERP 관찰일지가 복사되었습니다!');
     };
 
     const copyHangrooEvalBtn = document.getElementById('copyHangrooEvalBtn');
     if (copyHangrooEvalBtn) copyHangrooEvalBtn.onclick = () => {
       const ev = state.lastResult?.hangroo_eval;
-      copyTextToClipboard(ev ? `[한그루 ERP 발달평가]\n■ 종합평가:\n${ev.development_summary || ''}\n\n■ 지원계획:\n${ev.support_plan || ''}` : '', '📋 발달평가서가 복사되었습니다!');
+      copyTextToClipboard(ev ? `[${document.getElementById('hangrooEvalDocTitle')?.textContent || '한그루 발달평가'}]\n■ 종합평가:\n${ev.development_summary || ''}\n\n■ 지원계획:\n${ev.support_plan || ''}` : '', '📋 발달평가서가 복사되었습니다!');
     };
 
     const copyHangrooEvalHwpBtn = document.getElementById('copyHangrooEvalHwpBtn');
@@ -680,7 +684,7 @@
           instruction,
           childName,
           persona: state.persona, childId: state.selectedChild?.id, date: state.selectedDate,
-          rawMemo: document.getElementById('rawMemoInput')?.value || '', evidenceIds: state.evidenceIds || [], evidenceFrom: state.evidenceFrom
+          rawMemo: document.getElementById('rawMemoInput')?.value || '', evidenceIds: state.evidenceIds || [], evidenceFrom: state.evidenceFrom, evidenceTo: state.evidenceTo
         });
         if (kidsnoteTitle && refined.title) kidsnoteTitle.textContent = refined.title;
         if (kidsnoteContent && refined.content) kidsnoteContent.value = refined.content;

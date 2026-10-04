@@ -8,6 +8,8 @@
 
 동일 출처 API 라우팅, 서버 세션·노션 담당반 검증, 대상 문맥 검증, 등록 원아 가명화, 실제 근거 선택, 생성·저장 연결을 담당합니다.
 
+POST /api/generate의 evidenceFrom/evidenceTo는 실제 근거의 기간 계약입니다. 오늘 입력 없이 observation/hangroo_eval/counseling만 선택해 생성할 수 있으며 월간 대상 월·실제 관찰일을 요청/응답에서 검증합니다. citation에 from/to/historyOnly와 실제 출처를 부착합니다. 기간 종합본의 근거 재사용, 관찰 원문 덮어쓰기, 다른 기간 합치기를 차단합니다.
+
 - 공개: GET /api/health, GET /api/auth/profiles(최소 교사 목록), POST /api/auth/invite-status(유효 초대 필요).
 - 관리자 비밀값: POST /api/auth/invite, POST /api/admin/verify.
 - 추가 기기 링크: POST /api/auth/device-invite. 등록 기기·세션·현재 PIN과 실제 노션 교사·담당반을 확인하여 자기 계정의 url/expiresAt를 no-store 응답으로 반환합니다.
@@ -34,6 +36,8 @@ tests/auth-fixture-worker.js는 독립 로컬 인증 저장소에서만 기기 �
 callNotionApi(env, endpoint, method, body), getTeachersList, getChildrenList, requireChild, getAllDailyLogs, getRecentChildLogs, getLogDetail, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion, updateTeacherProfile, verifyNotionConnection(env, teacher, date).
 
 서비스 바인딩·서버 전용 헤더·실제 스키마·커서 조회·전체 rich_text 결합·검수 JSON 복원을 담당하며 연결 실패를 샘플로 바꾸지 않습니다.
+
+logFromPage는 [기간종합] 출처 표시를 periodSummary로 반환합니다. saveDailyLogToNotion은 표시를 보존하여 관찰 사실과 기간 서류를 구분합니다. 새로운 DB 속성은 추가하지 않습니다.
 
 ### api/gemini.js
 
@@ -70,6 +74,10 @@ DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, cancelPen
 
 ## 화면과 출력
 
+- DaycareRecords의 initEvidence는 월·분기 버튼과 기간 변경을 연결합니다. changeEvidencePeriod는 선택/조회 세대를 초기화하며 restoreEvidence(citation)는 출처 ID·기간을 복원합니다. evidenceTo와 근거만 있는 초안도 기존 암호화 보관에 포함합니다.
+- generateDaycareLog는 evidenceFrom/evidenceTo와 날짜순 pastLogs를 전달합니다. 월간은 실제 유형·날짜로 배정하며 기록 부족을 표시합니다. 미기록을 행동 부재로 바꾸지 않도록 구분합니다. 날짜 검증은 Worker, 문장 사실 검수는 교사가 담당합니다.
+- AiEngine은 월간 전문/요약 복사에 실제 관찰일을 보존하고 발달평가 제목·복사에 실제 참조 기간을 넣습니다. DaycareNotion은 기간 서류 표시·동일 종류/기간의 중복 선택·근거와 검수 문장 복원을 담당합니다.
+
 - public/js/child-links.js → DaycareChildLinks: contextChanged, pause, captureDraft, restoreDraft, renderIndividual, saveIndividual. 원시 메모 단계의 원아 연결과 생성된 카드의 ID·발췌·검수 확인을 담당합니다. 동명이인에는 연령·구분 번호를 표시하고 이름으로 첫 원아를 찾지 않습니다. 확인은 복원 후 다시 받으며 초안은 기존 암호화 저장에 포함합니다.
 
   suggestMemo(rawMemo,children)는 문장/줄바꿈·실명/이름 약칭·조사와 쉼표 뒤 새 주어로 원문 후보와 unassigned/omitted를 반환하는 순수 함수입니다. refreshSuggestions/memoChanged는 반 전체 원문의 입력·STT·노션 조회·충돌 선택·초안 복원을 연결하며 편집 후보를 유지하고 확인을 해제합니다. saveSuggestions는 확인한 카드만 기존 원문 확보와 /api/logs/link-child로 직렬 저장하며 부분 실패와 늦은 응답을 격리합니다. refreshButtons는 완성본 저장 파사드의 저장 시작/종료에서도 일괄 저장 버튼을 잠금/복구합니다. 후보 100건 제한·공동 역할 경고·동명이인 미선택·미연결 문장 수동 후보를 제공합니다.
@@ -83,6 +91,8 @@ DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, cancelPen
 - public/.assetsignore: js/legacy 백업을 배포에서 제외합니다.
 
 ## 검증·운영 도구
+
+- tests/backend.test.js의 기간 검증: 오늘 입력 없는 월간/분기 생성, 실제 날짜·기간·가명화·누락 유형 지침, 기간 밖 기록 차단, 기간 서류의 재귀 근거 사용/원문 덮어쓰기 차단과 출처 보존. tests/draft.test.js는 연도를 넘는 분기 계산·늦은 조회 폐기·근거와 종료일 복원도 검증합니다.
 
 - tests/backend.test.js: 기기·PIN·학급·프록시·실제 근거·전체 저장 계약.
 - tests/child-links-runtime.test.js: 실제 workerd의 동명이인 ID 선택·발췌 격리·개인 조회·근거 생성·원문/인증 조작 거부·동시 재시도·응답 유실·과거/다중 관계 차단.

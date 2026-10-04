@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json?v=20261004_v49">
-  <link rel="stylesheet" href="./style.css?v=20261004_v49">
+  <link rel="manifest" href="./manifest.json?v=20261004_v50">
+  <link rel="stylesheet" href="./style.css?v=20261004_v50">
 </head>
 <body data-locked="true">
   <div class="app-container">
@@ -22,7 +22,7 @@
       <div class="brand-area">
         <span class="brand-logo">🧸</span>
         <div>
-          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v3.6.2</span></div>
+          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v3.6.3</span></div>
           <div class="header-date-wrapper" id="headerDateWrapper" title="클릭하여 소급 작성 날짜 변경">
             <span class="header-date-icon">📅</span>
             <span class="brand-sub header-date-text" id="headerDateText">오늘의 보육 기록</span>
@@ -223,7 +223,9 @@
         <!-- 📷 사진 첨부 영역 -->
         <details class="evidence-picker">
           <summary>📚 과거 관찰 기록 선택 <span id="evidenceStatus">0건 선택</span></summary>
+          <div class="evidence-controls"><button type="button" id="evidence-currentMonth" class="action-btn">이번 달</button><button type="button" id="evidence-previousMonth" class="action-btn">지난달</button><button type="button" id="evidence-currentQuarter" class="action-btn">이번 분기</button><button type="button" id="evidence-previousQuarter" class="action-btn">지난 분기</button></div>
           <div class="evidence-controls"><label>시작일 <input type="date" id="evidenceFrom"></label><label>종료일 <input type="date" id="evidenceTo"></label><button type="button" id="loadEvidenceBtn" class="action-btn">기록 조회</button></div>
+          <p class="evidence-help">월간 관찰·발달평가·상담 준비는 선택한 과거 기록만으로 작성할 수 있습니다. 오늘 메모가 없다면 이 세 서식만 선택하세요. 분기는 1~3월·4~6월·7~9월·10~12월이며 날짜를 직접 바꿀 수도 있습니다. 조회 후 사용할 기록을 체크하세요.</p>
           <div id="evidenceList" class="evidence-list"></div>
         </details>
         <label class="photo-consent"><input type="checkbox" id="photoConsentCheck"> 첨부 사진을 외부 AI에 보내는 데 동의합니다. 얼굴·이름표는 사진에서 직접 가려 주세요.</label>
@@ -260,7 +262,7 @@
           </button>
           <button type="button" class="format-chip" data-format="hangroo_eval">
             <span class="format-chip-check">✓</span>
-            <span>📊 한그루 발달평가 (학기별)</span>
+            <span>📊 한그루 발달평가 (월·분기·학기)</span>
           </button>
           <button type="button" class="format-chip" data-format="daily_care">
             <span class="format-chip-check">✓</span>
@@ -307,12 +309,12 @@
           <div style="display: flex; align-items: center; gap: 10px;">
             <span style="font-size: 1.5rem;">🏰</span>
             <div>
-              <div style="font-size: 13.5px; font-weight: 700; color: #3730A3;" id="unifiedSaveTitle">오늘의 작성 내용 노션에 한 번에 저장하기</div>
-              <div style="font-size: 11.5px; color: #4F46E5;" id="unifiedSaveDesc">화면에 작성·수정된 알림장, 보육일지, 관찰요약이 노션 DB에 빈틈없이 함께 저장됩니다.</div>
+              <div style="font-size: 13.5px; font-weight: 700; color: #3730A3;" id="unifiedSaveTitle">검수한 작성 내용 노션에 저장하기</div>
+              <div style="font-size: 11.5px; color: #4F46E5;" id="unifiedSaveDesc">실제 관찰일과 참조 기간을 확인하세요. 화면에서 검수한 서식과 선택 근거를 함께 보관합니다.</div>
             </div>
           </div>
           <button type="button" id="saveAllUnifiedNotionBtn" class="action-btn" style="background: #4F46E5; color: white; border: none; font-weight: 700; padding: 10px 18px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;">
-            <span>💾</span> <span id="saveAllUnifiedNotionBtnText">오늘의 기록 노션에 저장</span>
+            <span>💾</span> <span id="saveAllUnifiedNotionBtnText">검수한 작성 내용 노션에 저장</span>
           </button>
         </div>
 
@@ -663,12 +665,12 @@
                   </td>
                   <td class="rep-td" style="vertical-align: top; background: #F8FAFC;">
                     <div style="font-weight: 600; color: #1E293B; margin-bottom: 4px;" id="obs2ActivityTitle">[놀이 활동] 기차 블록 협동 놀이</div>
-                    <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 2px;">[1차 지도 이후 발전된 행동 관찰]</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 2px;">[실제 일상생활 행동 관찰]</div>
                     <div style="white-space: pre-wrap; line-height: 1.5; color: #334155; margin-bottom: 8px;" contenteditable="true" role="textbox" aria-label="obs2BehaviorText" id="obs2BehaviorText">1차 관찰 지도 이후 나타난 긍정적 변화 사실...</div>
                     <div style="font-size: 11px; font-weight: 700; color: #1D4ED8; margin-bottom: 2px;">[교사의 지속 지원 및 상호작용]</div>
                     <div style="white-space: pre-wrap; line-height: 1.5; color: #1E40AF; margin-bottom: 8px;" contenteditable="true" role="textbox" aria-label="obs2SupportText" id="obs2SupportText">긍정적 상호작용 강화 및 지원...</div>
                     <div style="background: #EFF6FF; padding: 6px 8px; border-radius: 4px; font-size: 11px; color: #1D4ED8; border-left: 3px solid #3B82F6;" id="obs2GrowthBox">
-                      <b>📈 1차 대비 성장점:</b> <span id="obs2GrowthText">신체적 행동 대신 단어 표현 시도</span>
+                      <b>📈 근거로 확인한 변화:</b> <span id="obs2GrowthText">비교할 실제 관찰 기록 부족</span>
                     </div>
                   </td>
                 </tr>
@@ -705,11 +707,11 @@
           <div class="result-card-header" style="margin-bottom: 12px;">
             <div>
               <div class="result-title" style="display: flex; align-items: center; gap: 6px;">
-                <span>📊 한그루 ERP 학기 발달평가</span>
-                <span class="tag-badge" style="background: #FEF3C7; color: #92400E;">학기별 1회 · ERP 전산 결재 서식</span>
+                <span>📊 한그루 발달평가</span>
+                <span class="tag-badge" style="background: #FEF3C7; color: #92400E;">선택한 월·분기·학기 기간 · 교사 검수 후 사용</span>
               </div>
               <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-                6개월 누적 관찰을 종합한 아동발달종합평가(3문단) 및 차기학기 지원계획(2문단)입니다.
+                선택 기간의 실제 누적 관찰로 종합평가와 앞으로의 지원 계획을 작성합니다. 기록이 없는 영역은 부족 안내를 유지하세요.
               </div>
             </div>
             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
@@ -724,11 +726,11 @@
 
           <!-- 아동발달종합평가 & 지원계획 시트 -->
           <div class="official-obs-sheet" id="officialHangrooEvalSheet" style="padding: 16px; background: white; border: 1px solid #E2E8F0; border-radius: 12px;">
-            <div style="font-size: 15px; font-weight: 800; color: #1E293B; margin-bottom: 12px;" id="hangrooEvalDocTitle">2026년 1학기 발달평가</div>
+            <div style="font-size: 15px; font-weight: 800; color: #1E293B; margin-bottom: 12px;" id="hangrooEvalDocTitle">선택 기간 발달평가</div>
             
             <div style="margin-bottom: 16px;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                <span style="font-size: 13px; font-weight: 700; color: #1E40AF;">🏆 아동발달종합평가 (3개 문단)</span>
+                <span style="font-size: 13px; font-weight: 700; color: #1E40AF;">🏆 아동발달종합평가</span>
                 <span style="font-size: 11px; color: #64748B;">적응/기본생활 · 신체/놀이 · 사회성/언어</span>
               </div>
               <textarea id="hangrooEvalSummaryText" class="result-body-text" rows="6" style="width: 100%; line-height: 1.6; font-size: 13px;"></textarea>
@@ -736,7 +738,7 @@
 
             <div>
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                <span style="font-size: 13px; font-weight: 700; color: #047857;">🌱 다음 학기 지원계획 (2개 문단)</span>
+                <span style="font-size: 13px; font-weight: 700; color: #047857;">🌱 앞으로의 지원 계획</span>
                 <span style="font-size: 11px; color: #64748B;">언어/표현 지원 · 또래/감각 확장</span>
               </div>
               <textarea id="hangrooEvalSupportText" class="result-body-text" rows="5" style="width: 100%; line-height: 1.6; font-size: 13px;"></textarea>
@@ -1171,7 +1173,7 @@
         <div class="auth-gate-header">
           <div class="auth-bear-avatar">🧸</div>
           <h2 class="auth-gate-title">우리 반 보육 비서</h2>
-          <p class="auth-gate-subtitle">선생님을 위한 안심 스마트 보육 환경 · v3.6.2</p>
+          <p class="auth-gate-subtitle">선생님을 위한 안심 스마트 보육 환경 · v3.6.3</p>
         </div>
 
         <!-- 👩‍🏫 선생님 프로필 선택기 (프로필별 PIN 및 학급 완전 격리) -->
@@ -1523,13 +1525,13 @@
   </div>
 
   <!-- 🛡️ 2026 골디락스 4대 완성형 코어 아키텍처 (안정성 & 효율성 극대화) -->
-  <script src="./js/records-flow.js?v=20261004_v49"></script>
-  <script src="./js/memo-sync.js?v=20261004_v49"></script>
-  <script src="./js/child-links.js?v=20261004_v49"></script>
-  <script src="./js/auth-security.js?v=20261004_v49"></script>
-  <script src="./js/notion-store.js?v=20261004_v49"></script>
-  <script src="./js/ai-engine.js?v=20261004_v49"></script>
-  <script src="./gemini-client.js?v=20261004_v49"></script>
-  <script src="./app.js?v=20261004_v49"></script>
+  <script src="./js/records-flow.js?v=20261004_v50"></script>
+  <script src="./js/memo-sync.js?v=20261004_v50"></script>
+  <script src="./js/child-links.js?v=20261004_v50"></script>
+  <script src="./js/auth-security.js?v=20261004_v50"></script>
+  <script src="./js/notion-store.js?v=20261004_v50"></script>
+  <script src="./js/ai-engine.js?v=20261004_v50"></script>
+  <script src="./gemini-client.js?v=20261004_v50"></script>
+  <script src="./app.js?v=20261004_v50"></script>
 </body>
 </html>

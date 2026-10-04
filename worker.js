@@ -77,28 +77,40 @@ async function generate(body, env, teacher) {
   if (!Array.isArray(formats) || !formats.length || formats.some(f => !keys[f])) throw new ApiError('생성할 서식을 확인해 주세요.');
   if (classAll && formats.some(f => ['observation', 'hangroo_eval', 'counseling'].includes(f))) throw new ApiError('관찰·발달평가·상담일지는 원아를 먼저 선택해 주세요.');
   const date = dateOf(body.date);
-  if (!String(body.rawMemo || '').trim() && !body.images?.length) throw new ApiError('실제 관찰 메모나 사진을 입력해 주세요.');
+  const hasCurrentObservation = !!String(body.rawMemo || '').trim() || !!body.images?.length;
   if (body.images?.length && body.photoConsent !== true) throw new ApiError('사진의 외부 AI 전송 동의를 확인해 주세요.');
   if (String(body.rawMemo || '').length > 30000 || (body.images?.length || 0) > 6) throw new ApiError('메모 또는 사진이 너무 많습니다.');
   const ids = body.evidenceIds || [];
   if (!Array.isArray(ids) || ids.length > 60 || new Set(ids).size !== ids.length) throw new ApiError('참조 기록은 최대 60개까지 선택해 주세요.');
+  const evidenceFrom = body.evidenceFrom ? dateOf(body.evidenceFrom) : null;
+  const evidenceTo = body.evidenceTo ? dateOf(body.evidenceTo) : date;
+  if ((evidenceFrom && evidenceFrom > evidenceTo) || evidenceTo > date) throw new ApiError('참조 기간은 시작일 ≤ 종료일 ≤ 작성일로 선택해 주세요.');
+  if (!hasCurrentObservation && (!ids.length || formats.some(f => !['observation', 'hangroo_eval', 'counseling'].includes(f)))) {
+    throw new ApiError('오늘 메모 없이 작성하려면 실제 과거 기록과 관찰·발달평가·상담 준비 서식만 선택해 주세요.');
+  }
   let pastLogs = [];
   if (ids.length) {
     let cursor; const found = [];
     do {
-      const page = await getAllDailyLogs(env, teacher.className, { childId: classAll ? undefined : child.id, from: body.evidenceFrom ? dateOf(body.evidenceFrom) : undefined, to: date, limit: 100, cursor });
+      const page = await getAllDailyLogs(env, teacher.className, { childId: classAll ? undefined : child.id, from: evidenceFrom || undefined, to: evidenceTo, limit: 100, cursor });
       found.push(...page.data); cursor = page.nextCursor;
     } while (cursor && found.length < 500);
     pastLogs = ids.map(id => found.find(log => log.id === id));
-    if (pastLogs.some(log => !log || log.needsChildReview || (!classAll && (log.childIds.length !== 1 || log.childId !== child.id)))) throw new ApiError('참조 기록의 원아·학급·날짜를 다시 확인해 주세요. 여러 원아 또는 과거 자동 분할 기록은 개별 연결 확인이 필요합니다.', 403);
+    if (pastLogs.some(log => !log || log.periodSummary || log.date > evidenceTo || (evidenceFrom && log.date < evidenceFrom) || log.needsChildReview || (!classAll && (log.childIds.length !== 1 || log.childId !== child.id)))) throw new ApiError('참조 기록의 원아·학급·기간을 다시 확인해 주세요. 기간 종합 서류 대신 원래 관찰 기록을 선택하고 미확인 연결은 먼저 확인해 주세요.', 403);
     for (const log of pastLogs) {
       const detail = await getLogDetail(env, log.id, teacher.className);
+      if (detail.parsedData?.citation?.historyOnly) throw new ApiError('기간 종합 서류 대신 원래 관찰 기록을 선택해 주세요.', 403);
       if (detail.parsedData?.source_class_memo && !detail.parsedData?.child_link) throw new ApiError('과거 자동 분할 기록의 원아별 근거를 먼저 확인해 주세요.', 409);
     }
   }
-  if (body.monthlyObsOptions) {
-    const knownDates = new Set([date, ...pastLogs.map(log => log.date)]);
-    for (const key of ['date1', 'date2']) if (body.monthlyObsOptions[key] && !knownDates.has(body.monthlyObsOptions[key])) throw new ApiError('관찰일은 오늘 또는 선택한 실제 기록의 날짜로 지정해 주세요.');
+  let monthlyObsOptions = null;
+  if (formats.includes('observation')) {
+    const options = body.monthlyObsOptions || {};
+    const targetMonth = options.targetMonth || evidenceTo.slice(0, 7);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(targetMonth) || targetMonth > date.slice(0, 7)) throw new ApiError('관찰 대상 월을 확인해 주세요.');
+    const knownDates = new Set([...pastLogs.map(log => log.date), ...(hasCurrentObservation ? [date] : [])].filter(d => d.startsWith(targetMonth)));
+    for (const key of ['date1', 'date2']) if (options[key] && !knownDates.has(options[key])) throw new ApiError('관찰일은 대상 월의 선택한 실제 기록 날짜로 지정해 주세요.');
+    monthlyObsOptions = { ...options, targetMonth };
   }
   const privacy = privacyMap(children, teacher);
   const input = privacy.mask({ childName: child.name, childAge: child.age, childTraits: child.traits,
@@ -106,7 +118,7 @@ async function generate(body, env, teacher) {
     images: body.images || [], pastLogs, date, mode: body.mode || 'all_suite', activityArea: body.activityArea,
     teacherStyle: body.teacherStyle || teacher.style, teacherName: teacher.name, className: teacher.className,
     persona: { ...(body.persona || {}), sampleNote: body.persona?.sampleNote || teacher.sampleNote, closingGreeting: body.persona?.closingGreeting || teacher.closing },
-    monthlyObsOptions: body.monthlyObsOptions, selectedFormats: formats, refinement: body.refinement || null,
+    monthlyObsOptions, evidenceFrom, evidenceTo, selectedFormats: formats, refinement: body.refinement || null,
     roster: children.map(c => ({ name: c.name, age: c.age })) });
   input.roster = children.map((c, i) => ({ name: `[아동${i + 1}]`, age: c.age, needs_teacher_match: classAll && children.filter(x => x.name === c.name).length > 1 }));
   const output = await generateDaycareLog({ ...input, apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL, fallbackModel: env.GEMINI_FALLBACK_MODEL, apiBase: env.GEMINI_API_BASE });
@@ -122,10 +134,19 @@ async function generate(body, env, teacher) {
     item.child_id = matches[i]; item.match_status = matches[i] ? 'candidate' : 'needs_confirmation';
     item.source_excerpt = typeof item.source_excerpt === 'string' && String(body.rawMemo || '').includes(item.source_excerpt.trim()) ? item.source_excerpt.trim() : '';
   });
+  if (!hasCurrentObservation) output.data.individual_observations = [];
   if (!output.data || formats.some(f => !output.data[keys[f]])) throw new ApiError('AI가 선택한 서식을 완성하지 못했습니다. 메모를 유지하고 다시 시도해 주세요.', 502);
+  if (monthlyObsOptions) {
+    const knownDates = new Set([...pastLogs.map(log => log.date), ...(hasCurrentObservation ? [date] : [])].filter(d => d.startsWith(monthlyObsOptions.targetMonth)));
+    for (const [section, option] of [['play_obs', 'date1'], ['daily_obs', 'date2']]) {
+      const observedDate = output.data.monthly_observation?.[section]?.date;
+      if (observedDate && (!knownDates.has(observedDate) || (monthlyObsOptions[option] && observedDate !== monthlyObsOptions[option]))) throw new ApiError('AI 관찰일이 선택한 실제 기록과 다릅니다. 원문을 보존했으니 다시 생성해 주세요.', 502);
+    }
+    output.data.monthly_observation.targetMonth = monthlyObsOptions.targetMonth;
+  }
   output.data.citation = { has_citation: pastLogs.length > 0,
-    summary: pastLogs.length ? `참조한 실제 노션 기록 ${pastLogs.length}건: ${pastLogs.map(l => l.date).join(', ')}` : '과거 기록을 선택하지 않아 오늘 입력만 사용했습니다.',
-    sources: pastLogs.map(l => ({ id: l.id, date: l.date, url: l.url })), from: body.evidenceFrom || null, to: date };
+    summary: pastLogs.length ? `${hasCurrentObservation ? '' : '[기간종합] '}참조 기간 ${evidenceFrom || '시작 제한 없음'} ~ ${evidenceTo} · 실제 노션 기록 ${pastLogs.length}건: ${pastLogs.map(l => l.date).join(', ')}` : '과거 기록을 선택하지 않아 오늘 입력만 사용했습니다.',
+    sources: pastLogs.map(l => ({ id: l.id, date: l.date, url: l.url })), from: evidenceFrom, to: evidenceTo, historyOnly: !hasCurrentObservation };
   output.data.rawMemo = body.rawMemo || '';
   output.data.record_context = { date, childId: classAll ? null : child.id, teacherId: teacher.id, className: teacher.className };
   return output;
@@ -252,6 +273,11 @@ export default {
           if (existing.memoOnly) throw new ApiError('자동 메모는 완성본 저장으로 덮어쓰지 않습니다. 완성 일지는 별도로 저장해 주세요.', 409);
           if (existing.linkedChildMemo || existing.needsChildReview) throw new ApiError('원아 연결 기록은 근거 확인 화면에서 저장해 주세요.', 409);
           if ((existing.childId || null) !== (child?.id || null)) throw new ApiError('다른 원아의 기록을 덮어쓸 수 없습니다.', 403);
+          const currentCitation = body.result?.citation, previousCitation = existing.parsedData?.citation;
+          if (!!existing.periodSummary !== !!currentCitation?.historyOnly || (existing.periodSummary &&
+            (previousCitation?.from !== currentCitation.from || previousCitation?.to !== currentCitation.to))) {
+            throw new ApiError('관찰 원문과 기간 종합 서류 또는 서로 다른 기간은 별도로 저장해 주세요.', 409);
+          }
           if (body.append) {
             body.rawMemo = [existing.memo, body.rawMemo].filter(Boolean).join('\n\n');
             body.obsSummary = [existing.summary, body.obsSummary || body.result?.observation_summary].filter(Boolean).join('\n');

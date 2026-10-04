@@ -51,19 +51,26 @@ function notionFixture() {
   const log = { id: '33333333-3333-4333-8333-333333333333', parent: { database_id: dbId }, url: 'https://www.notion.so/33333333333343338333333333333333', properties: {
     '작성일자': { date: { start: '2026-10-01' } }, '학급': { select: { name: '사랑반' } }, '원아': { relation: [{ id: childId }] },
     '관찰 요약': { rich_text: [{ plain_text: '첫 요약 ' }, { plain_text: '뒤 요약' }] }, '원시 메모/키워드': text('테스트아동 블록을 손으로 잡음'), '관찰일지 최종본': text('블록을 잡음') } };
-  const requests = []; let saved;
-  return { requests, get saved() { return saved; }, teacher, child, log, async fetch(url, init = {}) {
+  const requests = [], history = [log]; let saved;
+  const fixture = { requests, history, aiData: null, get saved() { return saved; }, teacher, child, log, async fetch(url, init = {}) {
     if (url instanceof Request) { init = { method: url.method, headers: Object.fromEntries(url.headers), body: ['GET', 'HEAD'].includes(url.method) ? null : await url.text() }; url = url.url; }
     const input = init.body ? JSON.parse(init.body) : null; requests.push({ url: String(url), input, headers: init.headers });
-    if (String(url).includes('generativelanguage')) return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ kidsnote: { content: '[아동1]가 블록을 잡았어요.' }, observation_summary: '블록을 잡음', individual_observations: [] }) }] } }] });
+    if (String(url).includes('generativelanguage')) return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(fixture.aiData || { kidsnote: { content: '[아동1]가 블록을 잡았어요.' }, observation_summary: '블록을 잡음', individual_observations: [] }) }] } }] });
     if (String(url).endsWith('/databases/teachers/query')) return Response.json({ results: [teacher], has_more: false });
     if (String(url).endsWith('/databases/children/query')) return Response.json({ results: [child], has_more: false });
-    if (String(url).includes('/databases/' + dbId + '/query')) return Response.json({ results: [log], has_more: false });
+    if (String(url).includes('/databases/' + dbId + '/query')) return Response.json({ results: history.filter(item => (input.filter?.and || []).every(filter => {
+      const value = item.properties[filter.property];
+      if (filter.date?.on_or_after) return value?.date?.start >= filter.date.on_or_after;
+      if (filter.date?.on_or_before) return value?.date?.start <= filter.date.on_or_before;
+      if (filter.relation) return value?.relation?.some(r => r.id === filter.relation.contains);
+      if (filter.select) return value?.select?.name === filter.select.equals;
+      return true;
+    })), has_more: false });
     if (String(url).endsWith('/pages') && init.method === 'POST') { saved = input; return Response.json({ id: log.id, url: log.url }); }
-    if (String(url).includes('/pages/')) return Response.json(log);
+    if (String(url).includes('/pages/')) return Response.json(history.find(item => String(url).endsWith(item.id)) || log);
     if (String(url).includes('/blocks/')) return Response.json({ results: saved?.children || [], has_more: false });
     throw new Error('예상하지 않은 경로: ' + url);
-  } };
+  } }; return fixture;
 }
 function envFor(auth) {
   return { AUTH_PEPPER: '테스트', AUTH_STORE: { idFromName() { return 'test'; }, get() { return { fetch: request => auth.fetch(typeof request === 'string' ? new Request(request, arguments[1]) : request) }; } },
@@ -119,4 +126,81 @@ test('인증된 생성은 실제 선택 기록만 쓰고 모든 등록 원아 �
     const wrongDate = await worker.fetch(new Request('https://daycare.test/api/logs/save', { method: 'POST', headers, body: JSON.stringify({ childId, date: '2026-10-03', result: output.data }) }), env);
     assert.equal(wrongDate.status, 409);
   } finally { global.fetch = previous; }
+});
+
+async function periodFixture(run) {
+  const auth = store(), tokens = await register(auth), env = envFor(auth), fixture = notionFixture();
+  env.AUTH_STORE.get = () => ({ fetch: (url, init) => auth.fetch(new Request(url, init)) });
+  fixture.log.properties['작성일자'].date.start = '2026-09-12';
+  const earlier = structuredClone(fixture.log); earlier.id = '44444444-4444-4444-8444-444444444444';
+  earlier.properties['작성일자'].date.start = '2026-07-08'; earlier.properties['원시 메모/키워드'] = text('테스트아동 천을 잡음');
+  fixture.history.push(earlier);
+  fixture.aiData = { hangroo_eval: { title: '기간 발달평가', development_summary: '실제 놀이 기록. 일상생활 관찰 기록 부족', support_plan: '추가 관찰 계획' },
+    monthly_observation: { play_obs: { date: '2026-09-12', behavior: '블록을 잡음' }, daily_obs: { date: '', behavior: '해당 영역의 관찰 기록 부족' } },
+    parent_counseling: { counseling_opinion: '상담 준비 초안. 실제 합의 없음' }, observation_summary: '선택 기간 놀이 기록 종합',
+    individual_observations: [{ child_name: '[아동1]', source_excerpt: '과거 행동', summary: '과거 행동' }] };
+  const headers = { Cookie: `daycare_device=${tokens.deviceToken}; daycare_session=${tokens.sessionToken}`, Origin: 'https://daycare.test', 'Content-Type': 'application/json' };
+  const payload = { childId, date: '2026-10-04', rawMemo: '', selectedFormats: ['observation', 'hangroo_eval', 'counseling'],
+    evidenceIds: [fixture.log.id], evidenceFrom: '2026-09-01', evidenceTo: '2026-09-30' };
+  const call = body => worker.fetch(new Request('https://daycare.test/api/generate', { method: 'POST', headers, body: JSON.stringify({ ...payload, ...body }) }), env);
+  const previous = global.fetch; global.fetch = fixture.fetch;
+  try { await run({ fixture, payload, call, earlier, env, headers }); } finally { global.fetch = previous; }
+}
+test('오늘 메모 없이 지난달 실제 기록만으로 장기 서식을 만들며 작성일과 관찰일을 구분한다', async () => {
+  await periodFixture(async ({ fixture, call }) => {
+    const response = await call({}); assert.equal(response.status, 200); const result = (await response.json()).data;
+    assert.equal(result.citation.from, '2026-09-01'); assert.equal(result.citation.to, '2026-09-30'); assert.equal(result.citation.historyOnly, true);
+    assert.match(result.citation.summary, /^\[기간종합\]/); assert.equal(result.record_context.date, '2026-10-04');
+    assert.equal(result.monthly_observation.targetMonth, '2026-09'); assert.equal(result.monthly_observation.play_obs.date, '2026-09-12');
+    assert.equal(result.monthly_observation.daily_obs.date, ''); assert.deepEqual(result.individual_observations, []);
+    const sent = fixture.requests.find(r => r.url.includes('generativelanguage'));
+    const prompt = sent.input.contents[0].parts[0].text;
+    assert.match(prompt, /2026-09-01 ~ 2026-09-30/); assert.match(prompt, /오늘 메모 없음/); assert.match(prompt, /놀이를 식사로 바꾸/);
+    assert.doesNotMatch(prompt, /오늘의 최신 사건을 daily_obs에 매핑/);
+    assert.match(sent.input.system_instruction.parts[0].text, /기록 부족 표시가 우선/);
+    assert.match(sent.input.system_instruction.parts[0].text, /부재가 확인된 행동과 미기록을 구분/);
+  });
+});
+test('분기 기록은 날짜순 원문으로 전달하고 종료일 밖의 기록과 잘못된 기간은 AI 호출 전에 막는다', async () => {
+  await periodFixture(async ({ fixture, call, earlier }) => {
+    const response = await call({ selectedFormats: ['hangroo_eval'], evidenceFrom: '2026-07-01', evidenceTo: '2026-09-30', evidenceIds: [fixture.log.id, earlier.id] });
+    assert.equal(response.status, 200); const output = (await response.json()).data;
+    assert.equal(output.citation.sources.length, 2);
+    const prompt = fixture.requests.find(r => r.url.includes('generativelanguage')).input.contents[0].parts[0].text;
+    assert.ok(prompt.indexOf('1. 날짜: 2026-07-08') < prompt.indexOf('2. 날짜: 2026-09-12'));
+    const before = fixture.requests.filter(r => r.url.includes('generativelanguage')).length;
+    assert.equal((await call({ evidenceTo: '2026-09-10' })).status, 403);
+    assert.equal((await call({ evidenceFrom: '2026-10-01' })).status, 400);
+    assert.equal((await call({ evidenceTo: '2026-10-05' })).status, 400);
+    assert.equal(fixture.requests.filter(r => r.url.includes('generativelanguage')).length, before);
+  });
+});
+test('오늘 기록이 없는 일일 서식·근거 없는 기간 서식·대상 월 밖의 관찰일은 생성하지 않는다', async () => {
+  await periodFixture(async ({ fixture, call }) => {
+    assert.equal((await call({ selectedFormats: ['kidsnote'] })).status, 400);
+    assert.equal((await call({ evidenceIds: [] })).status, 400);
+    assert.equal((await call({ monthlyObsOptions: { targetMonth: '2026-09', date1: '2026-10-04' } })).status, 400);
+    fixture.aiData.monthly_observation.play_obs.date = '2026-09-20';
+    assert.equal((await call({})).status, 502);
+  });
+});
+test('기간 종합 저장본을 새 관찰 사실로 재사용하지 않고 원래 기록을 요구한다', async () => {
+  await periodFixture(async ({ fixture, call, env }) => {
+    fixture.log.properties['참조 출처 요약'] = text('[기간종합] 참조 기간 2026-07-01 ~ 2026-09-30');
+    const detail = await getLogDetail(env, fixture.log.id, '사랑반'); assert.equal(detail.periodSummary, true);
+    assert.equal((await call({})).status, 403);
+    assert.equal(fixture.requests.some(r => r.url.includes('generativelanguage')), false);
+  });
+});
+test('기간 서류는 원시 관찰을 덮어쓰지 않으며 저장 표시와 전체 출처를 보존한다', async () => {
+  await periodFixture(async ({ fixture, call, env, headers }) => {
+    const response = await call({ selectedFormats: ['hangroo_eval'] }); const result = (await response.json()).data;
+    const body = { date: '2026-10-04', childId, rawMemo: '', result, pageId: fixture.log.id };
+    const overwrite = await worker.fetch(new Request('https://daycare.test/api/logs/save', { method: 'POST', headers, body: JSON.stringify(body) }), env);
+    assert.equal(overwrite.status, 409); assert.equal(fixture.saved, undefined);
+    await saveDailyLogToNotion({ date: body.date, childId, childName: '테스트아동', childClass: '사랑반', teacherId, teacherName: '테스트 교사', result, citationSummary: '교사가 바꾼 안내' }, env);
+    assert.match(fixture.saved.properties['참조 출처 요약'].rich_text[0].text.content, /^\[기간종합\]/);
+    const detail = await getLogDetail(env, fixture.log.id, '사랑반');
+    assert.equal(detail.parsedData.citation.sources[0].id, fixture.log.id); assert.equal(detail.parsedData.citation.to, '2026-09-30');
+  });
 });

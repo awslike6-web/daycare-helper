@@ -83,7 +83,7 @@ function logFromPage(page, childMap = new Map()) {
   return { id: page.id, url: page.url, title: textOf(p['기록명/식별자']), memoOnly: textOf(p['기록명/식별자']).startsWith('[원시메모:'),
     childId, childIds, needsChildReview: childIds.length > 1 || !!p['원아']?.has_more || textOf(p['참조 출처 요약']).startsWith('한그루 보육일지 내 '),
     child_name: childIds.length > 1 || p['원아']?.has_more ? '여러 원아 · 연결 확인 필요' : childMap.get(childId)?.name || (childId ? '원아' : '학급 전체'),
-    linkedChildMemo: textOf(p['기록명/식별자']).startsWith('[원아연결:'),
+    linkedChildMemo: textOf(p['기록명/식별자']).startsWith('[원아연결:'), periodSummary: textOf(p['참조 출처 요약']).startsWith('[기간종합]'),
     class_name: p['학급']?.select?.name || '', date: p['작성일자']?.date?.start || '',
     activity: p['활동 구분']?.select?.name || '', summary, observation_summary: summary,
     behavior: observation, content: observation || textOf(p['알림장 최종본']),
@@ -148,6 +148,7 @@ export async function saveDailyLogToNotion(payload, env) {
   const summary = String(payload.obsSummary || result.observation_summary || '').trim();
   if (!payload.rawMemo && !summary) throw new ApiError('저장할 실제 메모 또는 관찰 요약이 필요합니다.');
   const area = payload.standardArea || result.observation_log?.standard_area || '';
+  const citationSummary = String(payload.citationSummary || result.citation?.summary || '');
   const allowed = new Set(['기본생활', '신체운동·건강', '의사소통', '사회관계', '예술경험', '자연탐구', '신체운동']);
   const properties = {
     '기록명/식별자': { title: [{ text: { content: payload.recordTitle || `${date} ${childClass} ${childName || '학급 전체'}` } }] },
@@ -157,7 +158,7 @@ export async function saveDailyLogToNotion(payload, env) {
     '원시 메모/키워드': rt(payload.rawMemo), '관찰 요약': rt(summary),
     '알림장 최종본': rt(payload.kidsnoteText ?? result.kidsnote?.content),
     '관찰일지 최종본': rt(payload.observationText ?? result.observation_log?.behavior ?? result.monthly_observation?.play_obs?.behavior),
-    '참조 출처 요약': rt(payload.citationSummary || result.citation?.summary),
+    '참조 출처 요약': rt(result.citation?.historyOnly && !citationSummary.startsWith('[기간종합]') ? '[기간종합] ' + citationSummary : citationSummary),
     '표준보육 영역': { multi_select: (Array.isArray(area) ? area : [area]).filter(a => allowed.has(a)).map(name => ({ name })) }
   };
   const saved = { version: 1, date, childId, childName, className: childClass, teacherId, teacherName,

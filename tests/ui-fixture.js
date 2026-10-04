@@ -19,10 +19,14 @@ createServer(async (req, res) => {
   let text = ''; for await (const chunk of req) text += chunk;
   const input = text ? JSON.parse(text) : {};
   const path = new URL(req.url, 'http://localhost').pathname;
+  // 월간 가상 응답도 요청에 포함된 실제 기록 날짜만 사용한다.
+  const prompt = input.contents?.[0]?.parts?.[0]?.text || '';
+  const targetMonth = /- 대상 월: (\d{4}-\d{2})/.exec(prompt)?.[1];
+  const observedDate = [...prompt.matchAll(/날짜: (\d{4}-\d{2}-\d{2})/g)].map(match => match[1]).find(date => !targetMonth || date.startsWith(targetMonth)) || '';
   let output;
   if (path.includes('/models/')) output = { candidates: [{ content: { parts: [{ text: JSON.stringify({
     kidsnote: { title: '오늘의 블록 놀이', content: '[아동1]가 블록을 손으로 잡았어요.' }, observation_summary: '블록을 손으로 잡음',
-    monthly_observation: { title: '실제 관찰일 기준 관찰일지', play_obs: { date: '2026-10-03', area: '신체운동·건강', behavior: '블록을 손으로 잡음', teacher_support: '지원 계획: 블록을 손이 닿는 곳에 배치' }, daily_obs: { date: '', behavior: '해당 영역의 관찰 기록 부족', teacher_support: '추가 관찰 필요' }, monthly_summary: { development_summary: '블록을 손으로 잡는 모습이 관찰됨', next_month_plan: '다양한 크기의 블록 탐색을 지원할 계획' } },
+    monthly_observation: { title: '실제 관찰일 기준 관찰일지', play_obs: { date: observedDate, area: '신체운동·건강', behavior: observedDate ? '블록을 손으로 잡음' : '해당 영역의 관찰 기록 부족', teacher_support: '지원 계획: 블록을 손이 닿는 곳에 배치' }, daily_obs: { date: '', behavior: '해당 영역의 관찰 기록 부족', teacher_support: '추가 관찰 필요' }, monthly_summary: { development_summary: '블록을 손으로 잡는 모습이 관찰됨', next_month_plan: '다양한 크기의 블록 탐색을 지원할 계획' } },
     hangroo_eval: { title: '관찰 기간 발달평가', development_summary: '블록을 손으로 잡음. 다른 영역의 관찰 기록은 부족함.', support_plan: '블록 탐색 지원 계획' },
     parent_counseling: { daily_routine: '관찰 기록 부족', social_relations: '관찰 기록 부족', development_feature: '블록을 손으로 잡음', counseling_opinion: '상담 준비 초안: 실제 상담 발언과 합의는 아직 없음' },
     daily_care_log: { play_summary: '블록을 손으로 잡음', play_evaluation: '손으로 물체 탐색을 관찰함', next_support_plan: '블록 탐색 지원 계획' },
@@ -56,6 +60,14 @@ createServer(async (req, res) => {
     const id = path.split('/')[3];
     if (req.method === 'PATCH') blocks.set(id, [...(blocks.get(id) || []), ...(input.children || [])]);
     output = { results: blocks.get(id) || [], has_more: false };
+  }
+  if (path.includes('/models/') && output) {
+    const generated = JSON.parse(output.candidates[0].content.parts[0].text);
+    const schema = input.system_instruction?.parts?.[0]?.text || '';
+    for (const key of ['kidsnote', 'class_daily_report', 'monthly_observation', 'hangroo_eval', 'parent_counseling', 'daily_care_log', 'play_support']) {
+      if (!schema.includes(`  "${key}": {`)) delete generated[key];
+    }
+    output.candidates[0].content.parts[0].text = JSON.stringify(generated);
   }
   res.writeHead(output ? 200 : 404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(output || { error: '검증 경로 없음' }));
 }).listen(8790, '127.0.0.1', () => console.log('검증 서비스: http://127.0.0.1:8790'));

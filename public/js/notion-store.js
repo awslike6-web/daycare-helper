@@ -272,7 +272,10 @@
       const params = new URLSearchParams({ from: date, to: date, limit: '100', ...(childId && childId !== 'class-all' ? { childId } : {}) });
       const json = await requestJson('/api/history?' + params, { signal });
       if (signal?.aborted) return false;
-      const existing = (json.data || []).find(l => !l.memoOnly && !l.linkedChildMemo && !l.needsChildReview && (childId === 'class-all' ? !l.childIds?.length && !l.childId : l.childId === childId));
+      const citation = window.state?.lastResult?.citation;
+      const existing = (json.data || []).find(l => !l.memoOnly && !l.linkedChildMemo && !l.needsChildReview &&
+        !!l.periodSummary === !!citation?.historyOnly && (!citation?.historyOnly || l.citationSummary?.includes(`참조 기간 ${citation.from || '시작 제한 없음'} ~ ${citation.to} ·`)) &&
+        (childId === 'class-all' ? !l.childIds?.length && !l.childId : l.childId === childId));
       if (existing) {
         window.DaycareRecords?.saveStatus('같은 날짜의 기록이 있습니다. 열린 창에서 저장 방식을 선택해 주세요.');
         const cancel = () => finishDuplicate(); let choice;
@@ -521,7 +524,7 @@
           <span style="font-size: 12px; color: #64748B;">📅 ${item.date || ''}</span>
         </div>
         <div style="font-size: 13px; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-          ${item.needsChildReview ? '⚠️ 원아별 연결 확인 필요 · ' : item.linkedChildMemo ? '👶 원아 근거 연결 · ' : ''}${item.memoOnly ? '📝 자동 저장 메모 · ' + item.memo : item.summary || item.memo || item.kidsnote_preview || '보육 일지 기록'}
+          ${item.periodSummary ? '📚 기간 종합 서류 · ' : item.needsChildReview ? '⚠️ 원아별 연결 확인 필요 · ' : item.linkedChildMemo ? '👶 원아 근거 연결 · ' : ''}${item.memoOnly ? '📝 자동 저장 메모 · ' + item.memo : item.summary || item.memo || item.kidsnote_preview || '보육 일지 기록'}
         </div>
       `;
 
@@ -582,6 +585,10 @@
     const rawMemoInput = document.getElementById('rawMemoInput');
     const state = window.state || {};
     window.DaycareRecords?.invalidateResult();
+    state.pendingDraft = false;
+    if (rawMemoInput) rawMemoInput.readOnly = false;
+    const draftBanner = document.getElementById('autoDraftRestoreBanner'); if (draftBanner) draftBanner.style.display = 'none';
+    const generateButton = document.getElementById('generateBtn'); if (generateButton) generateButton.disabled = false;
     const child = state.children.find(c => c.id === item.childId);
     if (child) selectChild(child);
     else if (!item.childId) renderChildrenChips('class-all');
@@ -595,10 +602,12 @@
       state.selectedFormats = Object.entries(formats).filter(([key]) => item.parsedData[key]).map(([, value]) => value);
       state.lastResult = item.parsedData;
       state.originalResult = structuredClone(item.parsedData);
+      window.DaycareRecords?.restoreEvidence(item.parsedData.citation);
       window.syncFormatChipsUI?.();
       window.renderResults(item.parsedData);
       window.DaycareRecords?.save();
     }
+    window.DaycareMemo?.start();
   }
 
   // ============================================================================
