@@ -2,6 +2,13 @@
 
 개정: 2026-10-04 · 명세: docs/daycare_spec.md
 
+## 가이드와 운영 도구
+
+- 앱 안 사용 가이드: public/index.html의 teacherGuideModal. 열기·닫기·확인은 기존 public/app.js 이벤트를 사용합니다. docs/teacher_guide.md와 버튼 이름·월/분기 절차·저장/복원/출력 범위를 함께 갱신합니다.
+- 관리자 등록: node scripts/create_device_invite.mjs 사랑반 또는 소망반. 링크는 30분·일회용이며 공개 문서·Git에 남기지 않습니다.
+- node scripts/verify_connections.mjs --notion-only는 연구반 가상 메모의 저장·조회·일치 후 보관, --memo-only는 새 가상 원아의 AI 없는 메모 저장·수정·직접 조회 후 보관, --child-links-only는 새 가상 원아 2명과 가상 학급 원문의 발췌·관계·조회·재시도·잘못된 발췌 거부 후 보관을 검증합니다. 옵션 없이 실행하면 실제 AI 호출도 하므로 결과의 ai 값을 구분합니다. 운영 자료를 쓰는 도구를 단순 문서 확인을 위해 실행하지 않습니다.
+- 관리자 비밀값·보육비서 전용 AI 키는 Worker Secret과 로컬 비공개 환경파일에만 둡니다. PIN 자동 복구·이메일 인증 확장은 현재 제공하지 않습니다.
+
 ## 서버 대문
 
 ### worker.js
