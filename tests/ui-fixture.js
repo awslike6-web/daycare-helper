@@ -10,6 +10,7 @@ function page(properties, parent, id = crypto.randomUUID()) { return { id, prope
 const teachers = [page({ '교사명': { title: [{ plain_text: '검증 교사 A' }] }, '담당반': { select: { name: '사랑반' } }, '평소 알림장 예시문': rt('관찰한 사실을 다정하게 적었어요.') }, {}, teacherId),
   page({ '교사명': { title: [{ plain_text: '검증 교사 B' }] }, '담당반': { select: { name: '소망반' } } }, {}, secondTeacherId)];
 const children = [page({ '아동명': { title: [{ plain_text: '검증원아' }] }, '소속 반': { select: { name: '사랑반' } }, '생년월일/연령': rt('만 0세') }, {}, childId)];
+children.push(...['33333333-3333-4333-8333-333333333333', '44444444-4444-4444-8444-444444444444'].map((id, i) => page({ '아동명': { title: [{ plain_text: '검증동명' }] }, '소속 반': { select: { name: '사랑반' } }, '생년월일/연령': rt(i ? '만 2세' : '만 0세') }, {}, id)));
 function plainProperties(properties) {
   for (const p of Object.values(properties)) for (const key of ['title', 'rich_text']) if (p[key]) p[key] = p[key].map(t => ({ ...t, plain_text: t.text?.content || t.plain_text || '' }));
   return properties;
@@ -26,7 +27,7 @@ createServer(async (req, res) => {
     parent_counseling: { daily_routine: '관찰 기록 부족', social_relations: '관찰 기록 부족', development_feature: '블록을 손으로 잡음', counseling_opinion: '상담 준비 초안: 실제 상담 발언과 합의는 아직 없음' },
     daily_care_log: { play_summary: '블록을 손으로 잡음', play_evaluation: '손으로 물체 탐색을 관찰함', next_support_plan: '블록 탐색 지원 계획' },
     play_support: { play_theme: '블록 탐색', interest_cue: '블록을 손으로 잡음', teacher_support: '다양한 크기의 블록 제공 계획' },
-    individual_observations: [{ child_name: '[아동1]', activity: '블록 놀이', standard_area: '신체운동·건강', summary: '블록을 손으로 잡음' }],
+    individual_observations: [{ child_name: '[아동1]', source_excerpt: '[아동1] 블록을 손으로 잡음.', activity: '블록 놀이', standard_area: '신체운동·건강', summary: '블록을 손으로 잡음' }],
     class_daily_report: { play_theme: '블록 놀이', activities: [{ activity_title: '블록 놀이', observation: '블록을 손으로 잡음', learning_content: '손으로 물체를 잡는 모습을 관찰함' }], reflection: '손을 뻗어 블록을 잡는 모습을 관찰함', support: { environment: '지원 계획: 손이 닿는 곳에 블록을 배치할 예정', safety: '관찰 기록 부족' } }
   }) }] } }] };
   else if (path.endsWith('/databases/teachers/query')) output = { results: teachers, has_more: false };

@@ -156,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!dateStr) return;
     if (state.selectedDate !== dateStr) { window.DaycareRecords?.invalidateResult(); window.DaycareMemo?.beforeContextChange(); }
     state.selectedDate = dateStr;
+    window.DaycareChildLinks?.contextChanged();
     window.DaycareRecords?.resetEvidence();
 
     const recordDatePicker = document.getElementById('recordDatePicker');

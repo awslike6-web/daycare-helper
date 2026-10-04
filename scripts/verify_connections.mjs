@@ -7,7 +7,7 @@ if (!secret) throw new Error('비공개 관리자 설정이 필요합니다.');
 try {
   const response = await fetch(base + '/api/admin/verify', { method: 'POST', headers: {
     Origin: base, Authorization: 'Bearer ' + secret, 'Content-Type': 'application/json'
-  }, body: JSON.stringify({ notionOnly: process.argv.includes('--notion-only'), memoOnly: process.argv.includes('--memo-only') }), signal: AbortSignal.timeout(280000) });
+  }, body: JSON.stringify({ notionOnly: process.argv.includes('--notion-only'), memoOnly: process.argv.includes('--memo-only'), childLinksOnly: process.argv.includes('--child-links-only') }), signal: AbortSignal.timeout(280000) });
   const result = await response.json();
   console.log(JSON.stringify({ status: response.status, ...result }));
   if (!response.ok) process.exitCode = 1;

@@ -103,9 +103,10 @@
       }
 
       const avatar = child.isClassAll ? '🌱' : (child.gender === '여' ? '👧' : '🧒');
+      const label = !child.isClassAll && chipsToRender.filter(c => c.name === child.name).length > 1 ? `${child.name} · ${child.age || '연령 확인'} · 구분 ${child.id.slice(-6)}` : child.name;
       chip.innerHTML = safeHTML`
         <span class="child-avatar">${avatar}</span>
-        <span>${child.name}</span>
+        <span>${label}</span>
       `;
 
       chip.onclick = (e) => {
@@ -134,6 +135,7 @@
       window.DaycareMemo?.beforeContextChange();
     }
     state.selectedChild = child;
+    window.DaycareChildLinks?.contextChanged();
 
     const chips = document.querySelectorAll('.child-chip');
     chips.forEach(c => c.classList.toggle('active', c.dataset.id === child.id));
@@ -270,7 +272,7 @@
       const params = new URLSearchParams({ from: date, to: date, limit: '100', ...(childId && childId !== 'class-all' ? { childId } : {}) });
       const json = await requestJson('/api/history?' + params, { signal });
       if (signal?.aborted) return false;
-      const existing = (json.data || []).find(l => !l.memoOnly && (childId === 'class-all' ? !l.childId : l.childId === childId));
+      const existing = (json.data || []).find(l => !l.memoOnly && !l.linkedChildMemo && !l.needsChildReview && (childId === 'class-all' ? !l.childIds?.length && !l.childId : l.childId === childId));
       if (existing) {
         window.DaycareRecords?.saveStatus('같은 날짜의 기록이 있습니다. 열린 창에서 저장 방식을 선택해 주세요.');
         const cancel = () => finishDuplicate(); let choice;
@@ -406,95 +408,7 @@
   }
 
   async function handleSaveIndividualObs() {
-    const state = window.state || {};
-    if (state.savingNotion || state.savingIndividual) return;
-    const btnSaveIndividualObs = document.getElementById('btnSaveIndividualObs');
-    const btnSaveIndividualObsText = document.getElementById('btnSaveIndividualObsText');
-    const checkedBoxes = Array.from(document.querySelectorAll('.indiv-obs-checkbox:checked, .indiv-obs-check:checked'));
-
-    if (!document.getElementById('reviewConfirmed')?.checked) { window.DaycareRecords.saveStatus('개별 요약은 아직 저장되지 않았습니다. 검수 확인을 체크해 주세요.', 'error'); showToast('원아별 요약을 검수한 뒤 확인해 주세요.'); return; }
-    if (checkedBoxes.length === 0) {
-      showToast('반영할 원아를 1명 이상 선택해 주세요.');
-      return;
-    }
-
-    if (btnSaveIndividualObs) {
-      btnSaveIndividualObs.disabled = true;
-      if (btnSaveIndividualObsText) btnSaveIndividualObsText.textContent = `노션 개별 관찰일지 적재 중... (0/${checkedBoxes.length})`;
-    }
-
-    const todayStr = state.selectedDate || new Date().toISOString().split('T')[0];
-    const teacherId = state.teacherId; state.savingIndividual = true;
-    const controller = new AbortController(); state.individualAbortController = controller;
-    let successCount = 0;
-
-    try {
-      for (let i = 0; i < checkedBoxes.length; i++) {
-        if (controller.signal.aborted || !state.authenticated || state.teacherId !== teacherId || state.selectedDate !== todayStr) throw new Error('교사 또는 날짜가 변경됐습니다. 미저장 항목을 다시 확인해 주세요.');
-        window.DaycareRecords.saveStatus(`원아별 요약 저장 중 · ${successCount}/${checkedBoxes.length}건 완료`);
-        const chk = checkedBoxes[i];
-        const idx = chk.dataset.idx;
-        const childName = chk.dataset.childName || '원아';
-        const area = chk.dataset.area || '자유놀이';
-        const standardArea = chk.dataset.standardArea || '의사소통';
-
-        // 교사가 수정한 input 필드 내용 최우선 반영
-        const inputEl = document.getElementById(`indiv-obs-input-${idx}`);
-        const summaryText = inputEl ? inputEl.value.trim() : (chk.dataset.playText || '');
-
-        if (btnSaveIndividualObsText) {
-          btnSaveIndividualObsText.textContent = `노션 적재 중... (${i + 1}/${checkedBoxes.length} - ${childName})`;
-        }
-
-        // 원아의 실제 노션 UUID 찾기
-        const pool = state.children || [];
-        const matchedChild = pool.find(c => c.name === childName);
-        const targetChildId = matchedChild ? matchedChild.id : null;
-        if (!targetChildId) throw new Error(childName + ': 등록된 원아와 일치하지 않아 저장하지 않았습니다.');
-
-        const payload = {
-          date: todayStr,
-          pageId: state.lastResult?.individual_observations?.[idx]?.saved_page_id,
-          childId: targetChildId,
-          childName,
-          className: state.className || '사랑반',
-          teacherName: state.teacherName || '공가영 선생님',
-          activityArea: area,
-          standardArea,
-          rawMemo: state.lastResult?.rawMemo || document.getElementById('rawMemoInput')?.value || '',
-          result: { observation_summary: summaryText, individual_observations: [{ child_name: childName, summary: summaryText }], citation: state.lastResult?.citation, source_class_memo: true },
-          obsSummary: summaryText,
-          observationText: `[원아별 행동 관찰 요약]\n${summaryText}\n\n[학급 놀이 맥락]\n${state.lastResult?.class_daily_report?.play_theme || state.activityArea || '자유놀이'}`,
-          citationSummary: `한그루 보육일지 내 ${childName} 놀이 팩트 자동 추출`
-        };
-
-        const saved = await requestJson('/api/logs/save', { method: 'POST', body: payload, signal: controller.signal, timeoutMs: 120000 });
-        if (controller.signal.aborted || !state.authenticated || state.teacherId !== teacherId) return;
-        if (!saved.success || saved.source !== 'notion' || !saved.pageId) throw new Error(saved.error || '노션 저장 완료 응답을 확인하지 못했습니다.');
-        if (saved.success) {
-          successCount++;
-          if (state.lastResult?.individual_observations?.[idx]) state.lastResult.individual_observations[idx].saved_page_id = saved.pageId;
-          state.isHistoryLoaded = false;
-          const statusTag = document.getElementById(`indiv-obs-status-${idx}`);
-          if (statusTag) statusTag.style.display = 'inline-block';
-          await window.DaycareRecords?.save();
-        }
-      }
-
-      showToast(`🎉 선택한 원아 ${successCount}명의 개별 관찰일지가 노션에 안전하게 분할 저장되었습니다!`);
-      window.DaycareRecords.saveStatus(`원아별 관찰 요약 ${successCount}건 노션 저장 완료 · 통합 서식은 별도로 저장해 주세요.`, 'success');
-    } catch (err) {
-      if (state.authenticated && state.teacherId === teacherId) {
-        window.DaycareRecords.saveStatus(`원아별 요약 ${successCount}/${checkedBoxes.length}건 저장 완료 · 미저장 항목: ${err.message}`, 'error');
-        showToast(`저장 ${successCount}/${checkedBoxes.length}건 완료. 미저장 항목: ${err.message}`);
-      }
-    } finally {
-      state.savingIndividual = false; state.individualAbortController = null;
-      if (btnSaveIndividualObs) {
-        btnSaveIndividualObs.disabled = false;
-        if (btnSaveIndividualObsText) btnSaveIndividualObsText.textContent = '선택한 원아 개별 관찰일지 DB에 반영';
-      }
-    }
+    return window.DaycareChildLinks.saveIndividual();
   }
 
   // ============================================================================
@@ -572,10 +486,10 @@
 
     let list = state.historyLogs || [];
     const childId = document.getElementById('historyChildSelect')?.value;
-    if (childId && childId !== 'all') list = list.filter(item => item.childId === childId);
+    if (childId && childId !== 'all') list = list.filter(item => item.childIds?.includes(childId) || item.childId === childId);
     const type = document.getElementById('historyTypeSelect')?.value;
     if (type === 'kidsnote') list = list.filter(item => item.kidsnoteText);
-    if (type === 'report') list = list.filter(item => !item.childId);
+    if (type === 'report') list = list.filter(item => !item.childIds?.length && !item.childId);
     if (type === 'obs') list = list.filter(item => item.behavior || item.summary);
 
     // 필터링
@@ -607,7 +521,7 @@
           <span style="font-size: 12px; color: #64748B;">📅 ${item.date || ''}</span>
         </div>
         <div style="font-size: 13px; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-          ${item.memoOnly ? '📝 자동 저장 메모 · ' + item.memo : item.summary || item.kidsnote_preview || '보육 일지 기록'}
+          ${item.needsChildReview ? '⚠️ 원아별 연결 확인 필요 · ' : item.linkedChildMemo ? '👶 원아 근거 연결 · ' : ''}${item.memoOnly ? '📝 자동 저장 메모 · ' + item.memo : item.summary || item.memo || item.kidsnote_preview || '보육 일지 기록'}
         </div>
       `;
 

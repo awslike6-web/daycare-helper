@@ -184,50 +184,8 @@
       }
     }
 
-    // 0-B. 🧩 감지된 원아별 놀이 요약 (Human-in-the-Loop 교사 1초 눈 검수 목록) 채우기
-    const indivObs = data.individual_observations;
-    const individualObsCard = document.getElementById('individualObsCard');
-    const individualObsList = document.getElementById('individualObsList');
-    const individualObsCountBadge = document.getElementById('individualObsCountBadge');
-
-    if (individualObsCard && individualObsList) {
-      if (Array.isArray(indivObs) && indivObs.length > 0) {
-        individualObsCard.style.display = 'block';
-        if (individualObsCountBadge) individualObsCountBadge.textContent = `${indivObs.length}명 감지됨`;
-        individualObsList.innerHTML = '';
-
-        indivObs.forEach((item, idx) => {
-          const itemEl = document.createElement('div');
-          itemEl.className = 'individual-obs-item active';
-          itemEl.id = `indiv-obs-item-${idx}`;
-
-          const childName = item.child_name || `원아 ${idx + 1}`;
-          const standardArea = item.standard_area || '신체운동';
-          const activityName = item.activity || item.activity_name || state.activityArea || '놀이 활동';
-          const summary = item.summary || item.observation_summary || '';
-
-          itemEl.innerHTML = safeHTML`<div class="indiv-obs-top-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;"><div class="indiv-obs-meta" style="display: flex; align-items: center; gap: 8px;"><label class="indiv-obs-check-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" class="indiv-obs-checkbox indiv-obs-check" checked data-idx="${idx}" data-child-name="${childName}" data-area="${standardArea}" data-standard-area="${standardArea}" data-activity="${activityName}" data-play-text="${summary}"><span class="indiv-obs-name" style="font-weight: 700; color: #1E293B;">👶 ${childName}</span></label><div class="indiv-obs-badges" style="display: flex; gap: 4px;"><span class="indiv-obs-badge-area" style="font-size: 11px; background: #EEF2FF; color: #4F46E5; padding: 2px 6px; border-radius: 4px;">${standardArea}</span><span class="indiv-obs-badge-activity" style="font-size: 11px; background: #F1F5F9; color: #475569; padding: 2px 6px; border-radius: 4px;">${activityName}</span></div></div><span class="indiv-obs-status-tag" id="indiv-obs-status-${idx}" style="display: none; background: #DEF7EC; color: #03543F; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">✓ 저장됨</span></div><div class="indiv-obs-input-row"><input type="text" class="indiv-obs-input" id="indiv-obs-input-${idx}" value="${summary}" placeholder="원아의 관찰 요약 (1초 수정 가능)" data-original="${summary}" style="width: 100%; padding: 6px 10px; font-size: 12.5px; border: 1px solid #CBD5E1; border-radius: 6px; background: #FFF;"></div>`;
-
-          const chk = itemEl.querySelector('.indiv-obs-checkbox');
-          if (chk) {
-            chk.addEventListener('change', (e) => {
-              itemEl.classList.toggle('active', e.target.checked);
-              if (typeof window.updateSelectedIndivObsCount === 'function') {
-                window.updateSelectedIndivObsCount();
-              }
-            });
-          }
-
-          individualObsList.appendChild(itemEl);
-        });
-
-        if (typeof window.updateSelectedIndivObsCount === 'function') {
-          window.updateSelectedIndivObsCount();
-        }
-      } else {
-        individualObsCard.style.display = 'none';
-      }
-    }
+    // 원아 ID·원문 근거·교사 확인 화면은 공통 연결 모듈이 담당한다.
+    window.DaycareChildLinks?.renderIndividual(data);
 
     // 1. 키즈노트 알림장 채우기
     if (kn) {

@@ -3,6 +3,7 @@ import { ApiError, authCall, cookies, authCookies, checkMutation, requireSession
 import { getTeachersList, getChildrenList, requireChild, getRecentChildLogs, getAllDailyLogs, getLogDetail, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion, updateTeacherProfile, callNotionApi, verifyNotionConnection } from './api/notion.js';
 export { AuthStore } from './api/auth.js';
 import { memoCall, verifyMemoConnection } from './api/memo.js';
+import { verifyChildLinks } from './api/child-links.js';
 export { MemoStore } from './api/memo.js';
 
 const securityHeaders = {
@@ -55,7 +56,7 @@ export function privacyMap(children, teacher) {
   const names = new Map();
   children.forEach((c, index) => {
     const alias = `[아동${index + 1}]`;
-    names.set(c.name, alias);
+    names.set(c.name, children.filter(x => x.name === c.name).length === 1 ? alias : '[동명이인]');
     const short = c.name.length === 3 ? c.name.slice(1) : null;
     if (short && children.filter(x => x.name.endsWith(short)).length === 1) names.set(short, alias);
   });
@@ -89,7 +90,11 @@ async function generate(body, env, teacher) {
       found.push(...page.data); cursor = page.nextCursor;
     } while (cursor && found.length < 500);
     pastLogs = ids.map(id => found.find(log => log.id === id));
-    if (pastLogs.some(log => !log)) throw new ApiError('참조 기록의 원아·학급·날짜를 다시 확인해 주세요.', 403);
+    if (pastLogs.some(log => !log || log.needsChildReview || (!classAll && (log.childIds.length !== 1 || log.childId !== child.id)))) throw new ApiError('참조 기록의 원아·학급·날짜를 다시 확인해 주세요. 여러 원아 또는 과거 자동 분할 기록은 개별 연결 확인이 필요합니다.', 403);
+    for (const log of pastLogs) {
+      const detail = await getLogDetail(env, log.id, teacher.className);
+      if (detail.parsedData?.source_class_memo && !detail.parsedData?.child_link) throw new ApiError('과거 자동 분할 기록의 원아별 근거를 먼저 확인해 주세요.', 409);
+    }
   }
   if (body.monthlyObsOptions) {
     const knownDates = new Set([date, ...pastLogs.map(log => log.date)]);
@@ -103,8 +108,20 @@ async function generate(body, env, teacher) {
     persona: { ...(body.persona || {}), sampleNote: body.persona?.sampleNote || teacher.sampleNote, closingGreeting: body.persona?.closingGreeting || teacher.closing },
     monthlyObsOptions: body.monthlyObsOptions, selectedFormats: formats, refinement: body.refinement || null,
     roster: children.map(c => ({ name: c.name, age: c.age })) });
+  input.roster = children.map((c, i) => ({ name: `[아동${i + 1}]`, age: c.age, needs_teacher_match: classAll && children.filter(x => x.name === c.name).length > 1 }));
   const output = await generateDaycareLog({ ...input, apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL, fallbackModel: env.GEMINI_FALLBACK_MODEL, apiBase: env.GEMINI_API_BASE });
+  if (!Array.isArray(output.data.individual_observations)) output.data.individual_observations = [];
+  output.data.individual_observations = output.data.individual_observations.filter(item => item && typeof item === 'object').slice(0, 100);
+  const matches = output.data.individual_observations.map(item => {
+    const index = /^\[아동(\d+)\]$/.exec(item.child_name || '')?.[1];
+    const matched = index ? children[Number(index) - 1] : null;
+    return matched && (!classAll ? matched.id === child.id : children.filter(x => x.name === matched.name).length === 1) ? matched.id : null;
+  });
   output.data = privacy.restore(output.data);
+  output.data.individual_observations?.forEach((item, i) => {
+    item.child_id = matches[i]; item.match_status = matches[i] ? 'candidate' : 'needs_confirmation';
+    item.source_excerpt = typeof item.source_excerpt === 'string' && String(body.rawMemo || '').includes(item.source_excerpt.trim()) ? item.source_excerpt.trim() : '';
+  });
   if (!output.data || formats.some(f => !output.data[keys[f]])) throw new ApiError('AI가 선택한 서식을 완성하지 못했습니다. 메모를 유지하고 다시 시도해 주세요.', 502);
   output.data.citation = { has_citation: pastLogs.length > 0,
     summary: pastLogs.length ? `참조한 실제 노션 기록 ${pastLogs.length}건: ${pastLogs.map(l => l.date).join(', ')}` : '과거 기록을 선택하지 않아 오늘 입력만 사용했습니다.',
@@ -130,6 +147,7 @@ export default {
         const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
         const options = request.body ? await bodyOf(request) : {};
         if (options.memoOnly === true) return json(await verifyMemoConnection(env, teacher, date));
+        if (options.childLinksOnly === true) return json(await verifyChildLinks(env, teacher, date, (op, ctx, input) => memoCall(env, op, ctx, input)));
         if (options.notionOnly === true) return json(await verifyNotionConnection(env, teacher, date));
         const childName = '시스템검증가상원아';
         const rawMemo = '[시스템 검증용 가상 메모 · 실제 원아 기록 아님] 시스템검증가상원아 블록 두 개를 손으로 잡음.';
@@ -201,6 +219,12 @@ export default {
         return json(result.data, result.status);
       }
       if (path === '/api/profile' && request.method === 'POST') return json(await updateTeacherProfile(env, teacher.id, await bodyOf(request)));
+      if (path === '/api/logs/link-child' && request.method === 'POST') {
+        const input = await bodyOf(request); const child = await requireChild(env, input.childId, teacher.className);
+        const context = { teacherId: teacher.id, teacherName: teacher.name, className: teacher.className,
+          date: dateOf(input.date), childId: child.id, childName: child.name };
+        const result = await memoCall(env, 'link-child', context, input); return json(result.data, result.status);
+      }
       if (path === '/api/children' && request.method === 'GET') return json(await getChildrenList(env, teacher.className));
       if (path === '/api/children' && request.method === 'POST') return json(await saveChildToNotion({ ...await bodyOf(request), className: teacher.className }, env));
       const childMatch = path.match(/^\/api\/children\/([^/]+)(\/recent-logs)?$/);
@@ -226,6 +250,7 @@ export default {
         if (body.pageId) {
           const existing = await getLogDetail(env, body.pageId, teacher.className);
           if (existing.memoOnly) throw new ApiError('자동 메모는 완성본 저장으로 덮어쓰지 않습니다. 완성 일지는 별도로 저장해 주세요.', 409);
+          if (existing.linkedChildMemo || existing.needsChildReview) throw new ApiError('원아 연결 기록은 근거 확인 화면에서 저장해 주세요.', 409);
           if ((existing.childId || null) !== (child?.id || null)) throw new ApiError('다른 원아의 기록을 덮어쓸 수 없습니다.', 403);
           if (body.append) {
             body.rawMemo = [existing.memo, body.rawMemo].filter(Boolean).join('\n\n');

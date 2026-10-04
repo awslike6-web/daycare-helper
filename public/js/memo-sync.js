@@ -153,6 +153,7 @@
     await read(next);
   }
   function beforeContextChange() {
+    window.DaycareChildLinks?.pause();
     if (!current) return;
     changed(); persist(current); flush({ target: current, keepalive: true });
     current = null; generation++; resetTimers(); hideConflict();

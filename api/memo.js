@@ -1,6 +1,7 @@
 /** 원시 메모 전용 노션 행과 기기 간 쓰기 직렬화. 검수 완성본은 변경하지 않는다. */
 import { ApiError } from './auth.js';
 import { callNotionApi, textOf, saveChildToNotion, getAllDailyLogs, getLogDetail } from './notion.js';
+import { linkChildRecord } from './child-links.js';
 
 const PREFIX = '[원시 메모 자동저장 v1] ';
 const normalized = value => String(value || '').replace(/-/g, '');
@@ -80,6 +81,7 @@ export class MemoStore {
         if (savedContext && identity(savedContext) !== identity(context)) throw new ApiError('메모 접근 문맥이 다릅니다.', 403);
         if (!savedContext) await this.db.put('context', context);
         this.context = context;
+        if (new URL(request.url).pathname === '/link-child') return Response.json(await linkChildRecord(this.env, context, input, this.db));
         this.marker = `[원시메모:${(await hash(identity(context))).slice(0, 24)}]`;
         const page = await this.readPage();
         const pending = await this.db.get('pending');

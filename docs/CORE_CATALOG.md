@@ -43,6 +43,10 @@ generateDaycareLog(options), validateFormats(data, formats), FORMAT_KEYS. 선택
 
 memoCall(env,operation,context,input), verifyMemoConnection(env,teacher,date). 교사·학급·날짜·원아별 Durable Object 큐와 노션 자동 메모 행의 읽기·버전 비교·속성 갱신·불명확 쓰기 재조회를 담당합니다. pending은 노션 확인 전 새 쓰기를 막으며 같은 텍스트 재시도는 쓰기를 생략합니다. 관리자 /api/admin/verify의 memoOnly=true는 연구반 새 가상 원아에서 저장→수정→노션 직접 조회 후 보관합니다.
 
+### api/child-links.js
+
+linkChildRecord(env,context,input,storage), verifyChildLinks(env,teacher,date,run). POST /api/logs/link-child의 실제 원문·원아 ID·교사·반·날짜·발췌·교사 확인을 검증합니다. MemoStore의 /link-child 경로에서 기존 대상별 큐를 재사용하며, 안정 제목·pending으로 재시도와 불명확 쓰기를 보호합니다. 개인 rawMemo는 발췌문만 저장하고 검수 JSON의 child_link에 원문 출처·해시·확인을 보관합니다. 관리자 childLinksOnly=true는 새 연구반 가상 원아 2명의 관계·발췌·재조회·재시도와 잘못된 발췌 거부를 검사합니다.
+
 ### infra/notion-proxy.js / api/notion-proxy-guard.js
 
 기존 공유 프록시와 guardDaycareProxy. 보육 DB와 하위 자료 접근을 캐시 전에 검사하며 서버 인증 요청은 캐시를 우회합니다. wrangler.notion-proxy.toml은 기존 minmin-notion에 배포합니다.
@@ -66,6 +70,8 @@ DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, cancelPen
 
 ## 화면과 출력
 
+- public/js/child-links.js → DaycareChildLinks: contextChanged, pause, captureDraft, restoreDraft, renderIndividual, saveIndividual. 원시 메모 단계의 원아 연결과 생성된 카드의 ID·발췌·검수 확인을 담당합니다. 동명이인에는 연령·구분 번호를 표시하고 이름으로 첫 원아를 찾지 않습니다. 확인은 복원 후 다시 받으며 초안은 기존 암호화 저장에 포함합니다.
+
 - public/js/memo-sync.js → DaycareMemo: start, changed, persist, flush, pause, beforeContextChange, clearEditor, restoredText, forget, snapshot. 메모 5초/30초 전송·노션 조회·대상별 AES-GCM 대기본·교사/대상 변경 격리·동시 편집 선택을 제공합니다. app.js 입력·STT, 인증 unlock/잠금, 원아/날짜 변경, 기존 초안 복원과 연결됩니다. 사진·검수 완성본은 공유하지 않습니다.
 
 - public/app.js: 초기화·메모·날짜·문체 설정·사진 재인코딩·모달의 화면 대문.
@@ -77,6 +83,8 @@ DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, cancelPen
 ## 검증·운영 도구
 
 - tests/backend.test.js: 기기·PIN·학급·프록시·실제 근거·전체 저장 계약.
+- tests/child-links-runtime.test.js: 실제 workerd의 동명이인 ID 선택·발췌 격리·개인 조회·근거 생성·원문/인증 조작 거부·동시 재시도·응답 유실·과거/다중 관계 차단.
+- tests/child-links-frontend.test.js: 확인·대상·발췌 누락 차단, 동명이인 ID 전송, 연속 탭·잠금 뒤 늦은 응답과 저장 중 추가 수정 분리.
 - tests/draft.test.js: 암호화 초안·빈 화면 덮어쓰기 방지·검수 복원.
 - tests/memo-frontend.test.js: 자동 저장 시간·암호화·PC 조회·동시 수정 합치기·오프라인 재진입·날짜 격리·화면 숨김·빈 입력 보호.
 - tests/memo-runtime.test.js + tests/wrangler.memo-test.toml: 실제 workerd의 두 기기 쿠키·AI 없는 노션 저장/수정/조회·중복 생략·경합 409·반 격리·응답 유실 재조회·명확한 거부 후 복구.

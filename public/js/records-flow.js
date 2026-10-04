@@ -31,7 +31,7 @@
       signal?.addEventListener('abort', onAbort, { once: true });
       timeout = setTimeout(() => {
         controller.abort();
-        const write = path === '/api/logs/save';
+        const write = path === '/api/logs/save' || path === '/api/logs/link-child';
         reject(Object.assign(new Error(write ? '저장 응답 시간이 초과됐습니다. 내용은 임시보관됩니다. 재시도 전에 보관함에서 저장 여부를 확인해 주세요.' : '응답 시간이 초과됐습니다. 연결을 확인한 뒤 다시 시도해 주세요.'), { name: 'TimeoutError' }));
       }, timeoutMs);
     });
@@ -45,7 +45,7 @@
       })()]);
       return await cancelled;
     } catch (error) {
-      if (error.name === 'TypeError') throw new Error(path === '/api/logs/save' ? '저장 응답을 확인하지 못했습니다. 연결을 확인하고 재시도 전에 보관함을 조회해 주세요.' : '연결을 확인한 뒤 다시 시도해 주세요.');
+      if (error.name === 'TypeError') throw new Error(['/api/logs/save', '/api/logs/link-child'].includes(path) ? '저장 응답을 확인하지 못했습니다. 연결을 확인하고 재시도 전에 보관함을 조회해 주세요.' : '연결을 확인한 뒤 다시 시도해 주세요.');
       throw error;
     } finally { clearTimeout(timeout); signal?.removeEventListener('abort', onAbort); }
   }
@@ -142,6 +142,8 @@
     }
     if (Array.isArray(result.individual_observations)) result.individual_observations.forEach((item, i) => {
       if (el('indiv-obs-input-' + i)) item.summary = el('indiv-obs-input-' + i).value;
+      if (el('indiv-obs-child-' + i)) item.child_id = el('indiv-obs-child-' + i).value || null;
+      if (el('indiv-obs-excerpt-' + i)) item.source_excerpt = el('indiv-obs-excerpt-' + i).value;
     });
     state.lastResult = result;
     return result;
@@ -162,7 +164,7 @@
       className: state.className, childName: state.selectedChild?.name, rawMemo: el('rawMemoInput')?.value || '',
       lastResult: state.lastResult, originalResult: state.originalResult, selectedFormats: state.selectedFormats,
       persona: state.persona, evidenceIds: state.evidenceIds || [], evidenceFrom: state.evidenceFrom,
-      photos: state.photos || [], memoSync: window.DaycareMemo?.snapshot() || null };
+      photos: state.photos || [], memoSync: window.DaycareMemo?.snapshot() || null, childLinkDraft: window.DaycareChildLinks?.captureDraft() || null };
     const current = revision;
     queue = queue.catch(() => {}).then(async () => {
       const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -218,6 +220,7 @@
           const clean = draft.memoSync && draft.memoSync.rawMemo === draft.rawMemo && draft.memoSync.dirty === false;
           el('rawMemoInput').value = clean ? '' : draft.rawMemo || '';
           state.memoRestoredAt = draft.timestamp || 0;
+          window.DaycareChildLinks?.restoreDraft(draft.childLinkDraft);
           return;
         }
       }
@@ -236,6 +239,7 @@
         Object.assign(state, { lastResult: draft.lastResult, originalResult: draft.originalResult, selectedFormats: draft.selectedFormats || state.selectedFormats,
           photos: draft.photos || [], evidenceIds: draft.evidenceIds || [], evidenceFrom: draft.evidenceFrom, persona: draft.persona || state.persona });
         if (draft.lastResult) window.AiEngine?.renderResults(draft.lastResult);
+        window.DaycareChildLinks?.restoreDraft(draft.childLinkDraft);
         window.syncFormatChipsUI?.(); window.DaycareAuth?.updatePersonaUI();
         if (el('evidenceFrom')) el('evidenceFrom').value = draft.evidenceFrom || draft.date.slice(0, 7) + '-01';
         updateEvidenceCount(); window.renderPhotoPreviews?.();
@@ -274,12 +278,13 @@
         json.data.forEach(log => {
           count++; const label = document.createElement('label'); label.className = 'evidence-row';
           const check = document.createElement('input'); check.type = 'checkbox'; check.value = log.id;
+          if (log.needsChildReview || (child && child !== 'class-all' && (log.childIds?.length !== 1 || log.childId !== child))) check.disabled = true;
           check.onchange = () => {
             const ids = [...list.querySelectorAll('input:checked')].map(i => i.value);
             if (ids.length > 60) { check.checked = false; window.showToast?.('한 번에 최대 60건까지 선택할 수 있습니다.'); return; }
             state.evidenceIds = ids; save(); updateEvidenceCount();
           };
-          const text = document.createElement('span'); text.textContent = `${log.date} · ${log.child_name} · 요약: ${log.summary || '(요약 없음)'}\n원시 메모: ${log.raw_memo || '(메모 없음)'}`;
+          const text = document.createElement('span'); text.textContent = `${log.date} · ${log.child_name}${check.disabled ? ' · 원아별 연결 확인 필요 (선택 불가)' : ''} · 요약: ${log.summary || '(요약 없음)'}\n원시 메모: ${log.raw_memo || '(메모 없음)'}`;
           label.append(check, text); list.appendChild(label);
         }); cursor = json.nextCursor;
       } while (cursor && count < 500);

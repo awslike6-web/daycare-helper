@@ -75,12 +75,15 @@ export async function requireChild(env, childId, className) {
 }
 function logFromPage(page, childMap = new Map()) {
   const p = page.properties;
-  const childId = p['원아']?.relation?.[0]?.id || null;
+  const childIds = (p['원아']?.relation || []).map(r => r.id);
+  const childId = childIds.length === 1 && !p['원아']?.has_more ? childIds[0] : null;
   const raw = textOf(p['원시 메모/키워드']);
   const observation = textOf(p['관찰일지 최종본']);
   const summary = textOf(p['관찰 요약']);
   return { id: page.id, url: page.url, title: textOf(p['기록명/식별자']), memoOnly: textOf(p['기록명/식별자']).startsWith('[원시메모:'),
-    childId, child_name: childMap.get(childId)?.name || (childId ? '원아' : '학급 전체'),
+    childId, childIds, needsChildReview: childIds.length > 1 || !!p['원아']?.has_more || textOf(p['참조 출처 요약']).startsWith('한그루 보육일지 내 '),
+    child_name: childIds.length > 1 || p['원아']?.has_more ? '여러 원아 · 연결 확인 필요' : childMap.get(childId)?.name || (childId ? '원아' : '학급 전체'),
+    linkedChildMemo: textOf(p['기록명/식별자']).startsWith('[원아연결:'),
     class_name: p['학급']?.select?.name || '', date: p['작성일자']?.date?.start || '',
     activity: p['활동 구분']?.select?.name || '', summary, observation_summary: summary,
     behavior: observation, content: observation || textOf(p['알림장 최종본']),
@@ -100,11 +103,14 @@ export async function getAllDailyLogs(env, className, options = {}) {
   });
   const { children } = await getChildrenList(env, className);
   const map = new Map(children.map(c => [c.id, c]));
-  return { source: 'notion', data: response.results.map(p => logFromPage(p, map)), nextCursor: response.has_more ? response.next_cursor : null };
+  const data = response.results.map(p => logFromPage(p, map));
+  for (const log of data) if (log.childIds.some(id => !map.has(id))) log.needsChildReview = true;
+  return { source: 'notion', data, nextCursor: response.has_more ? response.next_cursor : null };
 }
 export async function getRecentChildLogs(childId, childName, env, className, options = {}) {
   const response = await getAllDailyLogs(env, className, { ...options, childId, limit: options.limit || 100 });
-  return { source: 'notion', logs: response.data, nextCursor: response.nextCursor };
+  const logs = response.data.filter(log => !log.needsChildReview && log.childIds.length === 1 && log.childId.replace(/-/g, '') === childId.replace(/-/g, ''));
+  return { source: 'notion', logs, excludedCount: response.data.length - logs.length, nextCursor: response.nextCursor };
 }
 export async function getLogDetail(env, pageId, className) {
   const page = await callNotionApi(env, `/pages/${encodeURIComponent(pageId)}`);
@@ -144,7 +150,7 @@ export async function saveDailyLogToNotion(payload, env) {
   const area = payload.standardArea || result.observation_log?.standard_area || '';
   const allowed = new Set(['기본생활', '신체운동·건강', '의사소통', '사회관계', '예술경험', '자연탐구', '신체운동']);
   const properties = {
-    '기록명/식별자': { title: [{ text: { content: `${date} ${childClass} ${childName || '학급 전체'}` } }] },
+    '기록명/식별자': { title: [{ text: { content: payload.recordTitle || `${date} ${childClass} ${childName || '학급 전체'}` } }] },
     '작성일자': { date: { start: date } }, '학급': select(childClass), '활동 구분': select(payload.activityArea || '자유놀이'),
     '원아': { relation: childId && childId !== 'class-all' ? [{ id: childId }] : [] },
     '작성교사': { relation: [{ id: teacherId }] },

@@ -64,6 +64,7 @@
   }
   function showGate() {
     window.DaycareMemo?.pause();
+    window.DaycareChildLinks?.pause();
     clearDeviceInvite();
     window.DaycareRecords?.cancelSave();
     document.body.dataset.locked = 'true'; ready = false;
