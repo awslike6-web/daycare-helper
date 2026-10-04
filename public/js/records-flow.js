@@ -162,7 +162,7 @@
       className: state.className, childName: state.selectedChild?.name, rawMemo: el('rawMemoInput')?.value || '',
       lastResult: state.lastResult, originalResult: state.originalResult, selectedFormats: state.selectedFormats,
       persona: state.persona, evidenceIds: state.evidenceIds || [], evidenceFrom: state.evidenceFrom,
-      photos: state.photos || [] };
+      photos: state.photos || [], memoSync: window.DaycareMemo?.snapshot() || null };
     const current = revision;
     queue = queue.catch(() => {}).then(async () => {
       const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -209,6 +209,18 @@
       const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: decode(saved.iv) }, await cryptoKey(state.draftKey), decode(saved.data));
       const draft = JSON.parse(new TextDecoder().decode(plain));
       if (draft.className !== state.className) return;
+      // 메모만 있는 초안은 노션 공유본과 비교하여 자동 복원한다. 문서·사진 초안은 기존 확인을 유지한다.
+      if (!draft.lastResult && !draft.photos?.length && window.DaycareMemo) {
+        const child = state.children.find(c => c.id === draft.childId);
+        if (child || draft.childId === 'class-all') {
+          if (child) window.ChildrenStore.selectChild(child);
+          window.updateRecordDate?.(draft.date);
+          const clean = draft.memoSync && draft.memoSync.rawMemo === draft.rawMemo && draft.memoSync.dirty === false;
+          el('rawMemoInput').value = clean ? '' : draft.rawMemo || '';
+          state.memoRestoredAt = draft.timestamp || 0;
+          return;
+        }
+      }
       const banner = el('autoDraftRestoreBanner'); if (!banner) return;
       state.pendingDraft = true; el('rawMemoInput').readOnly = true; el('generateBtn').disabled = true;
       if (el('autoDraftRestoreMeta')) el('autoDraftRestoreMeta').textContent = `${draft.date} · ${draft.childName || '우리 반'} 작성 내용이 보관되어 있습니다.`;
@@ -220,18 +232,20 @@
         else if (draft.childId && draft.childId !== 'class-all') { window.showToast?.('원아 소속이 변경되어 이전 초안을 복원할 수 없습니다.'); restoring = false; return; }
         window.updateRecordDate?.(draft.date);
         el('rawMemoInput').value = draft.rawMemo || ''; el('rawMemoInput').readOnly = false; el('generateBtn').disabled = false;
+        state.memoRestoredAt = draft.timestamp || 0;
         Object.assign(state, { lastResult: draft.lastResult, originalResult: draft.originalResult, selectedFormats: draft.selectedFormats || state.selectedFormats,
           photos: draft.photos || [], evidenceIds: draft.evidenceIds || [], evidenceFrom: draft.evidenceFrom, persona: draft.persona || state.persona });
         if (draft.lastResult) window.AiEngine?.renderResults(draft.lastResult);
         window.syncFormatChipsUI?.(); window.DaycareAuth?.updatePersonaUI();
         if (el('evidenceFrom')) el('evidenceFrom').value = draft.evidenceFrom || draft.date.slice(0, 7) + '-01';
         updateEvidenceCount(); window.renderPhotoPreviews?.();
-        banner.style.display = 'none'; state.pendingDraft = false; restoring = false; save();
+        banner.style.display = 'none'; state.pendingDraft = false; restoring = false; save(); window.DaycareMemo?.start();
       };
-      el('btnDiscardAutoDraft').onclick = clear;
+      el('btnDiscardAutoDraft').onclick = () => { clear(); window.DaycareMemo?.start(); };
     } catch { window.showToast?.('임시보관 내용을 읽을 수 없습니다. 기존 저장본은 보존합니다.'); }
   }
   function forget() {
+    window.DaycareMemo?.forget();
     clear();
     window.showToast?.('이 기기의 등록과 임시보관을 해제했습니다.');
   }

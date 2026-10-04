@@ -21,6 +21,14 @@ class_name = "AuthStore"
 tag = "auth-v1"
 new_sqlite_classes = ["AuthStore"]
 
+[[durable_objects.bindings]]
+name = "MEMO_STORE"
+class_name = "MemoStore"
+
+[[migrations]]
+tag = "memo-v1"
+new_sqlite_classes = ["MemoStore"]
+
 [placement]
 region = "aws:ap-northeast-2"
 
@@ -40,4 +48,8 @@ services = []
 [[env.ui-test.durable_objects.bindings]]
 name = "AUTH_STORE"
 class_name = "AuthStore"
+
+[[env.ui-test.durable_objects.bindings]]
+name = "MEMO_STORE"
+class_name = "MemoStore"
 

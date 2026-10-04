@@ -2442,3 +2442,15 @@ button:disabled { cursor: wait; opacity: .65; }
   .daycare-print-output, .daycare-print-output * { visibility: visible !important; }
   .daycare-print-output { display: block !important; position: static; width: 100%; overflow-wrap: anywhere; }
 }
+:root { --memo-save-success: #166534; }
+.memo-sync-panel { margin: 10px 0 16px; padding: 12px; border: 1px solid #dbe4f0; border-radius: 12px; background: #f8fafc; min-width: 0; }
+.memo-sync-panel p { margin: 0 0 8px; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.memo-sync-panel [data-kind="success"] { color: var(--memo-save-success); }
+.memo-sync-panel [data-kind="error"] { color: #9f1239; }
+.memo-sync-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.memo-sync-actions .action-btn { flex: 1 1 140px; white-space: normal; font-size: 12px; padding: 8px 10px; }
+.memo-sync-panel small { display: block; font-size: 11px; color: #64748b; line-height: 1.5; }
+.memo-conflict { margin-top: 12px; padding: 10px; border: 1px solid #fda4af; border-radius: 8px; background: #fff1f2; }
+.memo-conflict[hidden] { display: none; }
+.memo-conflict label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.memo-conflict textarea { box-sizing: border-box; width: 100%; resize: vertical; font: inherit; font-size: 13px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }

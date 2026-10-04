@@ -63,6 +63,7 @@
     });
   }
   function showGate() {
+    window.DaycareMemo?.pause();
     clearDeviceInvite();
     window.DaycareRecords?.cancelSave();
     document.body.dataset.locked = 'true'; ready = false;
@@ -108,11 +109,13 @@
     }, 5 * 60000);
     window.DaycareRecords?.initEvidence();
     window.DaycareNotion?.checkHealth();
+    window.DaycareMemo?.start();
   }
   let lastActivity = Date.now();
   ['pointerdown', 'keydown', 'input'].forEach(type => document.addEventListener(type, () => { lastActivity = Date.now(); }));
   async function lock(forget = false) {
     await window.DaycareRecords?.save();
+    await window.DaycareMemo?.persist();
     setBusy(true); showGate();
     try { await api('/api/auth/logout', { forget }); } catch (e) { error('서버 로그아웃 확인이 필요합니다. 연결 후 다시 잠가 주세요.'); }
     finally { setBusy(false); }

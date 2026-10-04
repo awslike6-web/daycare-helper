@@ -37,6 +37,8 @@ createServer(async (req, res) => {
       const p = log.properties[f.property];
       if (f.select) return p?.select?.name === f.select.equals;
       if (f.relation) return p?.relation?.some(r => r.id === f.relation.contains);
+      if (f.title?.starts_with) return p?.title?.some(t => (t.plain_text || t.text?.content || '').startsWith(f.title.starts_with));
+      if (f.date?.equals) return p?.date?.start === f.date.equals;
       if (f.date?.on_or_after) return p?.date?.start >= f.date.on_or_after;
       if (f.date?.on_or_before) return p?.date?.start <= f.date.on_or_before;
       return true;
@@ -45,7 +47,10 @@ createServer(async (req, res) => {
     const saved = page(plainProperties(input.properties), input.parent); logs.set(saved.id, saved); blocks.set(saved.id, input.children || []); output = saved;
   } else if (path.startsWith('/v1/pages/')) {
     const id = path.split('/')[3]; output = logs.get(id);
-    if (req.method === 'PATCH' && output) output.properties = plainProperties(input.properties);
+    if (req.method === 'PATCH' && output) {
+      if (input.properties) output.properties = { ...output.properties, ...plainProperties(input.properties) };
+      if (input.archived !== undefined) output.archived = input.archived;
+    }
   } else if (path.startsWith('/v1/blocks/')) {
     const id = path.split('/')[3];
     if (req.method === 'PATCH') blocks.set(id, [...(blocks.get(id) || []), ...(input.children || [])]);

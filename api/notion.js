@@ -28,8 +28,8 @@ export async function callNotionApi(env, endpoint, method = 'GET', body) {
       }
       throw new ApiError('노션이 요청을 제한하고 있습니다. 작성본을 보관했습니다. 잠시 후 저장을 다시 눌러 주세요.', 429);
     }
-    if ([401, 403].includes(response.status)) throw new ApiError('노션 DB의 연결 권한 또는 이용 한도를 확인해 주세요. 작성본은 보존됩니다.', 502);
-    if (response.status === 400) throw new ApiError('노션이 저장 서식을 거부했습니다. 관리자에게 DB 속성 확인을 요청해 주세요. 작성본은 보존됩니다.', 502);
+    if ([401, 403].includes(response.status)) throw Object.assign(new ApiError('노션 DB의 연결 권한 또는 이용 한도를 확인해 주세요. 작성본은 보존됩니다.', 502), { writeRejected: true });
+    if (response.status === 400) throw Object.assign(new ApiError('노션이 저장 서식을 거부했습니다. 관리자에게 DB 속성 확인을 요청해 주세요. 작성본은 보존됩니다.', 502), { writeRejected: true });
     throw new ApiError('노션 연결에 실패했습니다. 작성본은 보존됩니다. 저장 기록을 먼저 조회한 뒤 다시 시도해 주세요.', 502);
   }
 }
@@ -79,7 +79,7 @@ function logFromPage(page, childMap = new Map()) {
   const raw = textOf(p['원시 메모/키워드']);
   const observation = textOf(p['관찰일지 최종본']);
   const summary = textOf(p['관찰 요약']);
-  return { id: page.id, url: page.url, title: textOf(p['기록명/식별자']),
+  return { id: page.id, url: page.url, title: textOf(p['기록명/식별자']), memoOnly: textOf(p['기록명/식별자']).startsWith('[원시메모:'),
     childId, child_name: childMap.get(childId)?.name || (childId ? '원아' : '학급 전체'),
     class_name: p['학급']?.select?.name || '', date: p['작성일자']?.date?.start || '',
     activity: p['활동 구분']?.select?.name || '', summary, observation_summary: summary,

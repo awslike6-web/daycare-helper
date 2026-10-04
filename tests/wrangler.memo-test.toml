@@ -1,0 +1,20 @@
+# 가상 노션에만 연결하는 원시 메모 종단 실행기.
+name = "daycare-memo-runtime-test"
+main = "../worker.js"
+compatibility_date = "2026-06-26"
+compatibility_flags = ["nodejs_compat"]
+
+[[durable_objects.bindings]]
+name = "AUTH_STORE"
+class_name = "AuthStore"
+[[durable_objects.bindings]]
+name = "MEMO_STORE"
+class_name = "MemoStore"
+[[migrations]]
+tag = "memo-test-v1"
+new_sqlite_classes = ["AuthStore", "MemoStore"]
+
+[vars]
+NOTION_TEACHER_DB_ID = "teachers"
+NOTION_CHILD_DB_ID = "children"
+NOTION_DAILY_LOG_DB_ID = "logs"

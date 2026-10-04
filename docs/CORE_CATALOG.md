@@ -14,6 +14,7 @@
 - 인증: POST /api/auth/register(초대와 PIN), login(등록 기기와 PIN), logout, change-pin.
 - 세션 필요: GET /api/session, /api/connection, /api/children, /api/history, /api/history/:id, /api/children/:id/recent-logs.
 - 세션과 동일 출처 JSON 필요: POST /api/generate, /api/logs/save, /api/profile, /api/children; PUT /api/children/:id.
+- 원시 메모: GET /api/memo?date=…&childId=…; PUT /api/memo {date,childId,rawMemo,baseVersion}. 실제 교사·담당반·원아를 검증하고 source:notion과 rawMemo/version/pageId/updatedAt를 반환합니다. 오래된 버전은 current 메모를 포함한 409입니다.
 - /api/gemini-key는 410이며 키를 배포하지 않습니다.
 
 ### api/auth.js
@@ -38,6 +39,10 @@ callNotionApi(env, endpoint, method, body), getTeachersList, getChildrenList, re
 
 generateDaycareLog(options), validateFormats(data, formats), FORMAT_KEYS. 선택 서식의 프롬프트·사실 규칙·응답 내용 검증·110초 제한·일시 장애 재시도를 구성하여 서버 키로 호출하고 meta.model_used로 실제 모델을 반환합니다. worker.js에서 원아 정보·근거·원시 메모를 가명화하여 전달합니다.
 
+### api/memo.js → MemoStore
+
+memoCall(env,operation,context,input), verifyMemoConnection(env,teacher,date). 교사·학급·날짜·원아별 Durable Object 큐와 노션 자동 메모 행의 읽기·버전 비교·속성 갱신·불명확 쓰기 재조회를 담당합니다. pending은 노션 확인 전 새 쓰기를 막으며 같은 텍스트 재시도는 쓰기를 생략합니다. 관리자 /api/admin/verify의 memoOnly=true는 연구반 새 가상 원아에서 저장→수정→노션 직접 조회 후 보관합니다.
+
 ### infra/notion-proxy.js / api/notion-proxy-guard.js
 
 기존 공유 프록시와 guardDaycareProxy. 보육 DB와 하위 자료 접근을 캐시 전에 검사하며 서버 인증 요청은 캐시를 우회합니다. wrangler.notion-proxy.toml은 기존 minmin-notion에 배포합니다.
@@ -61,6 +66,8 @@ DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, cancelPen
 
 ## 화면과 출력
 
+- public/js/memo-sync.js → DaycareMemo: start, changed, persist, flush, pause, beforeContextChange, clearEditor, restoredText, forget, snapshot. 메모 5초/30초 전송·노션 조회·대상별 AES-GCM 대기본·교사/대상 변경 격리·동시 편집 선택을 제공합니다. app.js 입력·STT, 인증 unlock/잠금, 원아/날짜 변경, 기존 초안 복원과 연결됩니다. 사진·검수 완성본은 공유하지 않습니다.
+
 - public/app.js: 초기화·메모·날짜·문체 설정·사진 재인코딩·모달의 화면 대문.
 - public/js/ai-engine.js → AiEngine: handleGenerate, renderResults, switchResultTab, copyTextToClipboard, copyHwpTableToClipboard, setupExportListeners. 검수 가능한 7종 결과와 실제 값이 들어간 복사본을 구성합니다.
 - public/gemini-client.js → GeminiClient: 동일 출처 generate/refine. 키 수급·브라우저 Google 직통 호출을 하지 않습니다.
@@ -71,6 +78,8 @@ DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, cancelPen
 
 - tests/backend.test.js: 기기·PIN·학급·프록시·실제 근거·전체 저장 계약.
 - tests/draft.test.js: 암호화 초안·빈 화면 덮어쓰기 방지·검수 복원.
+- tests/memo-frontend.test.js: 자동 저장 시간·암호화·PC 조회·동시 수정 합치기·오프라인 재진입·날짜 격리·화면 숨김·빈 입력 보호.
+- tests/memo-runtime.test.js + tests/wrangler.memo-test.toml: 실제 workerd의 두 기기 쿠키·AI 없는 노션 저장/수정/조회·중복 생략·경합 409·반 격리·응답 유실 재조회·명확한 거부 후 복구.
 - tests/frontend.test.js: 필수 DOM·모듈 경로·키 경로·파일 크기.
 - tests/stability.test.js: 만료 링크 복구·등록 주소 보존·교사 선택 DOM·AI/노션 오류 분류·검수 누락·연속 저장 제한·중복 대기 잠금 복구·통신/본문 시간 초과·취소·이전 요청의 늦은 응답 격리.
 - scripts/verify_connections.mjs: 관리자 운영 연결 검증. --notion-only로 AI와 분리한 가상 기록 쓰기·읽기를 수행합니다.

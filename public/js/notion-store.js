@@ -131,6 +131,7 @@
     const state = window.state || {};
     if (state.selectedChild?.id !== child.id) {
       window.DaycareRecords?.invalidateResult(); window.DaycareRecords?.resetEvidence();
+      window.DaycareMemo?.beforeContextChange();
     }
     state.selectedChild = child;
 
@@ -269,7 +270,7 @@
       const params = new URLSearchParams({ from: date, to: date, limit: '100', ...(childId && childId !== 'class-all' ? { childId } : {}) });
       const json = await requestJson('/api/history?' + params, { signal });
       if (signal?.aborted) return false;
-      const existing = (json.data || []).find(l => childId === 'class-all' ? !l.childId : l.childId === childId);
+      const existing = (json.data || []).find(l => !l.memoOnly && (childId === 'class-all' ? !l.childId : l.childId === childId));
       if (existing) {
         window.DaycareRecords?.saveStatus('같은 날짜의 기록이 있습니다. 열린 창에서 저장 방식을 선택해 주세요.');
         const cancel = () => finishDuplicate(); let choice;
@@ -606,7 +607,7 @@
           <span style="font-size: 12px; color: #64748B;">📅 ${item.date || ''}</span>
         </div>
         <div style="font-size: 13px; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-          ${item.summary || item.kidsnote_preview || '보육 일지 기록'}
+          ${item.memoOnly ? '📝 자동 저장 메모 · ' + item.memo : item.summary || item.kidsnote_preview || '보육 일지 기록'}
         </div>
       `;
 
@@ -646,7 +647,7 @@
           </button>
         </div>
         <div style="background: #FFF; padding: 12px; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 13px; line-height: 1.6; white-space: pre-wrap;">
-          ${item.content || item.summary || '내용 없음'}
+          ${item.content || item.summary || item.memo || '내용 없음'}
         </div>
       </div>
     `;
@@ -671,6 +672,7 @@
     if (child) selectChild(child);
     else if (!item.childId) renderChildrenChips('class-all');
     if (rawMemoInput) rawMemoInput.value = item.memo || '';
+    window.DaycareMemo?.restoredText();
     if (item.date && typeof window.updateRecordDate === 'function') {
       window.updateRecordDate(item.date);
     }

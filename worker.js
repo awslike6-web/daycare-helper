@@ -2,6 +2,8 @@ import { generateDaycareLog } from './api/gemini.js';
 import { ApiError, authCall, cookies, authCookies, checkMutation, requireSession } from './api/auth.js';
 import { getTeachersList, getChildrenList, requireChild, getRecentChildLogs, getAllDailyLogs, getLogDetail, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion, updateTeacherProfile, callNotionApi, verifyNotionConnection } from './api/notion.js';
 export { AuthStore } from './api/auth.js';
+import { memoCall, verifyMemoConnection } from './api/memo.js';
+export { MemoStore } from './api/memo.js';
 
 const securityHeaders = {
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
@@ -127,6 +129,7 @@ export default {
         if (!teacher) throw new ApiError('연구반 교사 프로필이 필요합니다.', 503);
         const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
         const options = request.body ? await bodyOf(request) : {};
+        if (options.memoOnly === true) return json(await verifyMemoConnection(env, teacher, date));
         if (options.notionOnly === true) return json(await verifyNotionConnection(env, teacher, date));
         const childName = '시스템검증가상원아';
         const rawMemo = '[시스템 검증용 가상 메모 · 실제 원아 기록 아님] 시스템검증가상원아 블록 두 개를 손으로 잡음.';
@@ -190,6 +193,13 @@ export default {
       if (teacher.className !== session.className) throw new ApiError('담당반이 변경되어 기기 재등록이 필요합니다.', 403);
       if (path === '/api/session') return json({ protected: true, profile: { ...publicProfile(teacher), style: teacher.style, sampleNote: teacher.sampleNote, closing: teacher.closing }, expiresAt: session.expiresAt, draftKey: session.draftKey });
       if (path === '/api/connection') { await getChildrenList(env, teacher.className); return json({ status: 'ok', source: 'notion' }); }
+      if (path === '/api/memo' && ['GET', 'PUT'].includes(request.method)) {
+        const input = request.method === 'GET' ? Object.fromEntries(url.searchParams) : await bodyOf(request);
+        const child = input.childId && input.childId !== 'class-all' ? await requireChild(env, input.childId, teacher.className) : null;
+        const context = { teacherId: teacher.id, className: teacher.className, date: dateOf(input.date), childId: child?.id || null, childName: child?.name || '학급 전체' };
+        const result = await memoCall(env, request.method === 'GET' ? 'read' : 'save', context, input);
+        return json(result.data, result.status);
+      }
       if (path === '/api/profile' && request.method === 'POST') return json(await updateTeacherProfile(env, teacher.id, await bodyOf(request)));
       if (path === '/api/children' && request.method === 'GET') return json(await getChildrenList(env, teacher.className));
       if (path === '/api/children' && request.method === 'POST') return json(await saveChildToNotion({ ...await bodyOf(request), className: teacher.className }, env));
@@ -215,6 +225,7 @@ export default {
         if (context && (context.date !== body.date || (context.childId || null) !== (child?.id || null) || context.teacherId !== teacher.id)) throw new ApiError('생성 당시의 원아·날짜와 다릅니다. 선택한 대상으로 다시 생성해 주세요.', 409);
         if (body.pageId) {
           const existing = await getLogDetail(env, body.pageId, teacher.className);
+          if (existing.memoOnly) throw new ApiError('자동 메모는 완성본 저장으로 덮어쓰지 않습니다. 완성 일지는 별도로 저장해 주세요.', 409);
           if ((existing.childId || null) !== (child?.id || null)) throw new ApiError('다른 원아의 기록을 덮어쓸 수 없습니다.', 403);
           if (body.append) {
             body.rawMemo = [existing.memo, body.rawMemo].filter(Boolean).join('\n\n');

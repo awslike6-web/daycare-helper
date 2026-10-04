@@ -36,8 +36,10 @@ jobs:
           node --check public/js/notion-store.js
           node --check public/js/ai-engine.js
           node --check public/js/records-flow.js
+          node --check public/js/memo-sync.js
           node --check api/auth.js
           node --check api/notion.js
+          node --check api/memo.js
           node --check api/gemini.js
           node --check api/notion-proxy-guard.js
           node --test tests/*.test.js

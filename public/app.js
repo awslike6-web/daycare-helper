@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   function updateRecordDate(dateStr) {
     if (!dateStr) return;
-    if (state.selectedDate !== dateStr) window.DaycareRecords?.invalidateResult();
+    if (state.selectedDate !== dateStr) { window.DaycareRecords?.invalidateResult(); window.DaycareMemo?.beforeContextChange(); }
     state.selectedDate = dateStr;
     window.DaycareRecords?.resetEvidence();
 
@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   // 4. 🛡️ 안심 자동 임시보관 및 복원 (Crash Guard)
   // ============================================================================
-  const saveAutoDraft = () => window.DaycareRecords?.save();
+  const saveAutoDraft = () => { window.DaycareMemo?.changed(); return window.DaycareRecords?.save(); };
   const clearAutoDraft = () => window.DaycareRecords?.clear();
   window.saveAutoDraft = saveAutoDraft;
   window.clearAutoDraft = clearAutoDraft;
@@ -372,6 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
           btnClearMemo.innerHTML = '<span>🗑️</span> <span>비우기</span>';
           btnClearMemo.style.background = '#F1F5F9';
           btnClearMemo.style.color = '#64748B';
+          window.DaycareMemo?.clearEditor();
           rawMemoInput.value = '';
           state.photos = [];
           renderPhotoPreviews();
