@@ -88,7 +88,7 @@
             c.version = remote.version; c.baseText = remote.rawMemo; c.ready = true; schedule(c);
           } else showConflict(c, remote);
         } else if (window.state?.lastResult && remote.rawMemo !== c.text) showConflict(c, remote);
-        else { c.text = remote.rawMemo; if (el('rawMemoInput')) el('rawMemoInput').value = c.text; acknowledged(c, remote); }
+        else { c.text = remote.rawMemo; if (el('rawMemoInput')) el('rawMemoInput').value = c.text; window.DaycareChildLinks?.refreshSuggestions(); acknowledged(c, remote); }
       } catch (error) {
         if (live(c)) status('노션 메모 연결 대기 · ' + error.message + ' 입력 내용은 이 기기에 보관합니다.', 'error', c);
       }
@@ -148,6 +148,7 @@
     if (pending?.rawMemo && next.text === initialText && (!next.text || (next.restoredAt && pending.timestamp >= next.restoredAt))) {
       next.text = pending.rawMemo; next.version = pending.baseVersion; next.baseText = pending.baseText || ''; next.dirty = true;
       el('rawMemoInput').value = next.text;
+      window.DaycareChildLinks?.refreshSuggestions();
     }
     if (pending?.rawMemo === next.text) { next.version = pending.baseVersion; next.baseText = pending.baseText || ''; }
     await read(next);
@@ -189,6 +190,7 @@
     c.text = merge ? [remote.rawMemo, localText].filter(Boolean).join('\n\n[이 기기에서 추가한 메모]\n') : remote.rawMemo;
     c.version = remote.version; c.baseText = remote.rawMemo; c.ready = true; c.remote = null; c.dirty = c.text !== remote.rawMemo;
     el('rawMemoInput').value = c.text; hideConflict(); await persist(c); window.DaycareRecords?.save();
+    window.DaycareChildLinks?.refreshSuggestions();
     if (merge) { status('두 메모를 합쳤습니다. 중복 문장을 정리하세요. 5초 뒤 노션에 저장합니다.'); schedule(c); }
     else acknowledged(c, remote);
   }

@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   // 4. 🛡️ 안심 자동 임시보관 및 복원 (Crash Guard)
   // ============================================================================
-  const saveAutoDraft = () => { window.DaycareMemo?.changed(); return window.DaycareRecords?.save(); };
+  const saveAutoDraft = () => { window.DaycareChildLinks?.memoChanged(); window.DaycareMemo?.changed(); return window.DaycareRecords?.save(); };
   const clearAutoDraft = () => window.DaycareRecords?.clear();
   window.saveAutoDraft = saveAutoDraft;
   window.clearAutoDraft = clearAutoDraft;
@@ -375,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
           btnClearMemo.style.color = '#64748B';
           window.DaycareMemo?.clearEditor();
           rawMemoInput.value = '';
+          window.DaycareChildLinks?.refreshSuggestions();
           state.photos = [];
           renderPhotoPreviews();
           clearAutoDraft();

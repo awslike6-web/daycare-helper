@@ -17,9 +17,9 @@ function browser(send = async () => ({ success: true, source: 'notion', childId:
     DaycareMemo: { changed() {}, async flush() {} }, DaycareRecords: { async save() {}, async requestJson(path, options) {
       calls.push({ path, ...options }); return path.startsWith('/api/memo?') ? { source: 'notion', pageId: 'source', rawMemo } : send(path, options);
     } } };
-  const document = { getElementById: node, addEventListener(event, fn) { events.set(event, fn); } };
+  const document = { getElementById: id => id.startsWith('memoChild') ? null : node(id), addEventListener(event, fn) { events.set(event, fn); } };
   class Option { constructor(label, value) { this.label = label; this.value = value; } }
-  vm.runInNewContext(source, { window, document, Option, AbortController, URLSearchParams, console });
+  vm.runInNewContext(source, { window, document, Option, AbortController, URLSearchParams, console, setTimeout, clearTimeout });
   events.get('DOMContentLoaded')(); window.DaycareChildLinks.contextChanged(); node('rawMemoInput').value = rawMemo;
   const row = () => { node('childLinkChild').value = 'child-b'; node('childLinkExcerpt').value = '김하늘 공을 굴림.'; node('childLinkSummary').value = '공을 굴림'; node('childLinkConfirmed').checked = true; };
   return { window, node, calls, row, save: () => node('childLinkSave').handlers.get('click')() };

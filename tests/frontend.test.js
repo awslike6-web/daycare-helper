@@ -13,6 +13,7 @@ test('실제 화면의 인증·검수·중복 저장 요소와 상대 경로 모
   }
   assert.ok(html.indexOf('id="currentPinInput"') < html.indexOf('id="newPinInput"'));
   assert.ok(html.indexOf('id="newPinInput"') < html.indexOf('id="confirmPinInput"'));
+  for (const id of ['memoChildSuggestions', 'memoChildList', 'memoChildSave', 'memoChildStatus', 'memoChildUnassignedList']) assert.ok(ids.includes(id), id);
   for (const id of ['openDeviceInviteBtn', 'deviceInviteForm', 'deviceInvitePinInput', 'deviceInviteUrl', 'deviceInviteStatus', 'copyDeviceInviteBtn']) assert.ok(ids.includes(id), id);
 });
 

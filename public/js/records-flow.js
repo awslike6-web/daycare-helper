@@ -72,6 +72,7 @@
     const disabled = buttons.map(b => b.disabled);
     const controller = new AbortController(); saveController = controller;
     saving = true; state.savingNotion = true; buttons.forEach(b => { b.disabled = true; });
+    window.DaycareChildLinks?.refreshButtons();
     try {
       await save();
       saveStatus('저장 전 같은 날짜의 기록을 확인하는 중입니다.');
@@ -96,6 +97,7 @@
       }
     } finally {
       saving = false; saveController = null; state.savingNotion = false;
+      window.DaycareChildLinks?.refreshButtons();
       buttons.forEach((b, i) => { b.disabled = b.id === 'generateBtn' && state.pendingDraft ? true : disabled[i]; });
     }
   }
@@ -216,6 +218,7 @@
         const child = state.children.find(c => c.id === draft.childId);
         if (child || draft.childId === 'class-all') {
           if (child) window.ChildrenStore.selectChild(child);
+          else window.ChildrenStore.renderChildrenChips('class-all');
           window.updateRecordDate?.(draft.date);
           const clean = draft.memoSync && draft.memoSync.rawMemo === draft.rawMemo && draft.memoSync.dirty === false;
           el('rawMemoInput').value = clean ? '' : draft.rawMemo || '';
@@ -232,6 +235,7 @@
         restoring = true;
         const child = state.children.find(c => c.id === draft.childId);
         if (child) window.ChildrenStore.selectChild(child);
+        else if (draft.childId === 'class-all') window.ChildrenStore.renderChildrenChips('class-all');
         else if (draft.childId && draft.childId !== 'class-all') { window.showToast?.('원아 소속이 변경되어 이전 초안을 복원할 수 없습니다.'); restoring = false; return; }
         window.updateRecordDate?.(draft.date);
         el('rawMemoInput').value = draft.rawMemo || ''; el('rawMemoInput').readOnly = false; el('generateBtn').disabled = false;
@@ -243,7 +247,7 @@
         window.syncFormatChipsUI?.(); window.DaycareAuth?.updatePersonaUI();
         if (el('evidenceFrom')) el('evidenceFrom').value = draft.evidenceFrom || draft.date.slice(0, 7) + '-01';
         updateEvidenceCount(); window.renderPhotoPreviews?.();
-        banner.style.display = 'none'; state.pendingDraft = false; restoring = false; save(); window.DaycareMemo?.start();
+        banner.style.display = 'none'; state.pendingDraft = false; restoring = false; window.DaycareChildLinks?.refreshSuggestions(); save(); window.DaycareMemo?.start();
       };
       el('btnDiscardAutoDraft').onclick = () => { clear(); window.DaycareMemo?.start(); };
     } catch { window.showToast?.('임시보관 내용을 읽을 수 없습니다. 기존 저장본은 보존합니다.'); }

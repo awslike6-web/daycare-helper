@@ -72,6 +72,8 @@ DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, cancelPen
 
 - public/js/child-links.js → DaycareChildLinks: contextChanged, pause, captureDraft, restoreDraft, renderIndividual, saveIndividual. 원시 메모 단계의 원아 연결과 생성된 카드의 ID·발췌·검수 확인을 담당합니다. 동명이인에는 연령·구분 번호를 표시하고 이름으로 첫 원아를 찾지 않습니다. 확인은 복원 후 다시 받으며 초안은 기존 암호화 저장에 포함합니다.
 
+  suggestMemo(rawMemo,children)는 문장/줄바꿈·실명/이름 약칭·조사와 쉼표 뒤 새 주어로 원문 후보와 unassigned/omitted를 반환하는 순수 함수입니다. refreshSuggestions/memoChanged는 반 전체 원문의 입력·STT·노션 조회·충돌 선택·초안 복원을 연결하며 편집 후보를 유지하고 확인을 해제합니다. saveSuggestions는 확인한 카드만 기존 원문 확보와 /api/logs/link-child로 직렬 저장하며 부분 실패와 늦은 응답을 격리합니다. refreshButtons는 완성본 저장 파사드의 저장 시작/종료에서도 일괄 저장 버튼을 잠금/복구합니다. 후보 100건 제한·공동 역할 경고·동명이인 미선택·미연결 문장 수동 후보를 제공합니다.
+
 - public/js/memo-sync.js → DaycareMemo: start, changed, persist, flush, pause, beforeContextChange, clearEditor, restoredText, forget, snapshot. 메모 5초/30초 전송·노션 조회·대상별 AES-GCM 대기본·교사/대상 변경 격리·동시 편집 선택을 제공합니다. app.js 입력·STT, 인증 unlock/잠금, 원아/날짜 변경, 기존 초안 복원과 연결됩니다. 사진·검수 완성본은 공유하지 않습니다.
 
 - public/app.js: 초기화·메모·날짜·문체 설정·사진 재인코딩·모달의 화면 대문.
@@ -85,6 +87,7 @@ DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, cancelPen
 - tests/backend.test.js: 기기·PIN·학급·프록시·실제 근거·전체 저장 계약.
 - tests/child-links-runtime.test.js: 실제 workerd의 동명이인 ID 선택·발췌 격리·개인 조회·근거 생성·원문/인증 조작 거부·동시 재시도·응답 유실·과거/다중 관계 차단.
 - tests/child-links-frontend.test.js: 확인·대상·발췌 누락 차단, 동명이인 ID 전송, 연속 탭·잠금 뒤 늦은 응답과 저장 중 추가 수정 분리.
+- tests/name-suggestions.test.js: 이름/조사·약칭·동명이인·공동 역할·일반 단어 부분 일치·반복/후보 상한·확인한 카드 일괄 저장·수정/복원·이름 없는 문장·부분 실패·연속 탭·늦은 응답·저장 중 수정 보존.
 - tests/draft.test.js: 암호화 초안·빈 화면 덮어쓰기 방지·검수 복원.
 - tests/memo-frontend.test.js: 자동 저장 시간·암호화·PC 조회·동시 수정 합치기·오프라인 재진입·날짜 격리·화면 숨김·빈 입력 보호.
 - tests/memo-runtime.test.js + tests/wrangler.memo-test.toml: 실제 workerd의 두 기기 쿠키·AI 없는 노션 저장/수정/조회·중복 생략·경합 409·반 격리·응답 유실 재조회·명확한 거부 후 복구.
