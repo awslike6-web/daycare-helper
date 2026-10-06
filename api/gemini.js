@@ -12,9 +12,9 @@
 
 import { ApiError } from './auth.js';
 
-const GEMINI_PRIMARY_MODEL = 'gemini-3.8-flash';
-const GEMINI_FALLBACK_MODEL = 'gemini-3.6-flash';
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+export const GEMINI_PRIMARY_MODEL = 'gemini-3.8-flash';
+export const GEMINI_FALLBACK_MODEL = 'gemini-3.6-flash';
+export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 export const FORMAT_KEYS = { kidsnote: 'kidsnote', class_daily_report: 'class_daily_report', observation: 'monthly_observation',
   hangroo_eval: 'hangroo_eval', daily_care: 'daily_care_log', counseling: 'parent_counseling', play_support: 'play_support' };
@@ -29,7 +29,7 @@ function aiError(status, text = '') {
   if (/location|region|country/i.test(text)) return new ApiError('현재 AI 호출 지역이 지원되지 않습니다. 관리자에게 연결 설정 확인을 요청해 주세요.', 503);
   if (status === 401 || status === 403 || /API key|permission|credential/i.test(text)) return new ApiError('AI 키 또는 프로젝트 권한 설정을 확인해 주세요. 작성 내용은 보관됩니다.', 503);
   if (status === 429) return new ApiError('AI 사용량 제한에 도달했습니다. 잠시 후 다시 시도하거나 프로젝트 한도를 확인해 주세요.', 429);
-  if ([500, 502, 503, 504].includes(status)) return new ApiError('AI 서버가 일시적으로 응답하지 않습니다. 자동 재시도 후에도 연결되지 않았습니다. 메모를 보존했으니 잠시 후 다시 시도해 주세요.', 503);
+  if ([500, 502, 503, 504].includes(status)) return new ApiError('AI 서버 응답 오류로 서식을 생성하지 못했습니다. 재시도와 대체 모델도 실패했습니다. 반복되면 관리자에게 연결 점검을 요청해 주세요.', 503);
   return new ApiError('AI 요청 설정을 확인해 주세요. 메모와 사진은 보관됩니다.', 502);
 }
 

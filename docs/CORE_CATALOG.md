@@ -1,11 +1,12 @@
 # 보육비서 공통 부품·API 지도
 
-개정: 2026-10-04 · 명세: docs/daycare_spec.md
+개정: 2026-10-06 · 명세: docs/daycare_spec.md
 
 ## 가이드와 운영 도구
 
 - 앱 안 사용 가이드: public/index.html의 teacherGuideModal. 열기·닫기·확인은 기존 public/app.js 이벤트를 사용합니다. docs/teacher_guide.md와 버튼 이름·월/분기 절차·저장/복원/출력 범위를 함께 갱신합니다.
 - 관리자 등록: node scripts/create_device_invite.mjs 사랑반 또는 소망반. 링크는 30분·일회용이며 공개 문서·Git에 남기지 않습니다.
+- 관리자 AI 설정 점검: node scripts/check_ai_connection.mjs. 실제 자료 없이 운영 최소 요청을 실행하고 로컬·운영 키가 같은지 여부만 출력합니다. 짧은 요청 성공을 실제 서식 생성 성공으로 간주하지 않으며 키·해시 식별자를 출력하지 않습니다. 키 교체 명령은 포함하지 않습니다.
 - node scripts/verify_connections.mjs --notion-only는 연구반 가상 메모의 저장·조회·일치 후 보관, --memo-only는 새 가상 원아의 AI 없는 메모 저장·수정·직접 조회 후 보관, --child-links-only는 새 가상 원아 2명과 가상 학급 원문의 발췌·관계·조회·재시도·잘못된 발췌 거부 후 보관을 검증합니다. 옵션 없이 실행하면 실제 AI 호출도 하므로 결과의 ai 값을 구분합니다. 운영 자료를 쓰는 도구를 단순 문서 확인을 위해 실행하지 않습니다.
 - 관리자 비밀값·보육비서 전용 AI 키는 Worker Secret과 로컬 비공개 환경파일에만 둡니다. PIN 자동 복구·이메일 인증 확장은 현재 제공하지 않습니다.
 
@@ -19,6 +20,7 @@ POST /api/generate의 evidenceFrom/evidenceTo는 실제 근거의 기간 계약�
 
 - 공개: GET /api/health, GET /api/auth/profiles(최소 교사 목록), POST /api/auth/invite-status(유효 초대 필요).
 - 관리자 비밀값: POST /api/auth/invite, POST /api/admin/verify.
+- 관리자 AI 점검: POST /api/admin/ai-status. api/ai-diagnostics.js의 diagnoseAi(env)는 기본 설정을 api/gemini.js에서 재사용하고 모델 목록·짧은 가상 요청을 순차 실행합니다. 각 호출 20초 제한, 키의 단방향 비교 식별자·HTTP/상류 분류만 no-store로 반환하며 노션·실제 원아 자료는 사용하지 않습니다. 비인증·외부 출처·GET은 거부합니다.
 - 추가 기기 링크: POST /api/auth/device-invite. 등록 기기·세션·현재 PIN과 실제 노션 교사·담당반을 확인하여 자기 계정의 url/expiresAt를 no-store 응답으로 반환합니다.
 - 인증: POST /api/auth/register(초대와 PIN), login(등록 기기와 PIN), logout, change-pin.
 - 세션 필요: GET /api/session, /api/connection, /api/children, /api/history, /api/history/:id, /api/children/:id/recent-logs.

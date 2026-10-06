@@ -1,4 +1,5 @@
 import { generateDaycareLog } from './api/gemini.js';
+import { diagnoseAi } from './api/ai-diagnostics.js';
 import { ApiError, authCall, cookies, authCookies, checkMutation, requireSession } from './api/auth.js';
 import { getTeachersList, getChildrenList, requireChild, getRecentChildLogs, getAllDailyLogs, getLogDetail, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion, updateTeacherProfile, callNotionApi, verifyNotionConnection } from './api/notion.js';
 export { AuthStore } from './api/auth.js';
@@ -160,6 +161,11 @@ export default {
       checkMutation(request);
       if (path === '/api/health') return json({ status: 'ok', service: 'daycare-helper' });
       if (path === '/api/gemini-key') return json({ error: '브라우저 키 배포가 종료되었습니다.' }, 410);
+      if (path === '/api/admin/ai-status') {
+        if (request.method !== 'POST') throw new ApiError('관리자 점검은 POST 요청으로 실행해 주세요.', 405);
+        if (!env.AUTH_ADMIN_SECRET || request.headers.get('Authorization') !== 'Bearer ' + env.AUTH_ADMIN_SECRET) throw new ApiError('관리자 인증이 필요합니다.', 403);
+        return json(await diagnoseAi(env));
+      }
       // 운영 연결 검증은 연구반의 명시적인 가상 기록만 만들고 즉시 보관 처리한다.
       if (path === '/api/admin/verify' && request.method === 'POST') {
         if (!env.AUTH_ADMIN_SECRET || request.headers.get('Authorization') !== 'Bearer ' + env.AUTH_ADMIN_SECRET) throw new ApiError('관리자 인증이 필요합니다.', 403);

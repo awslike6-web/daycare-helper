@@ -26,6 +26,19 @@ test('AI 503은 대체 호출로 복구하고 402는 결제 안내를 반환하�
   } finally { global.fetch = original; }
 });
 
+test('AI 장애가 반복되면 재시도 실패를 알리고 단순 대기를 약속하지 않는다', async () => {
+  const original = global.fetch; let calls = 0;
+  global.fetch = async () => {
+    calls++;
+    return Response.json({ error: { status: 'UNAVAILABLE' } }, { status: 503, headers: { 'Retry-After': '0.001' } });
+  };
+  try {
+    await assert.rejects(() => generateDaycareLog({ apiKey: '가상 키', selectedFormats: ['kidsnote'] }), error =>
+      error.status === 503 && /대체 모델도 실패/.test(error.message) && !/일시적으로|잠시 후 다시/.test(error.message));
+    assert.equal(calls, 3);
+  } finally { global.fetch = original; }
+});
+
 test('노션 제한은 Retry-After 후 재시도하며 쓰기 503은 중복 재전송하지 않는다', async () => {
   const original = global.fetch; let calls = 0;
   const env = { NOTION_PROXY_URL: 'https://notion.test' };
