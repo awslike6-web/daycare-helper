@@ -1,6 +1,6 @@
 # 보육비서 명세서 (SSOT)
 
-버전: 3.6.4 · 개정: 2026-10-06 · 운영 AI 진단 추가 · 키 교체 승인 대기
+버전: 3.6.4 · 개정: 2026-10-06 · 운영 AI 진단 추가 · 선불제 연결 후 기존 키로 생성 복구 확인
 
 공식 앱: https://daycare-helper.awslike6.workers.dev/
 공식 저장소: https://github.com/awslike6-web/daycare-helper
