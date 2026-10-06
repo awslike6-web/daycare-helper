@@ -160,14 +160,14 @@
   function save() {
     const state = window.state;
     if (!state?.authenticated || !state.draftKey || restoring || state.pendingDraft) return queue;
-    if (!state.lastResult && !el('rawMemoInput')?.value.trim() && !state.photos?.length && !(state.evidenceSelectionActive && state.evidenceIds?.length)) return queue;
+    if (!state.lastResult && !el('rawMemoInput')?.value.trim() && !state.photos?.length && !window.DaycarePhotoMemo?.captureDraft() && !(state.evidenceSelectionActive && state.evidenceIds?.length)) return queue;
     capture();
     const id = state.teacherId, key = state.draftKey;
     const data = { timestamp: Date.now(), date: state.selectedDate, childId: state.selectedChild?.id,
       className: state.className, childName: state.selectedChild?.name, rawMemo: el('rawMemoInput')?.value || '',
       lastResult: state.lastResult, originalResult: state.originalResult, selectedFormats: state.selectedFormats,
       persona: state.persona, evidenceIds: state.evidenceIds || [], evidenceFrom: state.evidenceFrom, evidenceTo: state.evidenceTo,
-      photos: state.photos || [], memoSync: window.DaycareMemo?.snapshot() || null, childLinkDraft: window.DaycareChildLinks?.captureDraft() || null };
+      photos: state.photos || [], memoSync: window.DaycareMemo?.snapshot() || null, childLinkDraft: window.DaycareChildLinks?.captureDraft() || null, photoMemoDraft: window.DaycarePhotoMemo?.captureDraft() || null };
     const current = revision;
     queue = queue.catch(() => {}).then(async () => {
       const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -190,6 +190,7 @@
     return btoa(text);
   }
   function clear() {
+    window.DaycarePhotoMemo?.pause();
     revision++; if (window.state?.teacherId) localStorage.removeItem(storageKey(window.state.teacherId));
     if (window.state) window.state.pendingDraft = false;
     if (el('rawMemoInput')) el('rawMemoInput').readOnly = false;
@@ -215,7 +216,7 @@
       const draft = JSON.parse(new TextDecoder().decode(plain));
       if (draft.className !== state.className) return;
       // 메모만 있는 초안은 노션 공유본과 비교하여 자동 복원한다. 문서·사진 초안은 기존 확인을 유지한다.
-      if (!draft.lastResult && !draft.photos?.length && !draft.evidenceIds?.length && window.DaycareMemo) {
+      if (!draft.lastResult && !draft.photos?.length && !draft.photoMemoDraft && !draft.evidenceIds?.length && window.DaycareMemo) {
         const child = state.children.find(c => c.id === draft.childId);
         if (child || draft.childId === 'class-all') {
           if (child) window.ChildrenStore.selectChild(child);
@@ -245,6 +246,7 @@
           photos: draft.photos || [], evidenceIds: draft.evidenceIds || [], evidenceSelectionActive: !!draft.evidenceIds?.length, evidenceFrom: draft.evidenceFrom, evidenceTo: draft.evidenceTo || draft.date, persona: draft.persona || state.persona });
         if (draft.lastResult) window.AiEngine?.renderResults(draft.lastResult);
         window.DaycareChildLinks?.restoreDraft(draft.childLinkDraft);
+        window.DaycarePhotoMemo?.restoreDraft(draft.photoMemoDraft);
         window.syncFormatChipsUI?.(); window.DaycareAuth?.updatePersonaUI();
         if (el('evidenceFrom')) el('evidenceFrom').value = draft.evidenceFrom || draft.date.slice(0, 7) + '-01';
         if (el('evidenceTo')) el('evidenceTo').value = state.evidenceTo;

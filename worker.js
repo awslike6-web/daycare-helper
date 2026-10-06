@@ -1,5 +1,6 @@
 import { generateDaycareLog } from './api/gemini.js';
 import { diagnoseAi } from './api/ai-diagnostics.js';
+import { generatePhotoMemo } from './api/photo-memo.js';
 import { ApiError, authCall, cookies, authCookies, checkMutation, requireSession } from './api/auth.js';
 import { getTeachersList, getChildrenList, requireChild, getRecentChildLogs, getAllDailyLogs, getLogDetail, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion, updateTeacherProfile, callNotionApi, verifyNotionConnection } from './api/notion.js';
 export { AuthStore } from './api/auth.js';
@@ -268,6 +269,14 @@ export default {
       }
       const detailMatch = path.match(/^\/api\/history\/([^/]+)$/);
       if (detailMatch && request.method === 'GET') return json(await getLogDetail(env, detailMatch[1], teacher.className));
+      if (path === '/api/photo-memo' && request.method === 'POST') {
+        const body = await bodyOf(request), date = dateOf(body.date);
+        if (!body.childId || body.childId === 'class-all') throw new ApiError('사진 행동 메모를 남길 원아 한 명을 선택해 주세요.');
+        await requireChild(env, body.childId, teacher.className);
+        if (body.photoConsent !== true) throw new ApiError('사진의 외부 AI 전송 동의를 확인해 주세요.');
+        const result = await generatePhotoMemo({ images: body.images, date, apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL, fallbackModel: env.GEMINI_FALLBACK_MODEL, apiBase: env.GEMINI_API_BASE });
+        return json({ ...result, context: { childId: body.childId, date, teacherId: teacher.id }, requiresConfirmation: true });
+      }
       if (path === '/api/generate' && request.method === 'POST') return json(await generate(await bodyOf(request), env, teacher));
       if (['/api/logs/save', '/api/save-notion'].includes(path) && request.method === 'POST') {
         const body = await bodyOf(request);

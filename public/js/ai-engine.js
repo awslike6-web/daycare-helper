@@ -391,6 +391,11 @@
       showToast('⚠️ 먼저 원아나 학급을 선택해주세요.');
       return;
     }
+    if (!memoText && state.photos?.length) {
+      await window.DaycarePhotoMemo?.create();
+      return;
+    }
+    if (window.DaycarePhotoMemo && !(await window.DaycarePhotoMemo.ready())) return;
     const historyOnly = !memoText && !state.photos?.length;
     const formats = state.selectedFormats || ['class_daily_report', 'kidsnote'];
     if (historyOnly && (!state.evidenceIds?.length || !formats.length || formats.some(f => !['observation', 'hangroo_eval', 'counseling'].includes(f)))) {

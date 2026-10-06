@@ -128,6 +128,35 @@ test('인증된 생성은 실제 선택 기록만 쓰고 모든 등록 원아 �
   } finally { global.fetch = previous; }
 });
 
+test('사진 메모 API는 실제 원아·날짜·동의를 확인하고 미확정 초안만 반환하며 노션에 쓰지 않는다', async () => {
+  const auth = store(), tokens = await register(auth), env = envFor(auth), fixture = notionFixture();
+  env.AUTH_STORE.get = () => ({ fetch: (url, init) => auth.fetch(new Request(url, init)) });
+  fixture.aiData = { rawMemo: '사진 1: 블록을 잡고 있음.', limitations: '사진 속 행동 주체를 확인해야 함.' };
+  const headers = { Cookie: `daycare_device=${tokens.deviceToken}; daycare_session=${tokens.sessionToken}`, Origin: 'https://daycare.test', 'Content-Type': 'application/json' };
+  const previous = global.fetch; global.fetch = fixture.fetch;
+  const payload = { childId, date: '2026-10-07', images: ['data:image/png;base64,YQ=='], photoConsent: true };
+  const call = (body, extra = {}) => worker.fetch(new Request('https://daycare.test/api/photo-memo', { method: 'POST', headers: { ...headers, ...extra }, body: JSON.stringify({ ...payload, ...body }) }), env);
+  try {
+    assert.equal((await call({}, { Cookie: '' })).status, 401);
+    assert.equal((await call({}, { Origin: 'https://evil.test' })).status, 403);
+    assert.equal((await call({ childId: 'class-all' })).status, 400);
+    assert.equal((await call({ childId: '44444444-4444-4444-8444-444444444444' })).status, 403);
+    assert.equal((await call({ date: '2026-02-30' })).status, 400);
+    assert.equal((await call({ photoConsent: false })).status, 400);
+    assert.equal((await call({ images: ['https://example.test/photo.png'] })).status, 400);
+    assert.equal(fixture.requests.filter(r => r.url.includes('generativelanguage')).length, 0);
+    const response = await call({}); assert.equal(response.status, 200); assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    const result = await response.json(); assert.equal(result.requiresConfirmation, true); assert.equal(result.context.childId, childId); assert.equal(result.data.rawMemo, fixture.aiData.rawMemo);
+    assert.equal(fixture.saved, undefined); assert.equal(fixture.requests.some(r => r.url.includes('/pages') || r.url.includes('/blocks')), false);
+    const ai = fixture.requests.find(r => r.url.includes('generativelanguage'));
+    assert.doesNotMatch(JSON.stringify(ai.input), /테스트아동|테스트 교사/); assert.match(ai.input.system_instruction.parts[0].text, /신원.*판별하지/);
+    assert.match(ai.input.system_instruction.parts[0].text, /시간 순서가 아니다/); assert.match(ai.input.system_instruction.parts[0].text, /감정/);
+    assert.equal(ai.input.contents[0].parts[1].inline_data.data, 'YQ==');
+    fixture.log.properties['원시 메모/키워드'] = text('[사진 기반 행동 메모 · 교사 확인]\n' + result.data.rawMemo);
+    const history = await getRecentChildLogs(childId, '테스트아동', env, '사랑반'); assert.match(history.logs[0].raw_memo, /사진 1/);
+  } finally { global.fetch = previous; }
+});
+
 async function periodFixture(run) {
   const auth = store(), tokens = await register(auth), env = envFor(auth), fixture = notionFixture();
   env.AUTH_STORE.get = () => ({ fetch: (url, init) => auth.fetch(new Request(url, init)) });

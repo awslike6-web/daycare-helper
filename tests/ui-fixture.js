@@ -64,6 +64,10 @@ createServer(async (req, res) => {
   if (path.includes('/models/') && output) {
     const generated = JSON.parse(output.candidates[0].content.parts[0].text);
     const schema = input.system_instruction?.parts?.[0]?.text || '';
+    if (schema.includes('"rawMemo"')) {
+      generated.rawMemo = '사진 1: 빨간 옷을 입은 아이가 오른손으로 파란 블록을 잡고 있음.\n사진 2: 같은 옷의 아이 앞에 블록 두 개가 놓여 있음.';
+      generated.limitations = '사진 속 아이가 선택한 원아인지, 선택 날짜가 실제 관찰일인지 확인해야 함. 사진 순서는 행동 순서를 뜻하지 않음.';
+    }
     for (const key of ['kidsnote', 'class_daily_report', 'monthly_observation', 'hangroo_eval', 'parent_counseling', 'daily_care_log', 'play_support']) {
       if (!schema.includes(`  "${key}": {`)) delete generated[key];
     }

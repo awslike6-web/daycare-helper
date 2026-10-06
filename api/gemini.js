@@ -375,7 +375,7 @@ ${maskedMemo || '(오늘 메모 없음: 선택한 과거 기록으로 기간 서
 /**
  * 이미지 Base64를 Gemini inlineData 파트로 변환
  */
-function parseImageData(imageInput) {
+export function parseImageData(imageInput) {
   if (!imageInput) return null;
   // data:image/png;base64,xxxx 형태인지 확인
   const match = imageInput.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
@@ -491,6 +491,26 @@ ${refinement ? '다듬기 요청: ' + JSON.stringify(refinement) + '\n기존 글
     }
   };
 
+  const { data: parsedJson, model: usedModel } = await requestGeminiJson({ apiKey, payload, model, fallbackModel, apiBase, validate: data => validateFormats(data, selectedFormats) });
+
+  // 5. 실명 언마스킹 복원 ([아동A] -> 실제 원아 이름)
+  const unmaskedResult = parsedJson;
+
+  return {
+    success: true,
+    data: unmaskedResult,
+    meta: {
+      child_name: childName,
+      mode,
+      activity_area: activityArea,
+      model_used: usedModel
+    }
+  };
+}
+
+/** 서식 생성과 사진 행동 메모가 공유하는 제한 시간·재시도·JSON 호출. */
+export async function requestGeminiJson({ apiKey, payload, validate, model = GEMINI_PRIMARY_MODEL, fallbackModel = GEMINI_FALLBACK_MODEL, apiBase = GEMINI_API_BASE }) {
+  if (!apiKey) throw new ApiError('서버의 Gemini API 키 등록이 필요합니다.', 503);
   // 모델 호출 전체를 110초 이내로 제한하고 일시 장애에만 재시도한다.
   const deadline = Date.now() + 110000;
   const callModel = async (modelName) => {
@@ -527,7 +547,7 @@ ${refinement ? '다듬기 요청: ' + JSON.stringify(refinement) + '\n기존 글
 
     let result;
     try { result = JSON.parse(rawContent); } catch { throw new ApiError('AI 응답 서식을 읽을 수 없습니다. 작성 내용은 보관됩니다.', 502); }
-    validateFormats(result, selectedFormats);
+    validate(result);
     return result;
   };
 
@@ -553,17 +573,5 @@ ${refinement ? '다듬기 요청: ' + JSON.stringify(refinement) + '\n기존 글
     }
   }
 
-  // 5. 실명 언마스킹 복원 ([아동A] -> 실제 원아 이름)
-  const unmaskedResult = parsedJson;
-
-  return {
-    success: true,
-    data: unmaskedResult,
-    meta: {
-      child_name: childName,
-      mode,
-      activity_area: activityArea,
-      model_used: usedModel
-    }
-  };
+  return { data: parsedJson, model: usedModel };
 }

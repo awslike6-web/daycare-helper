@@ -1,4 +1,4 @@
-/** 실제 workerd와 두 기기 쿠키로 AI 없이 노션 저장·동시 편집·응답 유실을 검증한다. */
+/** 실제 workerd와 두 기기 쿠키로 메모 저장·동시 편집·사진 초안의 장기 참조를 검증한다. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -9,6 +9,7 @@ const childId = '22222222-2222-4222-8222-222222222222';
 const secondTeacher = '55555555-5555-4555-8555-555555555555';
 test('원시 메모의 실제 Worker 노션·기기 공유 종단', { timeout: 90000 }, async t => {
   const pages = new Map(); let creates = 0, patches = 0, loseReply = false, failWrite = false, edited = 0;
+  const aiRequests = [];
   const teachers = [{ id: teacherId, properties: { '교사명': { title: [{ plain_text: '가상 교사 A' }] }, '담당반': { select: { name: '사랑반' } } } },
     { id: secondTeacher, properties: { '교사명': { title: [{ plain_text: '가상 교사 B' }] }, '담당반': { select: { name: '소망반' } } } }];
   const children = [{ id: childId, properties: { '아동명': { title: [{ plain_text: '가상 원아' }] }, '소속 반': { select: { name: '사랑반' } } } }];
@@ -16,7 +17,14 @@ test('원시 메모의 실제 Worker 노션·기기 공유 종단', { timeout: 9
     let body = ''; for await (const part of req) body += part;
     const input = body ? JSON.parse(body) : {}, path = new URL(req.url, 'http://localhost').pathname;
     let output;
-    if (path === '/v1/databases/teachers/query') output = { results: teachers, has_more: false };
+    if (path.includes('/models/')) {
+      aiRequests.push(input);
+      const schema = input.system_instruction.parts[0].text;
+      const generated = schema.includes('"rawMemo"') ? { rawMemo: '사진 1: 아이가 오른손으로 블록을 잡고 있음.', limitations: '행동 주체와 관찰일은 교사가 확인해야 함.' } : {
+        monthly_observation: { play_obs: { date: '2026-10-07', behavior: '오른손으로 블록을 잡고 있음.' }, daily_obs: { date: '', behavior: '해당 영역의 관찰 기록 부족' } }, individual_observations: []
+      };
+      output = { candidates: [{ content: { parts: [{ text: JSON.stringify(generated) }] } }] };
+    } else if (path === '/v1/databases/teachers/query') output = { results: teachers, has_more: false };
     else if (path === '/v1/databases/children/query') output = { results: children.filter(c => c.properties['소속 반'].select.name === input.filter?.select?.equals), has_more: false };
     else if (path === '/v1/databases/logs/query') output = { results: [...pages.values()].filter(p => (input.filter?.and || []).every(f => {
       const property = p.properties[f.property];
@@ -40,8 +48,8 @@ test('원시 메모의 실제 Worker 노션·기기 공유 종단', { timeout: 9
   });
   await new Promise(resolve => service.listen(0, '127.0.0.1', resolve));
   const harness = createTestHarness({ workers: [{ configPath: new URL('./wrangler.memo-test.toml', import.meta.url),
-    secrets: { AUTH_PEPPER: '가상 메모 검증용', AUTH_ADMIN_SECRET: 'memo-test-only' },
-    vars: { NOTION_PROXY_URL: 'http://127.0.0.1:' + service.address().port }
+    secrets: { AUTH_PEPPER: '가상 메모 검증용', AUTH_ADMIN_SECRET: 'memo-test-only', GEMINI_API_KEY: 'fake-photo-test-only' },
+    vars: { NOTION_PROXY_URL: 'http://127.0.0.1:' + service.address().port, GEMINI_API_BASE: 'http://127.0.0.1:' + service.address().port + '/models' }
   }] });
   try {
     const origin = (await harness.listen()).url.origin;
@@ -95,6 +103,26 @@ test('원시 메모의 실제 Worker 노션·기기 공유 종단', { timeout: 9
       failWrite = false; assert.equal((await call('/api/memo', 'PUT', body, pc)).status, 200);
       const history = await call('/api/history', 'GET', undefined, phone);
       assert.ok(history.data.data.some(p => p.memoOnly && p.memo === body.rawMemo));
+    });
+    await t.test('사진 초안에는 쓰기가 없으며 확인한 메모를 원아별 저장·PC 조회·월간 근거로 사용한다', async () => {
+      const before = creates, date = '2026-10-07';
+      const photo = await call('/api/photo-memo', 'POST', { childId, date, images: ['data:image/png;base64,YQ=='], photoConsent: true }, phone);
+      assert.equal(photo.status, 200); assert.equal(photo.data.requiresConfirmation, true); assert.equal(creates, before);
+      const initial = await call('/api/memo?' + new URLSearchParams({ date, childId }), 'GET', undefined, phone);
+      assert.equal(initial.data.rawMemo, '');
+      const confirmed = '[사진 기반 행동 메모 · 교사 확인]\n' + photo.data.data.rawMemo;
+      const saved = await call('/api/memo', 'PUT', { date, childId, rawMemo: confirmed, baseVersion: initial.data.version }, phone);
+      assert.equal(saved.status, 200); assert.equal(creates, before + 1);
+      const loaded = await call('/api/memo?' + new URLSearchParams({ date, childId }), 'GET', undefined, pc);
+      assert.equal(loaded.data.rawMemo, confirmed); assert.equal(loaded.data.pageId, saved.data.pageId);
+      assert.deepEqual(pages.get(saved.data.pageId).properties['원아'].relation, [{ id: childId }]);
+      const monthly = await call('/api/generate', 'POST', { childId, date: '2026-10-31', rawMemo: '', images: [], selectedFormats: ['observation'],
+        evidenceIds: [saved.data.pageId], evidenceFrom: '2026-10-01', evidenceTo: '2026-10-31', monthlyObsOptions: { targetMonth: '2026-10' } }, pc);
+      assert.equal(monthly.status, 200); assert.equal(monthly.data.data.citation.historyOnly, true);
+      assert.equal(monthly.data.data.citation.sources[0].id, saved.data.pageId);
+      assert.match(aiRequests.at(-1).contents[0].parts[0].text, /사진 기반 행동 메모 · 교사 확인/);
+      assert.match(aiRequests.at(-1).contents[0].parts[0].text, /오른손으로 블록/);
+      assert.equal(monthly.data.data.monthly_observation.play_obs.date, date);
     });
   } finally { await harness.close(); await new Promise(resolve => service.close(resolve)); }
 });

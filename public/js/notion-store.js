@@ -135,6 +135,7 @@
       window.DaycareMemo?.beforeContextChange();
     }
     state.selectedChild = child;
+    window.DaycarePhotoMemo?.contextChanged();
     window.DaycareChildLinks?.contextChanged();
 
     const chips = document.querySelectorAll('.child-chip');

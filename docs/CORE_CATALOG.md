@@ -1,6 +1,6 @@
 # 보육비서 공통 부품·API 지도
 
-개정: 2026-10-06 · 명세: docs/daycare_spec.md
+개정: 2026-10-07 · 명세: docs/daycare_spec.md
 
 ## 가이드와 운영 도구
 
@@ -24,7 +24,7 @@ POST /api/generate의 evidenceFrom/evidenceTo는 실제 근거의 기간 계약�
 - 추가 기기 링크: POST /api/auth/device-invite. 등록 기기·세션·현재 PIN과 실제 노션 교사·담당반을 확인하여 자기 계정의 url/expiresAt를 no-store 응답으로 반환합니다.
 - 인증: POST /api/auth/register(초대와 PIN), login(등록 기기와 PIN), logout, change-pin.
 - 세션 필요: GET /api/session, /api/connection, /api/children, /api/history, /api/history/:id, /api/children/:id/recent-logs.
-- 세션과 동일 출처 JSON 필요: POST /api/generate, /api/logs/save, /api/profile, /api/children; PUT /api/children/:id.
+- 세션과 동일 출처 JSON 필요: POST /api/generate, /api/photo-memo, /api/logs/save, /api/profile, /api/children; PUT /api/children/:id.
 - 원시 메모: GET /api/memo?date=…&childId=…; PUT /api/memo {date,childId,rawMemo,baseVersion}. 실제 교사·담당반·원아를 검증하고 source:notion과 rawMemo/version/pageId/updatedAt를 반환합니다. 오래된 버전은 current 메모를 포함한 409입니다.
 - /api/gemini-key는 410이며 키를 배포하지 않습니다.
 
@@ -52,7 +52,15 @@ logFromPage는 [기간종합] 출처 표시를 periodSummary로 반환합니다.
 
 generateDaycareLog(options), validateFormats(data, formats), FORMAT_KEYS. 선택 서식의 프롬프트·사실 규칙·응답 내용 검증·110초 제한·일시 장애 재시도를 구성하여 서버 키로 호출하고 meta.model_used로 실제 모델을 반환합니다. worker.js에서 원아 정보·근거·원시 메모를 가명화하여 전달합니다.
 
-### api/memo.js → MemoStore
+### 사진 행동 메모: api/photo-memo.js · public/js/photo-memo.js
+
+generatePhotoMemo(options), validatePhotoMemo(data)는 기존 api/gemini.js의 requestGeminiJson·parseImageData와 모델·오류 분류·제한 시간·재시도를 재사용합니다. 인증된 POST /api/photo-memo {childId,date,images,photoConsent:true}는 개인 원아·관찰일·사진 1~6장을 검증하고 rawMemo/limitations·확인 문맥만 반환하며 노션에 쓰지 않습니다. 신원·촬영일·감정·발화·행동 순서를 추측하지 않도록 지시합니다.
+
+DaycarePhotoMemo의 create/confirm/ready는 별도 초안→교사 확인→기존 DaycareMemo 저장 완료→서식 생성 순서입니다. captureDraft/restoreDraft는 기존 AES-GCM 초안에만 포함하며 복원 후 확인을 해제합니다. pause/contextChanged/photosChanged/memoChanged는 교사·대상·사진·원문 변경과 늦은 응답을 격리합니다. 확인 전 초안을 rawMemoInput이나 자동 저장에 넣지 않습니다. 사진을 노션에 보관하지 않으며 확인한 텍스트는 기존 원아별 메모·근거 선택으로 재사용합니다.
+
+tests/photo-memo-frontend.test.js는 실제 브라우저 모듈 조합의 미확인 저장 차단·수정·복원·오프라인·충돌·늦은 응답을 검사합니다. tests/memo-runtime.test.js는 실제 workerd의 사진 초안 쓰기 없음→개인 메모 저장→PC 조회→월간 실제 출처 전달을 확인합니다.
+
+### api/memo.js → MemoStore (기존 저장 흐름)
 
 memoCall(env,operation,context,input), verifyMemoConnection(env,teacher,date). 교사·학급·날짜·원아별 Durable Object 큐와 노션 자동 메모 행의 읽기·버전 비교·속성 갱신·불명확 쓰기 재조회를 담당합니다. pending은 노션 확인 전 새 쓰기를 막으며 같은 텍스트 재시도는 쓰기를 생략합니다. 관리자 /api/admin/verify의 memoOnly=true는 연구반 새 가상 원아에서 저장→수정→노션 직접 조회 후 보관합니다.
 

@@ -156,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!dateStr) return;
     if (state.selectedDate !== dateStr) { window.DaycareRecords?.invalidateResult(); window.DaycareMemo?.beforeContextChange(); }
     state.selectedDate = dateStr;
+    window.DaycarePhotoMemo?.contextChanged();
     window.DaycareChildLinks?.contextChanged();
     window.DaycareRecords?.resetEvidence();
 
@@ -191,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   // 4. 🛡️ 안심 자동 임시보관 및 복원 (Crash Guard)
   // ============================================================================
-  const saveAutoDraft = () => { window.DaycareChildLinks?.memoChanged(); window.DaycareMemo?.changed(); return window.DaycareRecords?.save(); };
+  const saveAutoDraft = () => { window.DaycarePhotoMemo?.memoChanged(); window.DaycareChildLinks?.memoChanged(); window.DaycareMemo?.changed(); return window.DaycareRecords?.save(); };
   const clearAutoDraft = () => window.DaycareRecords?.clear();
   window.saveAutoDraft = saveAutoDraft;
   window.clearAutoDraft = clearAutoDraft;
@@ -280,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
           // 새 사진으로 다시 인코딩하여 용량을 줄이고 원본 위치 메타데이터를 보내지 않는다.
           const photo = canvas.toDataURL('image/jpeg', 0.75);
           if (!state.authenticated || state.teacherId !== teacherId) return;
-          state.photos.push(photo); renderPhotoPreviews(); await saveAutoDraft();
+          window.DaycarePhotoMemo?.photosChanged(); state.photos.push(photo); renderPhotoPreviews(); await saveAutoDraft();
         } finally { image.close(); }
       }
     } catch (error) { showToast('사진 첨부 실패: ' + error.message); }
@@ -299,6 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
       remove.style.cssText = 'position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:18px;height:18px;';
       wrap.append(image, remove);
       remove.onclick = () => {
+        window.DaycarePhotoMemo?.photosChanged();
         state.photos.splice(idx, 1);
         renderPhotoPreviews(); saveAutoDraft();
       };

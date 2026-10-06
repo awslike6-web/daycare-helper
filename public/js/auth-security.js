@@ -63,6 +63,7 @@
     });
   }
   function showGate() {
+    window.DaycarePhotoMemo?.pause();
     window.DaycareMemo?.pause();
     window.DaycareChildLinks?.pause();
     clearDeviceInvite();

@@ -18,7 +18,7 @@ test('실제 화면의 인증·검수·중복 저장 요소와 상대 경로 모
 });
 
 test('프론트 코어는 800줄 상한을 지키고 AI 키를 요청하지 않는다', async () => {
-  for (const file of ['app.js', 'gemini-client.js', 'js/auth-security.js', 'js/records-flow.js', 'js/notion-store.js', 'js/ai-engine.js', 'js/memo-sync.js', 'js/child-links.js']) {
+  for (const file of ['app.js', 'gemini-client.js', 'js/auth-security.js', 'js/records-flow.js', 'js/notion-store.js', 'js/ai-engine.js', 'js/memo-sync.js', 'js/child-links.js', 'js/photo-memo.js']) {
     const source = await readFile(new URL('../public/' + file, import.meta.url), 'utf8');
     assert.ok(source.split(/\r?\n/).length < 800, file);
     assert.equal(source.includes('generativelanguage.googleapis.com'), false, file);
