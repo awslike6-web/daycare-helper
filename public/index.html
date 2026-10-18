@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json?v=20261018_v54">
-  <link rel="stylesheet" href="./style.css?v=20261018_v54">
-  <link rel="stylesheet" href="./memo-workspace.css?v=20261018_v54">
+  <link rel="manifest" href="./manifest.json?v=20261018_v55">
+  <link rel="stylesheet" href="./style.css?v=20261018_v55">
+  <link rel="stylesheet" href="./memo-workspace.css?v=20261018_v55">
 </head>
 <body data-locked="true">
   <div class="app-container">
@@ -23,7 +23,7 @@
       <div class="brand-area">
         <span class="brand-logo">🧸</span>
         <div>
-          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v3.6.6</span></div>
+          <div class="brand-title">보육비서 <span style="font-size: 11px; font-weight: normal; color: var(--primary);">2026 AI</span> <span style="font-size: 10px; font-weight: 700; color: #4F46E5; background: #EEF2FF; padding: 2px 5px; border-radius: 4px; vertical-align: middle;">v3.6.7</span></div>
           <div class="header-date-wrapper" id="headerDateWrapper" title="클릭하여 소급 작성 날짜 변경">
             <span class="header-date-icon">📅</span>
             <span class="brand-sub header-date-text" id="headerDateText">오늘의 보육 기록</span>
@@ -1187,7 +1187,7 @@
         <div class="auth-gate-header">
           <div class="auth-bear-avatar">🧸</div>
           <h2 class="auth-gate-title">우리 반 보육 비서</h2>
-          <p class="auth-gate-subtitle">선생님을 위한 안심 스마트 보육 환경 · v3.6.6</p>
+          <p class="auth-gate-subtitle">선생님을 위한 안심 스마트 보육 환경 · v3.6.7</p>
         </div>
 
         <!-- 👩‍🏫 선생님 프로필 선택기 (프로필별 PIN 및 학급 완전 격리) -->
@@ -1440,7 +1440,7 @@
             <div style="font-size: 12px; color: #475569; line-height: 1.5;">
               반 전체 메모에 이름을 적으면 <strong>[이름으로 찾은 원아별 기록]</strong>에 문장이 자동으로 나타납니다. 실제 원아·행동·원문을 확인하고 카드별 체크 후 <strong>[확인한 건 노션에 저장]</strong>으로 한 번에 연결합니다. AI 생성 전에도 사용할 수 있습니다. 이름 약칭·공동 문장은 역할을 확인하고 동명이인은 직접 선택하세요. 이름 없는 이어지는 문장과 반 공통 활동은 별도 목록에 남습니다.<br/>
               생성된 개별 카드에서도 원아·원문 근거·요약을 확인하고 항목별 확인과 전체 검수 확인을 체크한 뒤 저장합니다. 동명이인은 연령·구분 표시를 확인해 직접 선택하세요. 사진만 있으면 먼저 사진 행동 메모 초안을 확인·저장한 뒤 생성합니다. 개인 기록에는 발췌문과 원문 출처를 남기며, 과거의 여러 원아 연결·자동 분할 기록은 연결 확인 전 개인 평가 근거로 선택하지 않습니다.<br/>
-              긴 내용은 <strong>[메모 모아보기]</strong>·<strong>[메모·AI 서식 모아보기]</strong>·각 편집란의 <strong>[크게 보기]</strong>로 팝업에서 함께 수정하세요. 수정은 원래 화면에 바로 반영됩니다. 원시 메모는 자동 저장되며 사진 초안·원아 연결·AI 서식은 닫은 뒤 사실 확인과 저장을 마칩니다. 과거 기록은 읽기 전용이며 팝업 닫기는 노션 저장 완료가 아닙니다.
+              긴 내용은 <strong>[메모 모아보기]</strong>·<strong>[메모·AI 서식 모아보기]</strong>·각 편집란의 <strong>[크게 보기]</strong>로 여세요. 한 번에 한 메모를 화면 전체로 읽고 <strong>[이전·다음]</strong> 또는 상단 목록으로 넘깁니다. <strong>[글자 자동 맞춤]</strong>은 읽을 수 있는 크기 안에서 내용을 맞추며 아주 긴 메모는 내용창 안에서 스크롤합니다. 수정은 원래 화면에 바로 반영됩니다. 원시 메모는 자동 저장되며 사진 초안·원아 연결·AI 서식은 닫은 뒤 사실 확인과 저장을 마칩니다. 과거 기록은 읽기 전용이며 팝업 닫기는 노션 저장 완료가 아닙니다.
             </div>
           </div>
 
@@ -1552,15 +1552,16 @@
 
     <dialog id="memoWorkspace" class="memo-workspace" aria-labelledby="memoWorkspaceTitle" aria-describedby="memoWorkspaceHelp">
       <header class="memo-workspace-header">
-        <div><h2 id="memoWorkspaceTitle">메모 모아보기</h2><p id="memoWorkspaceContext" class="memo-workspace-context"></p></div>
+        <div><h2 id="memoWorkspaceTitle">메모 크게 보기</h2><p id="memoWorkspaceContext" class="memo-workspace-context"></p></div>
         <button type="button" id="memoWorkspaceClose" class="action-btn" autofocus>닫기</button>
       </header>
       <div class="memo-workspace-toolbar">
-        <label for="memoWorkspaceFilter">볼 내용 </label><select id="memoWorkspaceFilter"><option value="all">전체 메모와 서식</option><option value="memo">메모 · 원문 근거</option><option value="ai">AI 작성 서식</option><option value="evidence">과거 기록 (읽기 전용)</option></select>
-        <p id="memoWorkspaceHelp">수정은 원래 화면에 바로 반영됩니다. 원시 메모는 기존 자동 저장을 따릅니다. 사진 초안·원아 연결·AI 서식은 닫은 뒤 사실 확인과 저장을 마쳐 주세요.</p>
+        <div class="memo-workspace-selects"><select id="memoWorkspaceFilter" aria-label="메모 구역"><option value="all">전체 구역</option><option value="memo">메모 · 근거</option><option value="ai">AI 서식</option><option value="evidence">과거 기록</option></select><select id="memoWorkspacePicker" aria-label="볼 메모 선택"></select></div>
+        <nav class="memo-workspace-nav" aria-label="메모 넘기기"><button type="button" id="memoWorkspacePrevious">← 이전</button><span id="memoWorkspacePosition" aria-live="polite"></span><button type="button" id="memoWorkspaceNext">다음 →</button><label><input type="checkbox" id="memoWorkspaceFit" checked> 글자 자동 맞춤</label></nav>
       </div>
       <div id="memoWorkspaceList" class="memo-workspace-list"></div>
-      <footer class="memo-workspace-footer"><p id="memoWorkspaceStatus" role="status" aria-live="polite"></p></footer>
+      <p id="memoWorkspaceFitStatus" class="memo-workspace-fit-status" role="status"></p>
+      <footer class="memo-workspace-footer"><details id="memoWorkspaceDetails"><summary>저장 안내 · 수정은 원래 화면에 즉시 반영</summary><p id="memoWorkspaceHelp">원시 메모는 기존 자동 저장을 따릅니다. 사진 초안·원아 연결·AI 서식은 닫은 뒤 사실 확인과 저장을 마쳐 주세요.</p><p id="memoWorkspaceStatus" role="status" aria-live="polite"></p></details></footer>
     </dialog>
 
     <!-- 🍞 알림 토스트 -->
@@ -1568,15 +1569,15 @@
   </div>
 
   <!-- 🛡️ 2026 골디락스 4대 완성형 코어 아키텍처 (안정성 & 효율성 극대화) -->
-  <script src="./js/records-flow.js?v=20261018_v54"></script>
-  <script src="./js/memo-sync.js?v=20261018_v54"></script>
-  <script src="./js/photo-memo.js?v=20261018_v54"></script>
-  <script src="./js/child-links.js?v=20261018_v54"></script>
-  <script src="./js/memo-workspace.js?v=20261018_v54"></script>
-  <script src="./js/auth-security.js?v=20261018_v54"></script>
-  <script src="./js/notion-store.js?v=20261018_v54"></script>
-  <script src="./js/ai-engine.js?v=20261018_v54"></script>
-  <script src="./gemini-client.js?v=20261018_v54"></script>
-  <script src="./app.js?v=20261018_v54"></script>
+  <script src="./js/records-flow.js?v=20261018_v55"></script>
+  <script src="./js/memo-sync.js?v=20261018_v55"></script>
+  <script src="./js/photo-memo.js?v=20261018_v55"></script>
+  <script src="./js/child-links.js?v=20261018_v55"></script>
+  <script src="./js/memo-workspace.js?v=20261018_v55"></script>
+  <script src="./js/auth-security.js?v=20261018_v55"></script>
+  <script src="./js/notion-store.js?v=20261018_v55"></script>
+  <script src="./js/ai-engine.js?v=20261018_v55"></script>
+  <script src="./gemini-client.js?v=20261018_v55"></script>
+  <script src="./app.js?v=20261018_v55"></script>
 </body>
 </html>

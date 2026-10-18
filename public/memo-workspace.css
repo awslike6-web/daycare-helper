@@ -1,32 +1,45 @@
-/* 큰 편집창은 기존 서식의 표·복사·인쇄 영역을 바꾸지 않는다. */
+/* 기존 서식은 유지하고 한 메모가 화면의 남은 공간 전체를 사용한다. */
 .memo-card .memo-header { flex-wrap: wrap; gap: 8px; }
 .memo-expand { display: block; width: fit-content; margin: 6px 0; padding: 5px 9px; border: 1px solid #c7d2fe; border-radius: 7px; background: #eef2ff; color: #4338ca; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-.memo-expand:focus-visible, .memo-workspace button:focus-visible, .memo-workspace select:focus-visible { outline: 3px solid #818cf8; outline-offset: 2px; }
-.memo-workspace { width: min(1180px, calc(100% - 32px)); max-width: none; height: min(900px, calc(100dvh - 32px)); max-height: calc(100dvh - 32px); box-sizing: border-box; padding: 0; border: 0; border-radius: 18px; color: #1e293b; background: #f8fafc; box-shadow: 0 24px 80px #0f172a55; }
+.memo-expand:focus-visible, .memo-workspace :is(button,select,summary,input):focus-visible { outline: 3px solid #818cf8; outline-offset: 2px; }
+.memo-workspace { width: calc(100% - 24px); max-width: none; height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); box-sizing: border-box; padding: 0; border: 0; border-radius: 14px; color: #1e293b; background: white; box-shadow: 0 24px 80px #0f172a55; overflow: hidden; }
 .memo-workspace::backdrop { background: #0f172a99; }
 .memo-workspace[open] { display: flex; flex-direction: column; }
 body:has(.memo-workspace[open]) { overflow: hidden; }
-.memo-workspace-header, .memo-workspace-footer { flex: none; padding: 16px 20px; background: white; }
-.memo-workspace-header { display: flex; justify-content: space-between; gap: 12px; align-items: start; border-bottom: 1px solid #e2e8f0; }
-.memo-workspace-header h2 { margin: 0 0 5px; font-size: 20px; }
-.memo-workspace-context { margin: 0; color: #64748b; font-size: 13px; overflow-wrap: anywhere; }
-.memo-workspace-toolbar { flex: none; padding: 12px 20px; }
-.memo-workspace-toolbar p, .memo-workspace-footer p { margin: 6px 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
-.memo-workspace-toolbar select { max-width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; font-size: 14px; }
-.memo-workspace-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 20px 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 16px; }
-.memo-workspace-card { min-width: 0; padding: 16px; background: white; border: 1px solid #dbe3ed; border-radius: 12px; }
-.memo-workspace-card h3 { margin: 0 0 8px; color: #4338ca; font-size: 14px; overflow-wrap: anywhere; }
-.memo-workspace-card label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
-.memo-workspace-card textarea { display: block; box-sizing: border-box; width: 100%; min-height: 190px; resize: vertical; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font: 16px/1.75 system-ui, sans-serif; color: #1e293b; background: white; }
-.memo-workspace-card textarea:focus { outline: 2px solid #818cf8; outline-offset: 1px; }
+.memo-workspace-header { display: flex; flex: none; justify-content: space-between; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid #e2e8f0; }
+.memo-workspace-header h2 { margin: 0 0 3px; font-size: 17px; }
+.memo-workspace-context { margin: 0; color: #64748b; font-size: 12px; overflow-wrap: anywhere; }
+.memo-workspace-toolbar { flex: none; padding: 8px 16px; background: #f8fafc; }
+.memo-workspace-selects { display: flex; gap: 8px; }
+.memo-workspace-toolbar select { min-width: 0; padding: 7px 8px; border: 1px solid #cbd5e1; border-radius: 7px; background: white; font-size: 14px; text-overflow: ellipsis; }
+#memoWorkspaceFilter { flex: 0 1 130px; }
+#memoWorkspacePicker { flex: 1 1 0; width: 0; }
+.memo-workspace-nav { display: flex; align-items: center; gap: 8px; padding-top: 7px; font-size: 13px; }
+.memo-workspace-nav button { padding: 6px 12px; border: 1px solid #c7d2fe; border-radius: 7px; background: #eef2ff; color: #4338ca; cursor: pointer; font: inherit; }
+.memo-workspace-nav button:disabled { color: #94a3b8; background: #f1f5f9; cursor: default; }
+.memo-workspace-nav label { margin-left: auto; white-space: nowrap; display: flex; align-items: center; gap: 3px; }
+#memoWorkspacePosition { min-width: 42px; text-align: center; }
+.memo-workspace-list { flex: 1 1 0; min-height: 0; overflow: hidden; padding: 8px 16px 0; display: flex; }
+.memo-workspace-card { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+.memo-workspace-card h3 { flex: none; margin: 0 0 3px; color: #4338ca; font-size: 12px; }
+.memo-workspace-card label { flex: none; display: block; margin-bottom: 6px; font-size: 14px; font-weight: 600; }
+.memo-workspace-card textarea { flex: 1 1 0; display: block; box-sizing: border-box; width: 100%; height: 0; min-height: 0; resize: none; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font: 18px/1.55 system-ui, sans-serif; color: #1e293b; background: white; overflow-y: auto; overscroll-behavior: contain; }
+.memo-workspace-card textarea:focus { outline: 2px solid #818cf8; outline-offset: -2px; }
 .memo-workspace-card textarea:read-only { background: #f1f5f9; color: #475569; }
-.memo-workspace-footer { border-top: 1px solid #e2e8f0; max-height: 20dvh; overflow-y: auto; }
+.memo-workspace-fit-status { flex: none; min-height: 18px; margin: 3px 16px; color: #64748b; font-size: 11px; }
+.memo-workspace-footer { flex: none; padding: 6px 16px; border-top: 1px solid #e2e8f0; max-height: 22dvh; overflow-y: auto; color: #475569; font-size: 12px; }
+.memo-workspace-footer summary { cursor: pointer; }
+.memo-workspace-footer p { margin: 6px 0; font-size: 12px; line-height: 1.5; }
 @media (max-width: 700px) {
   .memo-workspace { width: 100%; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
-  .memo-workspace-header, .memo-workspace-footer { padding: 12px; }
-  .memo-workspace-toolbar { padding: 10px 12px; }
-  .memo-workspace-list { grid-template-columns: minmax(0, 1fr); padding: 0 12px 12px; gap: 12px; }
-  .memo-workspace-card { padding: 12px; }
-  .memo-workspace-header h2 { font-size: 18px; }
+  .memo-workspace-header { padding: 8px 10px; }
+  .memo-workspace-toolbar { padding: 6px 10px; }
+  .memo-workspace-list { padding: 6px 10px 0; }
+  .memo-workspace-card textarea { padding: 10px; }
+  .memo-workspace-footer { padding: 6px 10px max(6px, env(safe-area-inset-bottom)); }
+  .memo-workspace-fit-status { margin-left: 10px; margin-right: 10px; }
+  #memoWorkspaceFilter { flex-basis: 96px; }
+  .memo-workspace-nav { gap: 5px; }
+  .memo-workspace-nav button { padding: 6px 9px; }
 }
 @media print { .memo-expand, .memo-workspace, #openMemoWorkspace, #openResultWorkspace { display: none !important; } }

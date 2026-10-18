@@ -16,6 +16,8 @@
 
 DaycareMemoWorkspace.open(node?,button?)/close(restoreFocus?)/refresh()는 기존 편집란을 대형 dialog에 모으고 원본 input으로 수정 값을 전달한다. 메모·원문/사진 초안·실제 생성된 7종 서식·원아별 요약·읽기 전용 과거 기록을 포함한다. 동적 후보의 진입점, 원본 양방향 갱신, 검수 해제·저장 흐름 재사용, 잠금/문맥/교체 노드 보호, 키보드 초점 제한·복귀를 담당한다. API·별도 저장소는 추가하지 않는다. ai-engine의 HWP 복사에서는 진입 버튼을 제거한다.
 
+v3.6.7은 한 메모 집중 보기다. catalog의 원본 노드 기준으로 메모를 유지하며 picker/이전/다음으로 이동하고 한 textarea만 생성한다. scheduleFit은 남은 화면을 사용하며 PC 최소14px·모바일 최소16px까지만 맞춘다. ResizeObserver·입력·원본 갱신에 대응하며 초과 내용은 내부 스크롤로 보존한다. 작은 설명·저장 상태는 details로 접고 열기/넘기기 때 키보드를 강제로 열지 않는다.
+
 scripts/verify_memo_workspace.mjs: tests/ui-fixture.js 및 npm run dev:ui가 실행된 로컬에서만 사용한다. Playwright(선택 의존성)와 선택적인 PLAYWRIGHT_MODULE_PATH/TEST_BROWSER_PATH를 지원한다. 원시 메모 자동 저장·7종 capture·검수 해제·원본 갱신·문맥/잠금·모바일 배치를 검증하고 docs/verification/memo-workspace-*.png를 작성한다.
 
 ## 서버 대문

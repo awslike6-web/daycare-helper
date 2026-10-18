@@ -21,7 +21,8 @@
     counselRoutine: '생활 습관', counselSocial: '사회 관계', counselDev: '발달 특성', counselOpinion: '상담 의견',
     playExtension: '놀이 주제 / 확장', playMaterials: '흥미 단서 / 자료', playTips: '교사 지원'
   };
-  let dialog, list, filter, openedKey, opener, timer, pairs = [], decorating = false, composing = false;
+  let dialog, list, filter, picker, openedKey, opener, timer, pairs = [], catalog = [], selectedNode, position = 0;
+  let decorating = false, composing = false, fitFrame;
   const text = node => node.tagName === 'TEXTAREA' ? node.value : node.innerText ?? node.textContent;
   const active = () => state().authenticated && document.body.dataset.locked !== 'true';
   const busy = () => state().pendingDraft || state().savingNotion || state().savingIndividual || !!state().currentAbortController;
@@ -32,7 +33,8 @@
   function fields() {
     const rows = [];
     const add = (node, group, title, readOnly = false) => {
-      if (node && !rows.some(row => row.node === node)) rows.push({ node, group, title, readOnly, label: label(node) });
+      if (node && !rows.some(row => row.node === node)) rows.push({ node, group, title, readOnly,
+        label: readOnly ? text(node).split('\n')[0].slice(0, 90) : label(node) });
     };
     add(el('rawMemoInput'), 'memo', '메모 / 키워드');
     for (const id of ['childLinkExcerpt', 'childLinkSummary']) add(el(id), 'memo', '원아 연결 근거');
@@ -45,7 +47,8 @@
     if (result) {
       for (const [id, property, title] of formats) if (result[property]) {
         for (const node of el(id)?.querySelectorAll('textarea, [contenteditable="true"]') || []) {
-          if (!node.closest('#individualObsList')) add(node, 'ai', title);
+          const activity = node.closest('[data-review-activity]');
+          if (!node.closest('#individualObsList')) add(node, 'ai', title + (activity ? ` · 놀이 ${Number(activity.dataset.reviewActivity) + 1}` : ''));
         }
       }
       for (const node of document.querySelectorAll('#individualObsList textarea')) {
@@ -69,21 +72,29 @@
   }
   function render(focusNode) {
     const focused = pairs.find(pair => pair.input === document.activeElement);
-    const caret = focused ? [focused.input.selectionStart, focused.input.selectionEnd] : null;
-    focusNode ||= focused?.node;
+    focusNode ||= selectedNode || focused?.node;
+    const caret = focused && focused.node === focusNode ? [focused.input.selectionStart, focused.input.selectionEnd] : null;
     list.replaceChildren(); pairs = [];
-    const rows = fields().filter(row => filter.value === 'all' || row.group === filter.value);
-    for (const row of rows) {
+    catalog = fields().filter(row => filter.value === 'all' || row.group === filter.value);
+    const wanted = catalog.findIndex(row => row.node === (focusNode || selectedNode));
+    position = wanted >= 0 ? wanted : Math.min(position, Math.max(0, catalog.length - 1));
+    const row = catalog[position]; selectedNode = row?.node;
+    picker.replaceChildren(...catalog.map((item, index) => new Option(`${index + 1}. ${item.title} · ${item.label}`, String(index))));
+    picker.value = String(position); picker.disabled = !row;
+    el('memoWorkspacePrevious').disabled = !row || position === 0;
+    el('memoWorkspaceNext').disabled = !row || position === catalog.length - 1;
+    el('memoWorkspacePosition').textContent = row ? `${position + 1} / ${catalog.length}` : '0 / 0';
+    if (row) {
       const card = document.createElement('article'); card.className = 'memo-workspace-card';
       const heading = document.createElement('h3'); heading.textContent = row.title;
       const caption = document.createElement('label'); caption.textContent = row.readOnly ? '조회 원문 (읽기 전용)' : row.label;
       const input = document.createElement('textarea'); input.id = 'workspace-field-' + pairs.length;
-      caption.htmlFor = input.id; input.value = text(row.node); input.rows = row.node.id === 'rawMemoInput' ? 10 : 7;
+      caption.htmlFor = input.id; input.value = text(row.node); input.rows = 1;
       if (row.node.maxLength > 0) input.maxLength = row.node.maxLength;
       input.placeholder = row.node.placeholder || '내용을 입력하세요.';
       const pair = { ...row, input, last: input.value }; pairs.push(pair); input.readOnly = !!blocked(pair);
       input.addEventListener('compositionstart', () => { composing = true; });
-      input.addEventListener('compositionend', () => { composing = false; refresh(); });
+      input.addEventListener('compositionend', () => { composing = false; refresh(); scheduleFit(); });
       input.addEventListener('input', event => {
         if (!valid(pair)) { close(false); return; }
         // 외부 조회·복원으로 바뀐 원문에 오래된 팝업 입력을 덮어쓰지 않는다.
@@ -95,34 +106,52 @@
         else pair.node.textContent = input.value;
         pair.last = input.value;
         pair.node.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-        if (!event.isComposing) updateStatus();
+        if (!event.isComposing) { updateStatus(); scheduleFit(); }
       });
       card.append(heading, caption, input); list.append(card);
-      if (row.node === focusNode) queueMicrotask(() => {
+      if (row.node === focused?.node) queueMicrotask(() => {
         if (!dialog.open) return;
         input.focus(); if (caret) input.setSelectionRange(...caret);
-        card.scrollIntoView({ block: 'nearest' });
       });
     }
-    if (!rows.length) list.textContent = '이 구역에는 아직 작성된 내용이 없습니다.';
-    updateStatus();
+    if (!row) list.textContent = '이 구역에는 아직 작성된 내용이 없습니다.';
+    updateStatus(); scheduleFit();
+  }
+  function scheduleFit() {
+    cancelAnimationFrame(fitFrame);
+    fitFrame = requestAnimationFrame(() => {
+      if (!dialog.open || composing || !pairs[0]) return;
+      const input = pairs[0].input;
+      const small = window.matchMedia('(max-width: 700px)').matches;
+      const minimum = small ? 16 : 14, maximum = small ? 20 : 22;
+      let size = el('memoWorkspaceFit').checked ? maximum : 18;
+      input.style.fontSize = size + 'px';
+      while (el('memoWorkspaceFit').checked && size > minimum && input.scrollHeight > input.clientHeight + 1) input.style.fontSize = --size + 'px';
+      const overflow = input.scrollHeight > input.clientHeight + 1;
+      el('memoWorkspaceFitStatus').textContent = overflow ? '긴 메모 · 내용창 안에서 스크롤할 수 있습니다' : '전체 내용이 한 화면에 보입니다';
+    });
+  }
+  function navigate(index) {
+    if (composing || !catalog[index]) return;
+    selectedNode = catalog[index].node; position = index; render();
   }
   function refresh() {
     if (!dialog.open) return;
     if (!active() || key() !== openedKey) { close(false); return; }
     if (composing) return;
     const rows = fields().filter(row => filter.value === 'all' || row.group === filter.value);
-    if (rows.length !== pairs.length || rows.some((row, i) => row.node !== pairs[i]?.node)) { render(); return; }
+    if (rows.length !== catalog.length || rows.some((row, i) => row.node !== catalog[i]?.node || row.title !== catalog[i]?.title)) { render(); return; }
     for (const pair of pairs) {
       const value = text(pair.node);
-      if (pair.last !== value) pair.input.value = pair.last = value;
+      if (pair.last !== value) { pair.input.value = pair.last = value; scheduleFit(); }
       pair.input.readOnly = !!blocked(pair);
     }
     updateStatus();
   }
   function close(restoreFocus = true) {
     if (!dialog?.open) return;
-    clearInterval(timer); dialog.close(); pairs = []; composing = false; list.replaceChildren();
+    clearInterval(timer); cancelAnimationFrame(fitFrame); dialog.close(); pairs = []; catalog = []; selectedNode = null; composing = false; list.replaceChildren();
+    picker.replaceChildren(); el('memoWorkspaceFitStatus').textContent = '';
     // 닫힌 팝업에 교사 기록의 복사본을 남기지 않는다.
     el('memoWorkspaceContext').textContent = ''; el('memoWorkspaceStatus').textContent = '';
     if (restoreFocus && active() && opener?.isConnected) opener.focus();
@@ -130,10 +159,11 @@
   function open(node, button) {
     if (!active() || !dialog) return;
     opener = button || document.activeElement; openedKey = key();
-    filter.value = 'all';
+    filter.value = 'all'; position = 0; selectedNode = node;
+    el('memoWorkspaceFit').checked = true; el('memoWorkspaceDetails').open = false;
     const s = state(); el('memoWorkspaceContext').textContent = [s.selectedDate, s.className, s.selectedChild?.name || '반 전체'].filter(Boolean).join(' · ');
-    render(node); dialog.showModal();
-    if (!node) el('memoWorkspaceClose').focus();
+    render(node); dialog.showModal(); scheduleFit();
+    el('memoWorkspaceClose').focus();
     clearInterval(timer); timer = setInterval(refresh, 350);
   }
   function decorate() {
@@ -148,19 +178,28 @@
     decorating = false;
   }
   document.addEventListener('DOMContentLoaded', () => {
-    dialog = el('memoWorkspace'); list = el('memoWorkspaceList'); filter = el('memoWorkspaceFilter');
+    dialog = el('memoWorkspace'); list = el('memoWorkspaceList'); filter = el('memoWorkspaceFilter'); picker = el('memoWorkspacePicker');
     if (!dialog) return;
-    for (const id of ['openMemoWorkspace', 'openResultWorkspace']) el(id)?.addEventListener('click', event => open(null, event.currentTarget));
+    el('openMemoWorkspace')?.addEventListener('click', event => open(null, event.currentTarget));
+    el('openResultWorkspace')?.addEventListener('click', event => {
+      const row = fields().find(item => item.group === 'ai' && item.node.closest('.result-card')?.style.display !== 'none');
+      open(row?.node, event.currentTarget);
+    });
     el('memoWorkspaceClose').addEventListener('click', () => close());
     dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
     dialog.addEventListener('keydown', event => {
       if (event.key !== 'Tab') return;
-      const controls = [...dialog.querySelectorAll('button, select, textarea')].filter(node => !node.disabled);
+      const controls = [...dialog.querySelectorAll('button, select, textarea, input, summary')].filter(node => !node.disabled && node.getClientRects().length);
       const first = controls[0], last = controls.at(-1);
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     });
-    filter.addEventListener('change', () => render());
+    filter.addEventListener('change', () => { selectedNode = null; position = 0; render(); });
+    picker.addEventListener('change', () => navigate(Number(picker.value)));
+    el('memoWorkspacePrevious').addEventListener('click', () => navigate(position - 1));
+    el('memoWorkspaceNext').addEventListener('click', () => navigate(position + 1));
+    el('memoWorkspaceFit').addEventListener('change', scheduleFit);
+    new ResizeObserver(scheduleFit).observe(list);
     // 새 후보·서식에만 진입점을 추가하고 입력 중인 편집란을 다시 만들지 않는다.
     const observer = new MutationObserver(changes => {
       if (document.body.dataset.locked === 'true') close(false);
