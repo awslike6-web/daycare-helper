@@ -48,6 +48,7 @@
     }
     if (!tableEl) return copyTextToClipboard(plainFallback, msg);
     const reviewed = tableEl.cloneNode(true);
+    reviewed.querySelectorAll('.memo-expand').forEach(node => node.remove());
     reviewed.querySelectorAll('textarea, input').forEach((node, index) => {
       const original = tableEl.querySelectorAll('textarea, input')[index]; const text = document.createElement('div');
       text.textContent = original.value; text.style.cssText = 'white-space:pre-wrap;font:inherit;line-height:1.6'; node.replaceWith(text);

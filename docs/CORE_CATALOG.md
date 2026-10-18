@@ -1,6 +1,6 @@
 # 보육비서 공통 부품·API 지도
 
-개정: 2026-10-07 · 명세: docs/daycare_spec.md
+개정: 2026-10-18 · 명세: docs/daycare_spec.md
 
 ## 가이드와 운영 도구
 
@@ -9,6 +9,14 @@
 - 관리자 AI 설정 점검: node scripts/check_ai_connection.mjs. 실제 자료 없이 운영 최소 요청을 실행하고 로컬·운영 키가 같은지 여부만 출력합니다. 짧은 요청 성공을 실제 서식 생성 성공으로 간주하지 않으며 키·해시 식별자를 출력하지 않습니다. 키 교체 명령은 포함하지 않습니다.
 - node scripts/verify_connections.mjs --notion-only는 연구반 가상 메모의 저장·조회·일치 후 보관, --memo-only는 새 가상 원아의 AI 없는 메모 저장·수정·직접 조회 후 보관, --child-links-only는 새 가상 원아 2명과 가상 학급 원문의 발췌·관계·조회·재시도·잘못된 발췌 거부 후 보관을 검증합니다. 옵션 없이 실행하면 실제 AI 호출도 하므로 결과의 ai 값을 구분합니다. 운영 자료를 쓰는 도구를 단순 문서 확인을 위해 실행하지 않습니다.
 - 관리자 비밀값·보육비서 전용 AI 키는 Worker Secret과 로컬 비공개 환경파일에만 둡니다. PIN 자동 복구·이메일 인증 확장은 현재 제공하지 않습니다.
+
+## 메모 모아보기
+
+### public/js/memo-workspace.js · public/memo-workspace.css
+
+DaycareMemoWorkspace.open(node?,button?)/close(restoreFocus?)/refresh()는 기존 편집란을 대형 dialog에 모으고 원본 input으로 수정 값을 전달한다. 메모·원문/사진 초안·실제 생성된 7종 서식·원아별 요약·읽기 전용 과거 기록을 포함한다. 동적 후보의 진입점, 원본 양방향 갱신, 검수 해제·저장 흐름 재사용, 잠금/문맥/교체 노드 보호, 키보드 초점 제한·복귀를 담당한다. API·별도 저장소는 추가하지 않는다. ai-engine의 HWP 복사에서는 진입 버튼을 제거한다.
+
+scripts/verify_memo_workspace.mjs: tests/ui-fixture.js 및 npm run dev:ui가 실행된 로컬에서만 사용한다. Playwright(선택 의존성)와 선택적인 PLAYWRIGHT_MODULE_PATH/TEST_BROWSER_PATH를 지원한다. 원시 메모 자동 저장·7종 capture·검수 해제·원본 갱신·문맥/잠금·모바일 배치를 검증하고 docs/verification/memo-workspace-*.png를 작성한다.
 
 ## 서버 대문
 
