@@ -78,9 +78,9 @@ memoCall(env,operation,context,input), verifyMemoConnection(env,teacher,date). �
 
 linkChildRecord(env,context,input,storage), verifyChildLinks(env,teacher,date,run). POST /api/logs/link-child의 실제 원문·원아 ID·교사·반·날짜·발췌·교사 확인을 검증합니다. MemoStore의 /link-child 경로에서 기존 대상별 큐를 재사용하며, 안정 제목·pending으로 재시도와 불명확 쓰기를 보호합니다. 개인 rawMemo는 발췌문만 저장하고 검수 JSON의 child_link에 원문 출처·해시·확인을 보관합니다. 관리자 childLinksOnly=true는 새 연구반 가상 원아 2명의 관계·발췌·재조회·재시도와 잘못된 발췌 거부를 검사합니다.
 
-### infra/notion-proxy.js / api/notion-proxy-guard.js
+### 공용 프록시 minmin-notion (외부 · 관제탑 저장소)
 
-기존 공유 프록시와 guardDaycareProxy. 보육 DB와 하위 자료 접근을 캐시 전에 검사하며 서버 인증 요청은 캐시를 우회합니다. wrangler.notion-proxy.toml은 기존 minmin-notion에 배포합니다.
+공유 프록시와 guardDaycareProxy는 2026-10-21부터 관제탑 저장소 `master-tower/workers/minmin-notion/`(worker.js, daycare-guard.js, guard.test.js)에만 있습니다. 보육 DB와 하위 자료 접근을 캐시 전에 검사하며 서버 인증 요청은 캐시를 우회합니다. 이 저장소는 wrangler.toml의 NOTION_PROXY 서비스 바인딩으로 호출만 합니다. 보육 DB ID를 바꾸면 관제탑의 daycare-guard.js도 함께 고칩니다.
 
 ## 브라우저 3대 파사드
 

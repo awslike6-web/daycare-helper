@@ -46,7 +46,6 @@ jobs:
           node --check api/child-links.js
           node --check api/gemini.js
           node --check api/photo-memo.js
-          node --check api/notion-proxy-guard.js
           node --test tests/*.test.js
           python scripts/verify_js_modules.py
           echo "정적 검사와 회귀 검증 완료. 운영 배포와 화면 확인은 별도 수행합니다."

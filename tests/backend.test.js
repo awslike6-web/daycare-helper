@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { AuthStore } from '../api/auth.js';
 import worker from '../worker.js';
 import { getRecentChildLogs, saveDailyLogToNotion, getLogDetail } from '../api/notion.js';
-import { guardDaycareProxy } from '../api/notion-proxy-guard.js';
 
 const teacherId = '11111111-1111-4111-8111-111111111111';
 const childId = '22222222-2222-4222-8222-222222222222';
@@ -93,16 +92,6 @@ test('검수한 전체 서식·원시 메모·교사 관계를 저장하고 완�
     const restored = await getLogDetail(envFor(store()), fixture.log.id, '사랑반'); assert.deepEqual(restored.parsedData, result);
     await assert.rejects(() => getLogDetail(envFor(store()), fixture.log.id, '소망반'), { status: 403 });
   } finally { global.fetch = previous; }
-});
-test('공용 프록시는 보육 DB·하위 페이지·검색을 막고 서버 전용 요청은 캐시 없이 전달한다', async () => {
-  const mock = async () => Response.json({ parent: { database_id: dbId } });
-  const resolver = () => 'Bearer 테스트토큰';
-  for (const path of ['/v1/databases/' + dbId + '/query', '/v1/pages/' + childId, '/v1/search']) {
-    const result = await guardDaycareProxy(new Request('https://proxy.test' + path), {}, mock, resolver); assert.equal(result.status, 403);
-  }
-  const result = await guardDaycareProxy(new Request('https://proxy.test/v1/pages/' + childId, { headers: { 'X-Daycare-Service-Key': 'test-service-secret' } }), { DAYCARE_SERVICE_KEY: 'test-service-secret' }, mock, resolver);
-  assert.equal(result.status, 200); assert.equal(result.headers.get('Cache-Control'), 'no-store');
-  assert.equal(await guardDaycareProxy(new Request('https://proxy.test/v1/databases/374a27115b688042bb61e6a102242e12/query'), {}, mock, resolver), null);
 });
 test('인증 없는 API·위조한 Access 헤더·외부 사이트 변경 요청·브라우저 키 배포를 거부한다', async () => {
   const auth = store(); const env = envFor(auth);
