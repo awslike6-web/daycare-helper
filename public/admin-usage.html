@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>보육비서 사용 현황</title>
+  <link rel="icon" type="image/png" href="./icon-192.png">
+  <link rel="stylesheet" href="./style.css?v=20261018_v55">
+  <style>
+    /* 관리자 조회 전용. 선생님 화면 구조와 섞지 않는다. */
+    .usage-page { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; color: var(--text-main); }
+    .usage-page h1 { font-size: 20px; margin: 0 0 4px; }
+    .usage-note { color: var(--text-muted); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
+    .usage-form { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px 12px; background: var(--bg-card);
+      border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; box-shadow: var(--shadow-sm); }
+    .usage-form label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; min-width: 0; }
+    .usage-form input[type="password"], .usage-form input[type="date"] { width: 100%; box-sizing: border-box; min-height: 42px;
+      padding: 8px 10px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-input); font: inherit; }
+    .usage-form .usage-check { display: flex; align-items: center; gap: 8px; font-weight: 500; grid-column: 1 / -1; }
+    .usage-actions { display: flex; gap: 8px; grid-column: 1 / -1; }
+    .usage-actions button { min-height: 42px; padding: 0 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);
+      background: var(--bg-card); font: inherit; font-weight: 600; cursor: pointer; }
+    .usage-actions button[type="submit"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .usage-status { margin: 14px 2px; font-size: 14px; min-height: 20px; }
+    .usage-status[data-error="true"] { color: #B91C1C; }
+    .usage-result h2 { font-size: 16px; margin: 18px 0 8px; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border-color);
+      border-radius: var(--radius-md); background: var(--bg-card); }
+    .usage-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    .usage-table th, .usage-table td { padding: 9px 10px; border-bottom: 1px solid var(--border-color); text-align: right; white-space: nowrap; }
+    .usage-table th { background: var(--primary-light); font-weight: 700; position: sticky; top: 0; }
+    /* 옆으로 넘겨도 누구 줄인지 보이도록 이름 칸을 고정한다. */
+    .usage-table th:first-child, .usage-table td:first-child { text-align: left; position: sticky; left: 0; background: var(--bg-card);
+      box-shadow: 1px 0 0 var(--border-color); }
+    .usage-table th:first-child { background: var(--primary-light); z-index: 1; }
+    .usage-table tbody tr:last-child td { border-bottom: 0; }
+    .usage-table td[colspan] { text-align: center; color: var(--text-muted); }
+    @media (max-width: 640px) {
+      .usage-form { grid-template-columns: 1fr 1fr; }
+      .usage-form .usage-secret { grid-column: 1 / -1; }
+      .usage-actions button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <main class="usage-page">
+    <h1>보육비서 사용 현황</h1>
+    <p class="usage-note">관리자 전용입니다. 비밀값은 이 화면에만 잠시 두며 저장하지 않습니다. 사용 시간은 대략값이고, 기록은 90일 보관하며 IP·메모·원아 정보는 남기지 않습니다.</p>
+    <form id="usageForm" class="usage-form" autocomplete="off">
+      <label class="usage-secret">관리자 비밀값
+        <input id="adminSecret" type="password" autocomplete="off" spellcheck="false" required>
+      </label>
+      <label>시작일 <input id="fromDate" type="date" required></label>
+      <label>종료일 <input id="toDate" type="date" required></label>
+      <label class="usage-check"><input id="includeVisits" type="checkbox"> 접속 목록 함께 보기</label>
+      <div class="usage-actions">
+        <button id="queryBtn" type="submit">조회</button>
+        <button id="clearBtn" type="button">지우기</button>
+      </div>
+    </form>
+    <p id="usageStatus" class="usage-status" role="status" aria-live="polite"></p>
+    <section id="usageResult" class="usage-result" hidden>
+      <h2>선생님별 요약</h2>
+      <div class="table-scroll"><table id="teacherTable" class="usage-table"></table></div>
+      <div id="visitSection" hidden>
+        <h2>접속 목록</h2>
+        <div class="table-scroll"><table id="visitTable" class="usage-table"></table></div>
+      </div>
+    </section>
+  </main>
+  <script src="./js/admin-usage.js?v=20261028_v1"></script>
+</body>
+</html>

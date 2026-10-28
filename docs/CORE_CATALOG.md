@@ -91,6 +91,10 @@ linkChildRecord(env,context,input,storage), verifyChildLinks(env,teacher,date,ru
 
 initAuthGate, lock, changePin, saveProfile, syncProfile, 교사 전환. 실제 인증 후 화면과 자기 반 노션 원아를 불러옵니다. 로그인 로딩·버전·연결 재시도와 키패드 대기 상태를 표시하며 잠금 시 DaycareRecords.cancelSave를 호출합니다. createDeviceInvite는 PIN 확인→링크 표시·복사·공유를 담당하고 clearDeviceInvite는 PIN·링크·만료 타이머·대기 요청을 제거합니다. 잠금·설정 닫기·교사 전환 뒤 늦은 응답은 표시하지 않습니다.
 
+### 관리자 사용 현황 화면: public/admin-usage.html · public/js/admin-usage.js → DaycareAdminUsage
+
+/admin-usage. 선생님 화면과 별도이며 index.html에서 링크하지 않습니다. style.css의 색·모서리 변수만 쓰고 화면 전용 스타일은 페이지 안에 둡니다. request(secret, options)는 POST /api/admin/usage를 no-store·credentials omit으로 만들고, query는 빈 비밀값을 요청하지 않으며 서버 오류 문구를 그대로 보여 줍니다. teacherRows/visitRows/summary가 응답을 표 칸 문자열로 바꾸고, 노션 이름은 textContent로만 넣습니다. 비밀값은 저장소·주소·쿠키에 두지 않고 [지우기]·pagehide에서 지웁니다. 모바일에서는 표 안에서만 가로 스크롤하고 이름 칸을 고정합니다. 시험: tests/admin-usage-frontend.test.js.
+
 ### public/js/records-flow.js → DaycareRecords
 
 capture, save, restore, clear, forget, invalidateResult, initEvidence, resetEvidence, monthlyOptions, saveNotion, cancelSave, requestJson, saveStatus, generationStatus, generationProgress, availableFormats. 검수 수집·AES-GCM 초안·실제 근거 선택·대상 변경·현재 서식 인쇄본·검수 저장 상태를 담당합니다. requestJson(path, {method, body, signal, timeoutMs})은 JSON 요청·본문 수신의 제한 시간과 취소를 보장하며 쓰기를 자동 재전송하지 않습니다. cancelSave는 진행 저장과 중복 선택을 종료합니다. DaycareNotion.handleSaveNotion이 저장 오케스트레이터를 호출합니다. DaycareHTML은 동적 HTML 텍스트를 이스케이프합니다.
