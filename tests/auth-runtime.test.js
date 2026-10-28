@@ -3,7 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { createTestHarness } from 'wrangler';
-import { authCookies } from '../api/auth.js';
+import { readFile } from 'node:fs/promises';
+import { authCookies, countUsage } from '../api/auth.js';
 
 const teacherId = '11111111-1111-4111-8111-111111111111';
 const fakePin = '4826';
@@ -218,6 +219,54 @@ test('실제 Worker 실행기의 PIN 오류 안내와 재시도·등록 쿠키·
       const fresh = await call('/api/auth/register', { invite: await invite(), pin: fakePin, remember: true });
       assert.equal(fresh.status, 200); cookie = cookieOf(fresh);
     });
+    await t.test('사용 현황은 접속·재개·성공 횟수만 남기고 관리자만 90일 범위로 조회한다', async () => {
+      const usage = async body => (await control.fetch('http://auth.internal/test-usage', { method: 'POST', body: JSON.stringify(body || {}) })).json();
+      const alarm = () => control.fetch('http://auth.internal/test-alarm', { method: 'POST', body: '{}' });
+      const report = async (body = {}) => {
+        const response = await call('/api/admin/usage', body, '', true);
+        assert.equal(response.status, 200); assert.equal(response.headers.get('Cache-Control'), 'no-store');
+        return response.json();
+      };
+      await usage({ age: 200 * 86400000 }); await alarm();
+      assert.equal((await usage()).rows, 0, '앞선 시험의 접속을 비운다');
+      cookie = cookieOf(await call('/api/auth/login', { teacherId, pin: fakePin, remember: true }, cookie));
+      for (let i = 0; i < 3; i++) assert.equal((await call('/api/session', undefined, cookie)).status, 200);
+      let data = await report();
+      assert.equal(data.teachers.length, 1);
+      assert.deepEqual(Object.keys(data.teachers[0]).sort(), ['activeDays', 'className', 'devices', 'firstAt', 'generates',
+        'lastAt', 'logins', 'minutes', 'name', 'resumes', 'saves', 'teacherId', 'visits']);
+      assert.equal(data.teachers[0].visits, 1, '30분 안의 세션 확인은 새 접속이 아니다');
+      assert.equal(data.teachers[0].name, '가상 연구 교사'); assert.equal(data.retentionDays, 90);
+      assert.match(data.teachers[0].firstAt, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+      await usage({ age: 31 * 60000 });
+      assert.equal((await call('/api/session', undefined, cookie)).status, 200);
+      const [deviceToken, sessionToken] = ['daycare_device', 'daycare_session'].map(name => cookie.split('; ').find(v => v.startsWith(name + '='))?.split('=')[1]);
+      const count = kind => control.fetch('http://auth.internal/usage-count', { method: 'POST', body: JSON.stringify({ sessionToken, deviceToken, kind }) });
+      assert.equal((await count('generate')).status, 200); assert.equal((await count('generate')).status, 200);
+      assert.equal((await count('save')).status, 200);
+      assert.equal((await count('memo')).status, 400);
+      assert.equal((await control.fetch('http://auth.internal/usage-count', { method: 'POST', body: JSON.stringify({ sessionToken: '변조', deviceToken, kind: 'save' }) })).status, 401);
+      data = await report({ includeVisits: true });
+      assert.deepEqual([data.teachers[0].visits, data.teachers[0].logins, data.teachers[0].resumes], [2, 1, 1]);
+      assert.deepEqual([data.teachers[0].generates, data.teachers[0].saves, data.teachers[0].devices], [2, 1, 1]);
+      assert.deepEqual(data.visits.map(v => v.kind), ['login', 'resume']);
+      data.visits.forEach(v => assert.match(v.device, /^[a-f0-9]{12}$/));
+      assert.equal(/ip|memo|agent|child/i.test(JSON.stringify(data)), false, 'IP·메모·브라우저·원아 항목이 없다');
+      assert.equal((await report({ teacherId: '다른 가상 교사' })).teachers.length, 0);
+      assert.equal((await call('/api/admin/usage', {})).status, 403);
+      assert.equal((await call('/api/admin/usage', {}, cookie)).status, 403, '교사 세션으로는 조회할 수 없다');
+      assert.equal((await call('/api/admin/usage', undefined, '', true)).status, 405);
+      const foreign = await server.fetch(origin + '/api/admin/usage', { method: 'POST', body: '{}',
+        headers: { Origin: 'https://other.test', 'Content-Type': 'application/json', Authorization: 'Bearer runtime-test-admin-only' } });
+      assert.equal(foreign.status, 403);
+      assert.equal((await call('/api/admin/usage', { from: '2026-01-01', to: '2026-06-30' }, '', true)).status, 400);
+      assert.equal((await call('/api/admin/usage', { from: '2026-02-30' }, '', true)).status, 400);
+      await usage({ age: 89 * 86400000 }); await alarm();
+      assert.equal((await usage()).rows, 2, '90일 안의 접속은 유지한다');
+      await usage({ age: 2 * 86400000 }); await alarm();
+      assert.equal((await usage()).rows, 0, '90일이 지난 접속은 지운다');
+      assert.equal((await call('/api/session', undefined, cookie)).status, 200, '정리 후에도 세션은 유지한다');
+    });
     await t.test('잘못된 PIN 5회 이후에는 실제 실행기도 429로 제한한다', async () => {
       const originalExpiry = (await device(cookie)).expires;
       for (let i = 0; i < 5; i++) assert.equal((await call('/api/auth/login', { teacherId, pin: '0009' }, cookie)).status, 401);
@@ -238,4 +287,15 @@ test('HTTPS 기기 쿠키의 연장에도 HttpOnly·SameSite·Secure 보호를 �
     daycare_device: { token: '가상토큰', maxAge: 2592000 }
   });
   assert.match(values[0], /HttpOnly; SameSite=Strict; Secure; Max-Age=2592000/);
+});
+
+test('사용 기록은 생성·저장 성공 뒤에만 남기고 실패해도 교사 작업을 막지 않는다', async () => {
+  const source = (await readFile(new URL('../worker.js', import.meta.url), 'utf8')).replace(/\r\n/g, '\n');
+  assert.match(source, /const output = await generate\([^\n]+\n\s+await countUsage\(request, env, 'generate'\);\n\s+return json\(output\);/);
+  assert.match(source, /const saved = await saveDailyLogToNotion\([\s\S]{0,300}?\n\s+await countUsage\(request, env, 'save'\);\n\s+return json\(saved\);/);
+  const errors = [], original = console.error;
+  console.error = (...args) => errors.push(args.join(' '));
+  try { assert.equal(await countUsage(new Request('https://daycare.test/api/generate'), {}, 'generate'), undefined); }
+  finally { console.error = original; }
+  assert.deepEqual(errors, ['보육비서 사용 기록 실패 generate 503']);
 });

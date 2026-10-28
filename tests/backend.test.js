@@ -14,7 +14,7 @@ function store() {
   const state = { storage: {
     async get(k) { return structuredClone(map.get(k)); }, async put(k, v) { map.set(k, structuredClone(v)); },
     async delete(keys) { for (const key of Array.isArray(keys) ? keys : [keys]) map.delete(key); },
-    async list({ prefix }) { return new Map([...map].filter(([k]) => k.startsWith(prefix))); }, async setAlarm() {}
+    async list({ prefix }) { return new Map([...map].filter(([k]) => k.startsWith(prefix))); }, async setAlarm() {}, async getAlarm() { return null; }
   }, async blockConcurrencyWhile(fn) { return fn(); } };
   return new AuthStore(state, { AUTH_PEPPER: '테스트 전용 서버 비밀값' });
 }

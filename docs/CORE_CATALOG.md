@@ -30,6 +30,7 @@ POST /api/generate의 evidenceFrom/evidenceTo는 실제 근거의 기간 계약�
 
 - 공개: GET /api/health, GET /api/auth/profiles(최소 교사 목록), POST /api/auth/invite-status(유효 초대 필요).
 - 관리자 비밀값: POST /api/auth/invite, POST /api/admin/verify.
+- 관리자 사용 현황: POST /api/admin/usage {from?, to?, teacherId?, includeVisits?}. AuthStore usage-report의 교사별 요약에 노션 교사 목록의 name/className을 붙여 no-store로 반환합니다. 교사 목록 조회 실패 시 이름 없이 namesUnavailable=true입니다. 비인증·교사 세션·외부 출처·GET·92일 초과·잘못된 날짜는 거부합니다.
 - 관리자 AI 점검: POST /api/admin/ai-status. api/ai-diagnostics.js의 diagnoseAi(env)는 기본 설정을 api/gemini.js에서 재사용하고 모델 목록·짧은 가상 요청을 순차 실행합니다. 각 호출 20초 제한, 키의 단방향 비교 식별자·HTTP/상류 분류만 no-store로 반환하며 노션·실제 원아 자료는 사용하지 않습니다. 비인증·외부 출처·GET은 거부합니다.
 - 추가 기기 링크: POST /api/auth/device-invite. 등록 기기·세션·현재 PIN과 실제 노션 교사·담당반을 확인하여 자기 계정의 url/expiresAt를 no-store 응답으로 반환합니다.
 - 인증: POST /api/auth/register(초대와 PIN), login(등록 기기와 PIN), logout, change-pin.
@@ -40,7 +41,9 @@ POST /api/generate의 evidenceFrom/evidenceTo는 실제 근거의 기간 계약�
 
 ### api/auth.js
 
-AuthStore, authCall, requireSession, checkMutation, authCookies. Durable Object가 초대·PIN 해시·기기·세션·실패 횟수·교사별 초안 키를 보관합니다.
+AuthStore, authCall, requireSession, checkMutation, authCookies, countUsage. Durable Object가 초대·PIN 해시·기기·세션·실패 횟수·교사별 초안 키와 사용 현황을 보관합니다.
+
+사용 현황은 키-값 저장과 별도인 SQLite 표 usage_visits(usageTable)에 둡니다. register/login 성공은 startVisit, session 확인은 touchVisit(30분 공백이면 resume 행 추가, 마지막 활동 5분 단위 갱신)으로 남깁니다. countUsage(request, env, kind)는 Worker의 /api/generate·/api/logs/save 성공 뒤 usage-count(유효 세션 재확인, generate/save만 허용)를 호출하며 실패를 삼키고 상태 코드만 로그합니다. usageReport(b)는 KST 날짜 범위를 검증해 교사별 요약·선택적 접속 목록을 만듭니다. alarm이 90일 지난 행을 지우고, login은 일일 알람이 없으면 다시 설정합니다. 기록 실패는 인증 흐름을 막지 않습니다.
 
 login은 유효 기기의 PIN 확인·세션 저장 성공 후 기기 만료를 30일로 갱신하며 deviceToken/deviceMaxAge를 기존 Worker의 HttpOnly 쿠키 발급 경로에 반환합니다. 조회·실패·만료·해제 기기는 연장하지 않습니다. 세션 유지 옵션은 기기 연장과 별도로 적용합니다.
 
@@ -48,7 +51,7 @@ createInvite(teacherId, className, deviceToken?)는 기존 관리자 초대와 �
 
 AuthStore.failure(error)는 인증 예외를 응답으로 변환합니다. fetch의 직렬 실행 콜백 내부에서 호출하여 PIN 오류로 객체가 재시작되지 않도록 합니다. tests/auth-runtime.test.js와 tests/wrangler.auth-test.toml은 실제 workerd의 가상 계정 등록·오류 재시도·쿠키·세션·5회 제한을 검증하며 운영 계정을 사용하지 않습니다.
 
-tests/auth-fixture-worker.js는 독립 로컬 인증 저장소에서만 기기 만료·해제와 초대 만료 조건을 구성하는 검증용 Worker입니다. 운영 worker.js는 이 파일을 가져오지 않으며 공개 API는 검증 제어 기능을 제공하지 않습니다. 실제 실행기 검증은 서버/쿠키 연장 일치와 원래 만료일 이후 진입, 실패 미연장, 만료·해제 거부, 같은 교사의 여러 기기 등록 유지와 연장·해제의 독립 적용, 직접 발급→새 기기 등록→세션 및 초대 무효화를 포함합니다.
+tests/auth-fixture-worker.js는 독립 로컬 인증 저장소에서만 기기 만료·해제와 초대 만료 조건을 구성하는 검증용 Worker입니다. 운영 worker.js는 이 파일을 가져오지 않으며 공개 API는 검증 제어 기능을 제공하지 않습니다. 실제 실행기 검증은 서버/쿠키 연장 일치와 원래 만료일 이후 진입, 실패 미연장, 만료·해제 거부, 같은 교사의 여러 기기 등록 유지와 연장·해제의 독립 적용, 직접 발급→새 기기 등록→세션 및 초대 무효화를 포함합니다. test-usage(가상 접속 시각 이동·행 수)와 test-alarm으로 30분 재개·89일 유지·91일 삭제와 관리자 사용 현황 조회를 검증합니다.
 
 ### api/notion.js
 

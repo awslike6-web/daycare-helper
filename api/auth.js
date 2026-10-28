@@ -2,6 +2,13 @@
 const DAY = 86400000;
 const DEVICE_MAX_AGE = 30 * 86400;
 const IDLE = 60 * 60000;
+// 사용 현황: 30분 넘게 쉬면 새 접속, 마지막 활동은 5분 단위로 갱신, 90일 보관.
+const VISIT_GAP = 30 * 60000;
+const VISIT_TOUCH = 5 * 60000;
+const USAGE_DAYS = 90;
+const USAGE_MAX_RANGE = 92;
+const USAGE_COUNTS = { generate: 'generates', save: 'saves' };
+const KST = 9 * 3600000;
 const encoder = new TextEncoder();
 export class ApiError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -50,6 +57,18 @@ export async function requireSession(request, env) {
   const c = cookies(request);
   return authCall(env, 'session', { sessionToken: c.daycare_session, deviceToken: c.daycare_device });
 }
+/** 서식 생성·완성 저장 성공 횟수를 남긴다. 기록 실패가 교사 작업을 막지 않는다. */
+export async function countUsage(request, env, kind) {
+  const c = cookies(request);
+  try { await authCall(env, 'usage-count', { sessionToken: c.daycare_session, deviceToken: c.daycare_device, kind }); }
+  catch (error) { console.error('보육비서 사용 기록 실패', kind, error.status || 500); }
+}
+function kstText(ms) { return new Date(ms + KST).toISOString().slice(0, 16).replace('T', ' '); }
+function kstStart(date) {
+  const ms = Date.parse(date + 'T00:00:00+09:00');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || Number.isNaN(ms) || kstText(ms).slice(0, 10) !== date) throw new ApiError('조회 날짜는 YYYY-MM-DD로 입력해 주세요.');
+  return ms;
+}
 
 export class AuthStore {
   constructor(state, env) { this.state = state; this.db = state.storage; this.env = env; }
@@ -72,6 +91,66 @@ export class AuthStore {
   failure(error) {
     return Response.json({ error: error instanceof ApiError ? error.message : '인증 처리에 실패했습니다.' },
       { status: error instanceof ApiError ? error.status : 500 });
+  }
+  usageTable() {
+    if (!this.usageReady) {
+      // 교사 ID·시각·기기 표시값·횟수만 둔다. IP·브라우저 정보·메모·원아 정보는 저장하지 않는다.
+      this.db.sql.exec(`CREATE TABLE IF NOT EXISTS usage_visits (id INTEGER PRIMARY KEY AUTOINCREMENT,
+        teacher_id TEXT NOT NULL, device TEXT NOT NULL, start_kind TEXT NOT NULL, started_at INTEGER NOT NULL,
+        last_at INTEGER NOT NULL, generates INTEGER NOT NULL DEFAULT 0, saves INTEGER NOT NULL DEFAULT 0)`);
+      this.db.sql.exec('CREATE INDEX IF NOT EXISTS usage_visits_recent ON usage_visits (teacher_id, device, last_at)');
+      this.db.sql.exec('CREATE INDEX IF NOT EXISTS usage_visits_started ON usage_visits (started_at)');
+      this.usageReady = true;
+    }
+    return this.db.sql;
+  }
+  recordUsage(write) {
+    if (!this.db.sql) return;
+    try { write(this.usageTable(), Date.now()); }
+    catch (error) { console.error('보육비서 사용 기록 실패', error?.name || 'Error'); }
+  }
+  startVisit(teacherId, deviceHash, kind) {
+    this.recordUsage((sql, now) => sql.exec('INSERT INTO usage_visits (teacher_id, device, start_kind, started_at, last_at) VALUES (?, ?, ?, ?, ?)',
+      teacherId, deviceHash.slice(0, 12), kind, now, now));
+  }
+  touchVisit(teacherId, deviceHash, kind) {
+    this.recordUsage((sql, now) => {
+      const device = deviceHash.slice(0, 12), column = USAGE_COUNTS[kind];
+      const visit = sql.exec('SELECT id, last_at FROM usage_visits WHERE teacher_id = ? AND device = ? AND last_at >= ? ORDER BY last_at DESC LIMIT 1',
+        teacherId, device, now - VISIT_GAP).toArray()[0];
+      const id = visit ? visit.id : sql.exec("INSERT INTO usage_visits (teacher_id, device, start_kind, started_at, last_at) VALUES (?, ?, 'resume', ?, ?) RETURNING id",
+        teacherId, device, now, now).one().id;
+      if (column) sql.exec(`UPDATE usage_visits SET ${column} = ${column} + 1, last_at = ? WHERE id = ?`, now, id);
+      else if (visit && now - visit.last_at >= VISIT_TOUCH) sql.exec('UPDATE usage_visits SET last_at = ? WHERE id = ?', now, id);
+    });
+  }
+  usageReport(b) {
+    const to = b.to || kstText(Date.now()).slice(0, 10);
+    const end = kstStart(to) + DAY;
+    const from = b.from || kstText(end - 7 * DAY).slice(0, 10);
+    const start = kstStart(from);
+    if (start >= end || end - start > USAGE_MAX_RANGE * DAY) throw new ApiError(`조회 기간은 1~${USAGE_MAX_RANGE}일로 지정해 주세요.`);
+    const teacherFilter = typeof b.teacherId === 'string' && b.teacherId ? b.teacherId : null;
+    const rows = this.usageTable().exec(`SELECT teacher_id, device, start_kind, started_at, last_at, generates, saves FROM usage_visits
+      WHERE started_at >= ? AND started_at < ?${teacherFilter ? ' AND teacher_id = ?' : ''} ORDER BY started_at`,
+      ...[start, end, teacherFilter].filter(v => v !== null)).toArray();
+    const teachers = new Map();
+    for (const row of rows) {
+      const t = teachers.get(row.teacher_id) || { teacherId: row.teacher_id, visits: 0, logins: 0, resumes: 0, days: new Set(),
+        minutes: 0, generates: 0, saves: 0, devices: new Set(), first: row.started_at, last: 0 };
+      t.visits++; row.start_kind === 'resume' ? t.resumes++ : t.logins++;
+      t.days.add(kstText(row.started_at).slice(0, 10)); t.devices.add(row.device);
+      t.minutes += Math.round((row.last_at - row.started_at) / 60000);
+      t.generates += row.generates; t.saves += row.saves; t.last = Math.max(t.last, row.last_at);
+      teachers.set(row.teacher_id, t);
+    }
+    return { from, to, retentionDays: USAGE_DAYS,
+      teachers: [...teachers.values()].map(t => ({ teacherId: t.teacherId, visits: t.visits, logins: t.logins, resumes: t.resumes,
+        activeDays: t.days.size, minutes: t.minutes, generates: t.generates, saves: t.saves, devices: t.devices.size,
+        firstAt: kstText(t.first), lastAt: kstText(t.last) })),
+      ...(b.includeVisits === true ? { visits: rows.map(row => ({ teacherId: row.teacher_id, device: row.device, kind: row.start_kind,
+        startedAt: kstText(row.started_at), lastAt: kstText(row.last_at), minutes: Math.round((row.last_at - row.started_at) / 60000),
+        generates: row.generates, saves: row.saves })) } : {}) };
   }
   async getDevice(token) {
     if (!token) return null;
@@ -139,6 +218,7 @@ export class AuthStore {
       session.expires <= Date.now() || session.idleUntil <= Date.now()) throw new ApiError('PIN으로 잠금을 풀어 주세요.', 401);
     session.idleUntil = Date.now() + IDLE;
     await this.db.put('session:' + await digest(b.sessionToken), session);
+    this.touchVisit(session.teacherId, session.deviceHash);
     if (!account.draftKey) { account.draftKey = randomToken(); await this.db.put('account:' + device.teacherId, account); }
     return { teacherId: session.teacherId, className: session.className, expiresAt: session.expires, draftKey: account.draftKey };
   }
@@ -180,7 +260,9 @@ export class AuthStore {
       const device = { teacherId: invite.teacherId, className: invite.className, version: account.version, expires: Date.now() + DEVICE_MAX_AGE * 1000 };
       await this.db.put('device:' + await digest(deviceToken), device);
       await this.db.setAlarm(Date.now() + DAY);
-      return { ...await this.issueSession(device, deviceToken, b.remember), deviceToken, deviceMaxAge: DEVICE_MAX_AGE };
+      const session = await this.issueSession(device, deviceToken, b.remember);
+      this.startVisit(device.teacherId, await digest(deviceToken), 'register');
+      return { ...session, deviceToken, deviceMaxAge: DEVICE_MAX_AGE };
     }
     if (op === 'login') {
       requirePin(b.pin);
@@ -193,9 +275,19 @@ export class AuthStore {
       // 기존 PIN 인증에 성공한 기기만 서버와 브라우저의 등록 기한을 함께 갱신한다.
       device.expires = Date.now() + DEVICE_MAX_AGE * 1000;
       await this.db.put('device:' + await digest(b.deviceToken), device);
+      this.startVisit(device.teacherId, await digest(b.deviceToken), 'login');
+      // 사용 기록 정리가 멈추지 않도록 등록 때 시작한 일일 알람을 확인한다.
+      if (!await this.db.getAlarm()) await this.db.setAlarm(Date.now() + DAY);
       return { ...session, deviceToken: b.deviceToken, deviceMaxAge: DEVICE_MAX_AGE };
     }
     if (op === 'session') return this.session(b);
+    if (op === 'usage-count') {
+      if (!USAGE_COUNTS[b.kind]) throw new ApiError('없는 사용 기록 종류입니다.');
+      const session = await this.session(b);
+      this.touchVisit(session.teacherId, await digest(b.deviceToken), b.kind);
+      return { success: true };
+    }
+    if (op === 'usage-report') return this.usageReport(b);
     if (op === 'logout') {
       if (b.sessionToken) await this.db.delete('session:' + await digest(b.sessionToken));
       if (b.forget && b.deviceToken) await this.db.delete('device:' + await digest(b.deviceToken));
@@ -220,6 +312,7 @@ export class AuthStore {
       const expired = [...entries].filter(([, value]) => (value.expires || value.started + DAY) <= now).map(([key]) => key);
       if (expired.length) await this.db.delete(expired);
     }
+    this.recordUsage(sql => sql.exec('DELETE FROM usage_visits WHERE started_at < ?', now - USAGE_DAYS * DAY));
     await this.db.setAlarm(now + DAY);
   }
 }

@@ -1,7 +1,7 @@
 import { generateDaycareLog } from './api/gemini.js';
 import { diagnoseAi } from './api/ai-diagnostics.js';
 import { generatePhotoMemo } from './api/photo-memo.js';
-import { ApiError, authCall, cookies, authCookies, checkMutation, requireSession } from './api/auth.js';
+import { ApiError, authCall, cookies, authCookies, checkMutation, requireSession, countUsage } from './api/auth.js';
 import { getTeachersList, getChildrenList, requireChild, getRecentChildLogs, getAllDailyLogs, getLogDetail, saveDailyLogToNotion, saveChildToNotion, updateChildInNotion, updateTeacherProfile, callNotionApi, verifyNotionConnection } from './api/notion.js';
 export { AuthStore } from './api/auth.js';
 import { memoCall, verifyMemoConnection } from './api/memo.js';
@@ -24,7 +24,10 @@ async function bodyOf(request) {
   throw new ApiError('요청 내용을 확인해 주세요.');
 }
 function dateOf(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '') || Number.isNaN(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value) throw new ApiError('작성 날짜를 선택해 주세요.');
+  // 달력에 있는 날짜인지만 확인한다. 오늘 날짜 계산이 아니므로 시간대와 무관하다.
+  const [y, m, d] = /^\d{4}-\d{2}-\d{2}$/.test(value || '') ? value.split('-').map(Number) : [];
+  const day = new Date(Date.UTC(y, m - 1, d));
+  if (!y || day.getUTCFullYear() !== y || day.getUTCMonth() !== m - 1 || day.getUTCDate() !== d) throw new ApiError('작성 날짜를 선택해 주세요.');
   return value;
 }
 function profileOf(teachers, id) {
@@ -167,6 +170,17 @@ export default {
         if (!env.AUTH_ADMIN_SECRET || request.headers.get('Authorization') !== 'Bearer ' + env.AUTH_ADMIN_SECRET) throw new ApiError('관리자 인증이 필요합니다.', 403);
         return json(await diagnoseAi(env));
       }
+      // 사용 현황은 AuthStore의 접속 요약만 반환한다. 메모·원아 정보·IP는 기록하지 않는다.
+      if (path === '/api/admin/usage') {
+        if (request.method !== 'POST') throw new ApiError('사용 현황은 POST 요청으로 조회해 주세요.', 405);
+        if (!env.AUTH_ADMIN_SECRET || request.headers.get('Authorization') !== 'Bearer ' + env.AUTH_ADMIN_SECRET) throw new ApiError('관리자 인증이 필요합니다.', 403);
+        const options = request.body ? await bodyOf(request) : {};
+        const report = await authCall(env, 'usage-report', { from: options.from, to: options.to, teacherId: options.teacherId, includeVisits: options.includeVisits === true });
+        let teachers = null;
+        try { teachers = new Map((await getTeachersList(env)).map(t => [t.id, t])); } catch { report.namesUnavailable = true; }
+        report.teachers = report.teachers.map(row => ({ ...row, name: teachers?.get(row.teacherId)?.name || null, className: teachers?.get(row.teacherId)?.className || null }));
+        return json(report);
+      }
       // 운영 연결 검증은 연구반의 명시적인 가상 기록만 만들고 즉시 보관 처리한다.
       if (path === '/api/admin/verify' && request.method === 'POST') {
         if (!env.AUTH_ADMIN_SECRET || request.headers.get('Authorization') !== 'Bearer ' + env.AUTH_ADMIN_SECRET) throw new ApiError('관리자 인증이 필요합니다.', 403);
@@ -277,7 +291,11 @@ export default {
         const result = await generatePhotoMemo({ images: body.images, date, apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL, fallbackModel: env.GEMINI_FALLBACK_MODEL, apiBase: env.GEMINI_API_BASE });
         return json({ ...result, context: { childId: body.childId, date, teacherId: teacher.id }, requiresConfirmation: true });
       }
-      if (path === '/api/generate' && request.method === 'POST') return json(await generate(await bodyOf(request), env, teacher));
+      if (path === '/api/generate' && request.method === 'POST') {
+        const output = await generate(await bodyOf(request), env, teacher);
+        await countUsage(request, env, 'generate');
+        return json(output);
+      }
       if (['/api/logs/save', '/api/save-notion'].includes(path) && request.method === 'POST') {
         const body = await bodyOf(request);
         const child = body.childId && body.childId !== 'class-all' ? await requireChild(env, body.childId, teacher.className) : null;
@@ -299,8 +317,10 @@ export default {
             body.result = mergeReviewed(existing.parsedData || { kidsnote: { content: existing.kidsnoteText }, observation_log: { behavior: existing.behavior } }, body.result || {});
           }
         }
-        return json(await saveDailyLogToNotion({ ...body, date: dateOf(body.date), childId: child?.id || null,
-          childName: child?.name || '학급 전체', childClass: teacher.className, teacherId: teacher.id, teacherName: teacher.name }, env));
+        const saved = await saveDailyLogToNotion({ ...body, date: dateOf(body.date), childId: child?.id || null,
+          childName: child?.name || '학급 전체', childClass: teacher.className, teacherId: teacher.id, teacherName: teacher.name }, env);
+        await countUsage(request, env, 'save');
+        return json(saved);
       }
       throw new ApiError('요청한 기능을 찾을 수 없습니다.', 404);
     } catch (error) {
