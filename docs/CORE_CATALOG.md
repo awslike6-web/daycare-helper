@@ -118,7 +118,7 @@ DaycareNotion: checkHealth, handleSaveNotion, handleSaveIndividualObs, cancelPen
 
 - public/js/memo-sync.js → DaycareMemo: start, changed, persist, flush, pause, beforeContextChange, clearEditor, restoredText, forget, snapshot. 메모 5초/30초 전송·노션 조회·대상별 AES-GCM 대기본·교사/대상 변경 격리·동시 편집 선택을 제공합니다. app.js 입력·STT, 인증 unlock/잠금, 원아/날짜 변경, 기존 초안 복원과 연결됩니다. 사진·검수 완성본은 공유하지 않습니다.
 
-- public/app.js: 초기화·메모·날짜·문체 설정·사진 재인코딩·모달의 화면 대문.
+- public/app.js: 초기화·메모·날짜·문체 설정·사진 재인코딩·모달의 화면 대문. syncEvidencePicker({allowHide, openOnShow})(목적: 과거 기록 칸 조건부 표시).
 - public/js/ai-engine.js → AiEngine: handleGenerate, renderResults, switchResultTab, copyTextToClipboard, copyHwpTableToClipboard, setupExportListeners. 검수 가능한 7종 결과와 실제 값이 들어간 복사본을 구성합니다.
 - public/gemini-client.js → GeminiClient: 동일 출처 generate/refine. 키 수급·브라우저 Google 직통 호출을 하지 않습니다.
 - public/index.html / style.css / _headers: DOM·반응형·인쇄·콘텐츠 보안 정책.

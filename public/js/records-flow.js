@@ -305,6 +305,7 @@
     const state = window.state || {};
     const period = state.evidenceFrom && state.evidenceTo ? ` · ${state.evidenceFrom} ~ ${state.evidenceTo}` : '';
     if (el('evidenceStatus')) el('evidenceStatus').textContent = `${state.evidenceIds?.length || 0}건 선택${period} · 선택한 실제 기록만 AI가 참고합니다.`;
+    window.syncEvidencePicker?.();
   }
   function changeEvidencePeriod() {
     evidenceSequence++; const state = window.state; if (!state) return;
