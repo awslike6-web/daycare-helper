@@ -2525,8 +2525,22 @@ button:disabled { cursor: wait; opacity: .65; }
   gap: 6px;
   margin-top: 8px;
 }
+/* 핵심 2종만 바깥에 있으므로 두 칸으로 고정한다. auto-fit이면 데스크톱에서 칩이 좁게 눌린다. */
+#formatChipsGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .format-more {
   grid-column: 1 / -1;
+}
+.format-more > summary::-webkit-details-marker { display: none; }
+.format-more > summary::after {
+  content: '펼치기 ▾';
+  margin-left: auto;
+  font-weight: 500;
+  color: #64748B;
+}
+.format-more[open] > summary::after {
+  content: '접기 ▴';
 }
 .format-more > summary {
   display: flex;

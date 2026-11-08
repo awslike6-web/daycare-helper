@@ -654,7 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   function init() {
     // 2. 소급 작성 날짜 초기화 (오늘 기본)
-    updateRecordDate(state.selectedDate || new Date().toISOString().split('T')[0]);
+    updateRecordDate(state.selectedDate || new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date()));
 
     // 3. 교사 UI 및 페르소나 동기화
     window.DaycareAuth?.syncTeacherSwitcherUI();
