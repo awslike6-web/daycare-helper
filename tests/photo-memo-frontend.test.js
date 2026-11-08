@@ -36,7 +36,7 @@ function browser() {
   const document = { visibilityState: 'visible', getElementById: node, querySelectorAll: () => [], addEventListener(type, fn) { const list = events.get(type) || []; list.push(fn); events.set(type, list); } };
   const window = { state: { authenticated: true, teacherId: 't', className: '가상반', draftKey: 'ab'.repeat(32), selectedDate: '2026-10-07',
     selectedChild: { id: 'c', name: '가상원아' }, children: [{ id: 'c', name: '가상원아' }], photos: ['data:image/png;base64,YQ=='], selectedFormats: ['kidsnote'] },
-    showToast() {}, addEventListener(type, fn) { events.set(type, [fn]); },
+    showToast() {}, addEventListener(type, fn) { events.set(type, [fn]); }, DaycareConsent: { photoAi: () => true },
     ChildrenStore: { selectChild(child) { window.state.selectedChild = child; } }, updateRecordDate(date) { window.state.selectedDate = date; } };
   const context = vm.createContext({ window, document, fetch: api.fetch.bind(api), localStorage: { getItem: k => storage.get(k) || null, setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) },
     crypto, TextEncoder, TextDecoder, atob, btoa, structuredClone, URLSearchParams, AbortSignal, AbortController, DOMException, queueMicrotask,
@@ -44,7 +44,6 @@ function browser() {
     setInterval(fn, ms) { const id = ++timer; timers.set(id, { fn, ms, interval: true }); return id; }, clearInterval: id => timers.delete(id), console: { log() {}, error() {}, warn() {} } });
   sources.forEach(source => vm.runInContext(source, context));
   for (const fn of events.get('DOMContentLoaded') || []) fn();
-  node('photoConsentCheck').checked = true;
   return { api, window, node, calls, storage, memos, events, timers, photo: window.DaycarePhotoMemo, memo: window.DaycareMemo, records: window.DaycareRecords };
 }
 test('사진만 생성하면 먼저 별도 초안을 보여주며 자동·화면 종료 저장으로 미확인 사실이 전송되지 않는다', async () => {
@@ -61,7 +60,14 @@ test('사진만 생성하면 먼저 별도 초안을 보여주며 자동·화면
   assert.equal(b.calls.filter(c => c.options.method === 'PUT').length, 1);
   await b.window.AiEngine.handleGenerate();
   assert.equal(b.calls.find(c => c.path === '/api/generate').body.rawMemo, saved.rawMemo);
+  assert.equal('photoConsent' in b.calls.find(c => c.path === '/api/generate').body, false, '동의는 요청 본문이 아니라 서버 계정 설정');
   assert.equal(b.calls.filter(c => c.path === '/api/photo-memo').length, 1);
+});
+test('사진 외부 AI 전송이 꺼져 있으면 사진 메모·서식 생성 요청을 보내지 않는다', async () => {
+  const b = browser(); b.window.DaycareConsent.photoAi = () => false; await b.memo.start();
+  await b.window.AiEngine.handleGenerate(); await b.photo.create();
+  b.node('rawMemoInput').value = '블록을 잡음'; await b.window.AiEngine.handleGenerate();
+  assert.equal(b.calls.filter(c => ['/api/photo-memo', '/api/generate'].includes(c.path)).length, 0);
 });
 test('편집 때 확인을 해제하며 기존 메모가 바뀌면 덮어쓰지 않고 선택 원아·날짜 변경은 요청을 취소한다', async () => {
   const b = browser(); await b.memo.start(); await b.photo.create();

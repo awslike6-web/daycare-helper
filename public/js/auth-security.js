@@ -86,11 +86,13 @@
     window.DaycareRecords?.generationStatus(''); window.DaycareRecords?.saveStatus('');
     for (const id of ['childScrollContainer', 'historyDetailBody', 'historyListContainer', 'photoPreviews']) if (el(id)) el(id).replaceChildren();
     if (el('photoAttachedTools')) el('photoAttachedTools').hidden = true;
+    window.DaycareConsent?.reset();
     document.querySelectorAll('.modal-overlay').forEach(modal => { if (modal.id !== 'authGateModal') modal.style.display = 'none'; });
   }
   async function unlock() {
     const session = await api('/api/session'); const profile = session.profile;
     TEACHER_PROFILES[profile.key] = profile;
+    window.DaycareConsent?.apply(session.consent);
     const state = window.state || {};
     Object.assign(state, { authenticated: true, teacherId: profile.id, activeTeacherKey: profile.key,
       className: profile.className, teacherName: profile.name, draftKey: session.draftKey,
@@ -114,6 +116,8 @@
     window.DaycareRecords?.initEvidence();
     window.DaycareNotion?.checkHealth();
     window.DaycareMemo?.start();
+    // 첫 접속(또는 안내 판이 바뀐 뒤) 한 번만 확인 화면을 띄운다.
+    if (!session.consent?.acknowledged) window.DaycareConsent?.open();
   }
   let lastActivity = Date.now();
   ['pointerdown', 'keydown', 'input'].forEach(type => document.addEventListener(type, () => { lastActivity = Date.now(); }));
@@ -290,7 +294,7 @@
     try { await navigator.share({ title: '보육비서 새 기기 등록', url: deviceInvite.url }); }
     catch (e) { if (generation === inviteGeneration && e.name !== 'AbortError') inviteStatus('공유할 수 없습니다. 링크 복사를 이용해 주세요.'); }
   }
-  const checkSecuritySession = async () => { if (ready) try { await api('/api/session'); } catch (e) { if (e.status === 401 || e.status === 403) await lock(); } };
+  const checkSecuritySession = async () => { if (ready) try { window.DaycareConsent?.apply((await api('/api/session')).consent); } catch (e) { if (e.status === 401 || e.status === 403) await lock(); } };
   window.DaycareConfig = { PERSONA_PRESETS, PARENT_PRESETS, TEACHER_PROFILES };
   window.DaycareAuth = { initAuthGate, handleTeacherSwitchClick, executeTeacherSwitch: handleTeacherSwitchClick,
     switchTeacherProfile: handleTeacherSwitchClick, syncTeacherSwitcherUI, updatePersonaUI, getTeacherPersona, getTeacherStyle,

@@ -9,6 +9,8 @@ const USAGE_DAYS = 90;
 const USAGE_MAX_RANGE = 92;
 const USAGE_COUNTS = { generate: 'generates', save: 'saves' };
 const KST = 9 * 3600000;
+// 첫 접속 확인 안내의 판. 안내 내용이 바뀌면 올려서 모든 교사에게 한 번 다시 보여 준다.
+const CONSENT_VERSION = 1;
 const encoder = new TextEncoder();
 export class ApiError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -62,6 +64,11 @@ export async function countUsage(request, env, kind) {
   const c = cookies(request);
   try { await authCall(env, 'usage-count', { sessionToken: c.daycare_session, deviceToken: c.daycare_device, kind }); }
   catch (error) { console.error('보육비서 사용 기록 실패', kind, error.status || 500); }
+}
+/** 계정에 저장한 확인·사진 전송 설정. 현재 판을 확인하지 않았으면 사진 전송도 꺼진 것으로 본다. */
+function consentOf(account) {
+  const acknowledged = account?.consents?.version === CONSENT_VERSION;
+  return { acknowledged, photoAi: acknowledged && account.consents.photoAi === true };
 }
 function kstText(ms) { return new Date(ms + KST).toISOString().slice(0, 16).replace('T', ' '); }
 function kstStart(date) {
@@ -220,7 +227,7 @@ export class AuthStore {
     await this.db.put('session:' + await digest(b.sessionToken), session);
     this.touchVisit(session.teacherId, session.deviceHash);
     if (!account.draftKey) { account.draftKey = randomToken(); await this.db.put('account:' + device.teacherId, account); }
-    return { teacherId: session.teacherId, className: session.className, expiresAt: session.expires, draftKey: account.draftKey };
+    return { teacherId: session.teacherId, className: session.className, expiresAt: session.expires, draftKey: account.draftKey, consent: consentOf(account) };
   }
   async run(op, b) {
     if (op === 'invite') {
@@ -288,6 +295,15 @@ export class AuthStore {
       return { success: true };
     }
     if (op === 'usage-report') return this.usageReport(b);
+    if (op === 'consent') {
+      const session = await this.session(b);
+      if (b.acknowledge !== true) throw new ApiError('안내를 확인해 주세요.');
+      // PIN 변경도 같은 계정 객체를 저장하므로 이 값은 PIN을 바꿔도 유지된다.
+      const account = await this.db.get('account:' + session.teacherId);
+      account.consents = { version: CONSENT_VERSION, photoAi: b.photoAi === true, at: Date.now() };
+      await this.db.put('account:' + session.teacherId, account);
+      return { consent: consentOf(account) };
+    }
     if (op === 'logout') {
       if (b.sessionToken) await this.db.delete('session:' + await digest(b.sessionToken));
       if (b.forget && b.deviceToken) await this.db.delete('device:' + await digest(b.deviceToken));

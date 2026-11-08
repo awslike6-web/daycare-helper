@@ -392,6 +392,10 @@
       showToast('⚠️ 먼저 원아나 학급을 선택해주세요.');
       return;
     }
+    if (state.photos?.length && !window.DaycareConsent?.photoAi()) {
+      showToast('⚠️ 사진 외부 AI 전송이 꺼져 있습니다. 사진 아래 [켜기]를 누르거나 사진을 빼 주세요.');
+      return;
+    }
     if (!memoText && state.photos?.length) {
       await window.DaycarePhotoMemo?.create();
       return;
@@ -430,7 +434,7 @@
         activityArea: state.activityArea || '자유놀이', teacherStyle: state.teacherStyle || '다정하고 꼼꼼한 선생님',
         className: state.className || '사랑반', teacherName: state.teacherName || '공가영 선생님', persona: state.persona,
         selectedFormats: state.selectedFormats || ['class_daily_report', 'kidsnote'], date: state.selectedDate,
-        evidenceIds: [...(state.evidenceIds || [])], evidenceFrom: state.evidenceFrom, evidenceTo: state.evidenceTo, photoConsent: !!document.getElementById('photoConsentCheck')?.checked, monthlyObsOptions: state.selectedFormats?.includes('observation') ? window.DaycareRecords.monthlyOptions() : null
+        evidenceIds: [...(state.evidenceIds || [])], evidenceFrom: state.evidenceFrom, evidenceTo: state.evidenceTo, monthlyObsOptions: state.selectedFormats?.includes('observation') ? window.DaycareRecords.monthlyOptions() : null
       };
 
       let resultData = null;

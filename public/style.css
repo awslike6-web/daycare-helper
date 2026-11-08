@@ -2401,7 +2401,7 @@ body {
 .teacher-switcher-bar { flex-wrap: wrap; }
 .teacher-tab-btn { min-width: 0; }
 @media (min-width: 900px) { .app-container { max-width: 960px; } }
-@media print { .review-confirm, .evidence-picker, .photo-consent, #authGateModal { display: none !important; } }
+@media print { .review-confirm, .evidence-picker, .photo-ai-line, #authGateModal { display: none !important; } }
 body[data-locked="true"] .app-container > :not(#authGateModal):not(#toastMessage) { visibility: hidden; }
 #authGateModal { z-index: 10000; }
 .auth-gate-card { max-height: 96dvh; overflow-y: auto; }
@@ -2418,9 +2418,9 @@ body[data-locked="true"] .app-container > :not(#authGateModal):not(#toastMessage
 .evidence-list { max-height: 320px; overflow-y: auto; margin-top: 8px; }
 .evidence-row { display: flex; gap: 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
 .evidence-row span { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
-.photo-consent, .review-confirm { display: flex; gap: 8px; align-items: start; font-size: 12px; line-height: 1.6; padding: 10px; }
+.review-confirm { display: flex; gap: 8px; align-items: start; font-size: 12px; line-height: 1.6; padding: 10px; }
 .review-confirm { margin-bottom: 12px; background: #eff6ff; border-radius: 8px; }
-.photo-consent input, .review-confirm input, .evidence-row input { flex: 0 0 auto; width: 18px; height: 18px; margin: 2px 0; }
+.consent-switch input, .review-confirm input, .evidence-row input { flex: 0 0 auto; width: 18px; height: 18px; margin: 2px 0; }
 .workflow-status { padding: 12px; margin: 8px 0 14px; border: 1px solid #cbd5e1; border-radius: 10px; background: #f8fafc; color: #334155; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .workflow-status[data-kind="error"] { background: #fff1f2; border-color: #fda4af; color: #9f1239; }
 .workflow-status[data-kind="success"] { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
@@ -2580,3 +2580,14 @@ button:disabled { cursor: wait; opacity: .65; }
   font-size: 13px;
   color: var(--text-muted);
 }
+
+/* 사진 외부 AI 전송 상태 줄과 첫 접속 확인 화면 */
+.photo-ai-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: var(--text-muted); }
+.photo-ai-line .action-btn { padding: 4px 12px; font-size: 12px; }
+.consent-switch { display: flex; gap: 8px; align-items: start; font-size: 13px; font-weight: 600; line-height: 1.6; padding: 10px 0 4px; }
+.consent-hint { margin: 0 0 8px; font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+.consent-notices { margin: 4px 0 8px; padding-left: 18px; font-size: 13px; line-height: 1.7; display: flex; flex-direction: column; gap: 6px; }
+.consent-accept { width: 100%; padding: 12px; font-size: 15px; font-weight: 700; background: var(--primary); color: #fff; border: none; border-radius: 10px; }
+.consent-settings-card { border: 1px solid #E5E7EB; border-radius: 12px; padding: 12px; background: #fff; }
+.consent-settings-card h3 { margin: 0; font-size: 14px; }
+.consent-settings-card p { margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.6; }

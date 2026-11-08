@@ -80,6 +80,7 @@ test('실제 Worker 실행기의 PIN 오류 안내와 재시도·등록 쿠키·
       const data = await session.json();
       assert.equal(data.profile.id, teacherId); assert.equal(data.profile.className, '연구반');
       assert.equal(data.draftKey.length, 64);
+      assert.deepEqual(data.consent, { acknowledged: false, photoAi: false }, '새 계정은 첫 접속 확인 전');
     });
     await t.test('새 기기에서 틀린 PIN을 안내한 뒤 같은 링크로 재시도한다', async () => {
       const token = await invite();
@@ -148,6 +149,15 @@ test('실제 Worker 실행기의 PIN 오류 안내와 재시도·등록 쿠키·
       assert.equal((await call('/api/auth/device-invite', { currentPin: fakePin }, cookie)).status, 401);
       await device(cookie, { expires: saved.expires });
     });
+    await t.test('첫 접속 확인과 사진 전송 설정은 세션·같은 출처를 요구하고 계정에 저장된다', async () => {
+      assert.equal((await call('/api/consent', { acknowledge: true, photoAi: true })).status, 401);
+      const foreign = await server.fetch(origin + '/api/consent', { method: 'POST', headers: { Origin: 'https://evil.test', 'Content-Type': 'application/json', Cookie: cookie }, body: '{"acknowledge":true}' });
+      assert.equal(foreign.status, 403);
+      assert.equal((await call('/api/consent', { photoAi: true }, cookie)).status, 400);
+      const saved = await call('/api/consent', { acknowledge: true, photoAi: true, version: 99, at: 0 }, cookie);
+      assert.equal(saved.status, 200); assert.deepEqual(await saved.json(), { consent: { acknowledged: true, photoAi: true } });
+      assert.deepEqual((await (await call('/api/session', undefined, cookie)).json()).consent, { acknowledged: true, photoAi: true });
+    });
     await t.test('PIN 변경은 기존 미사용 링크·세션을 무효화하고 새 PIN 확인을 요구한다', async () => {
       const pending = await selfInvite(cookie), temporaryPin = '9371';
       assert.equal((await call('/api/auth/change-pin', { currentPin: fakePin, pin: temporaryPin, confirmPin: temporaryPin }, cookie)).status, 200);
@@ -159,6 +169,7 @@ test('실제 Worker 실행기의 PIN 오류 안내와 재시도·등록 쿠키·
       assert.equal((await call('/api/auth/change-pin', { currentPin: temporaryPin, pin: fakePin, confirmPin: fakePin }, cookie)).status, 200);
       cookie = cookieOf(await call('/api/auth/login', { teacherId, pin: fakePin, remember: true }, cookie));
       firstDeviceCookie = cookieOf(await call('/api/auth/login', { teacherId, pin: fakePin, remember: true }, firstDeviceCookie));
+      assert.deepEqual((await (await call('/api/session', undefined, cookie)).json()).consent, { acknowledged: true, photoAi: true }, 'PIN을 바꿔도 확인·사진 설정 유지');
     });
     await t.test('재로그인 실패·다른 교사 거부 후에도 올바른 PIN으로 진입한다', async () => {
       const failed = await call('/api/auth/login', { teacherId, pin: '0009' }, cookie);
