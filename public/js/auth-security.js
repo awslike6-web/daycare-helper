@@ -85,6 +85,7 @@
     if (el('resultsSection')) el('resultsSection').style.display = 'none';
     window.DaycareRecords?.generationStatus(''); window.DaycareRecords?.saveStatus('');
     for (const id of ['childScrollContainer', 'historyDetailBody', 'historyListContainer', 'photoPreviews']) if (el(id)) el(id).replaceChildren();
+    if (el('photoAttachedTools')) el('photoAttachedTools').hidden = true;
     document.querySelectorAll('.modal-overlay').forEach(modal => { if (modal.id !== 'authGateModal') modal.style.display = 'none'; });
   }
   async function unlock() {

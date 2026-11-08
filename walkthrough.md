@@ -1,5 +1,38 @@
 # 보육비서 개선·현장 오류 검증 보고서
 
+## 일상 작성 화면 재배치 (1단계) · 2026-11-08 · 검증 완료
+
+- 평소에 자주 쓰지 않는 항목(원시 메모 수동 저장/조회 버튼, 사진 외부 AI 전송 동의 체크 및 사진 행동 메모 생성 버튼, 과거 관찰 기록 선택, 원아 연결)을 접힘(`details`) 또는 조건부 노출(`hidden`)로 재배치하여 일상적인 작성 작업 피로도를 줄였습니다.
+- 주요 변경 사항:
+  1. 원시 메모 자동 저장 패널: 한 줄 컴팩트 안내와 [관리] 접힘 버튼으로 변경. 평소에는 상태 한 줄만 노출되고, 오류 발생 시 자동으로 [관리]를 펼쳐 저장 버튼을 표시. 충돌 안내(`#memoConflict`)는 접힘 밖에 유지.
+  2. 사진 도구: 사진 첨부 전에는 동의 체크와 [사진에서 행동 메모 만들기]를 숨기고, 1장 이상 첨부 시 `#photoAttachedTools`를 노출. 사진 삭제 시 다시 숨김.
+  3. 서식 선택 카드: 상시 필요한 2종(한그루 보육일지, 키즈노트 알림장)만 기본 노출하고, 나머지 5종은 [➕ 다른 서식] 접힘 안에 배치. 서식 선택 개수를 '· N개 켜짐' 배지로 표시.
+  4. 과거 관찰 기록 선택: 메모 카드에서 서식 카드와 [스마트 즉시 생성] 버튼 사이로 이동. 관찰일지·발달평가·상담일지 선택 시 또는 선택된 기록이 있을 때만 자동으로 펼쳐짐.
+  5. 원아 연결 패널: 메모 카드 맨 아래 한 줄 접힘(`.memo-card-extra`)으로 이동.
+- 검증 결과:
+  - 단위/통합 테스트: `node --test --test-concurrency=1 tests/*.test.js` 전수 97개 통과 (신규 검사 1개 추가).
+  - 모듈 상한선: `python -X utf8 scripts/verify_js_modules.py` 10개 프론트 코어 모듈 800줄 상한 통과.
+  - DOM 검사: `python -X utf8 scripts/audit_dom.py` 필수 DOM 무결성 통과.
+  - 화면 레이아웃 및 상호작용 검증: Playwright 기반 로컬 Worker(8787) + 가상 노션/AI(8790) 연동 자동화 스크립트 실행.
+    - 5개 뷰포트 상태 스크린샷 캡처 및 육안 검증 완료 (`docs/verification/daily-flow-*.png`).
+    - 가로 스크롤 넘침 0건 (`scrollWidth <= innerWidth`), 콘솔 에러 0건.
+
+### 검증 화면 증빙
+- 모바일 초기 상태 (390×844): [daily-flow-mobile-start.png](docs/verification/daily-flow-mobile-start.png)
+- 사진 첨부 후 도구 노출 (390×844): [daily-flow-mobile-photo.png](docs/verification/daily-flow-mobile-photo.png)
+- 관찰일지 선택 및 과거 기록 펼침 (390×844): [daily-flow-mobile-observation.png](docs/verification/daily-flow-mobile-observation.png)
+- 메모 저장 [관리] 펼침 (390×844): [daily-flow-mobile-manage.png](docs/verification/daily-flow-mobile-manage.png)
+- 데스크톱 레이아웃 (1280×900): [daily-flow-desktop.png](docs/verification/daily-flow-desktop.png)
+
+### 병합 전 교정 (Claude Code)
+- 데스크톱에서 핵심 서식 칩 2개가 좁게 눌려 글자가 줄바꿈되던 것을 고쳤다(`#formatChipsGrid` 2칸 고정). 다시 찍은 데스크톱 사진에서 두 칩이 각각 반 폭으로 보이고, 검증 스크립트에서 칩 너비가 300px을 넘는 것을 확인했다.
+- [다른 서식] 줄 오른쪽에 `펼치기 ▾`·`접기 ▴`를 표시해 열림 상태가 보이게 했다.
+- 처음 찍은 사진 5장 중 4장은 원아 선택 안내 토스트가 내용을 가렸다. 토스트가 사라진 뒤 5장을 다시 찍었고, 다시 열어 본 사진에는 토스트가 없다.
+- 계약 검사가 고친 파일 안의 기존 UTC 날짜 자르기를 지적했다. `records-flow.js` 기간 버튼은 UTC 연·월·일로 직접 조립하도록 바꿨고, 2026-01·2025-10~12·2026-11·2024-02 경계에서 이전 결과와 같은 것을 확인했다. `app.js` 초기 날짜의 대체값은 KST(`Asia/Seoul`)로 바꿨다. 이후 `verify_contracts.py --mode git-diff` 결과는 [ALL PASS]다.
+- `daycare_spec.md`에 넣은 배치 설명이 인용문이라 번호 목록을 끊었기 때문에, 2번 항목의 하위 줄로 옮겼다.
+- 시험: 처음 전체 실행 1회에서 1건이 실패했으나 출력 끝부분만 남아 어떤 시험인지 확인하지 못했다. 이어서 3회 다시 돌렸을 때는 모두 97개 통과였다. 로컬 서버를 막 내린 직후라 생긴 일시적 실패로 보이지만, 확인된 사실은 아니다.
+
+
 ## 관리자 사용 현황 화면 · 2026-10-28 · 운영 배포 완료
 
 - /admin-usage에서 관리자 비밀값과 기간(기본 최근 7일)을 넣으면 선생님별 요약과 접속 목록을 표로 보여 줍니다. 서버 API는 바꾸지 않았고 선생님 화면에서는 링크하지 않습니다.

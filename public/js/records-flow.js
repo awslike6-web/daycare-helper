@@ -305,6 +305,7 @@
     const state = window.state || {};
     const period = state.evidenceFrom && state.evidenceTo ? ` · ${state.evidenceFrom} ~ ${state.evidenceTo}` : '';
     if (el('evidenceStatus')) el('evidenceStatus').textContent = `${state.evidenceIds?.length || 0}건 선택${period} · 선택한 실제 기록만 AI가 참고합니다.`;
+    window.syncEvidencePicker?.();
   }
   function changeEvidencePeriod() {
     evidenceSequence++; const state = window.state; if (!state) return;
@@ -317,8 +318,10 @@
     const [year, month] = date.split('-').map(Number);
     let startMonth = kind.includes('Quarter') ? Math.floor((month - 1) / 3) * 3 : month - 1;
     if (kind.startsWith('previous')) startMonth -= kind.includes('Quarter') ? 3 : 1;
-    const start = new Date(Date.UTC(year, startMonth, 1)).toISOString().slice(0, 10);
-    const end = new Date(Date.UTC(year, startMonth + (kind.includes('Quarter') ? 3 : 1), 0)).toISOString().slice(0, 10);
+    // 달력 계산만 하므로 UTC 연·월·일로 직접 만든다. 음수 월은 Date.UTC가 전년도로 넘긴다.
+    const ymd = d => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+    const start = ymd(new Date(Date.UTC(year, startMonth, 1)));
+    const end = ymd(new Date(Date.UTC(year, startMonth + (kind.includes('Quarter') ? 3 : 1), 0)));
     el('evidenceFrom').value = start; el('evidenceTo').value = end > date ? date : end;
     changeEvidencePeriod();
   }

@@ -81,12 +81,28 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   // 2. 📑 생성 서식 선택 툴바 관리 (Event Delegation 완전 무결성)
   // ============================================================================
+  const CORE_FORMATS = ['class_daily_report', 'kidsnote'];
+  // 이 세 서식은 과거 기록만으로도 작성할 수 있어 근거 선택 칸과 함께 보인다 (worker.js generate 참고).
+  const HISTORY_FORMATS = ['observation', 'hangroo_eval', 'counseling'];
+
+  /** 과거 기록 칸 표시. 선택한 기록이 남아 있으면 절대 숨기지 않는다. */
+  function syncEvidencePicker({ allowHide = false, openOnShow = false } = {}) {
+    const box = document.getElementById('evidencePicker');
+    if (!box) return;
+    const needed = state.selectedFormats.some(f => HISTORY_FORMATS.includes(f)) || (state.evidenceIds?.length || 0) > 0;
+    if (needed && box.hidden) { box.hidden = false; if (openOnShow) box.open = true; }
+    else if (!needed && allowHide) box.hidden = true;
+  }
+  window.syncEvidencePicker = syncEvidencePicker;
+
   function initFormatSelector() {
     const grid = document.getElementById('formatChipsGrid');
     if (!grid) return;
 
     // UI 상태 반영
     syncFormatChipsUI();
+    const more = document.getElementById('formatMoreBox');
+    if (more) more.open = state.selectedFormats.some(f => !CORE_FORMATS.includes(f));
 
     // 단일 이벤트 위임 바인딩 (자식 span을 눌러도 100% 정상 작동)
     grid.onclick = (e) => {
@@ -113,20 +129,24 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('daycare_selected_formats', JSON.stringify(state.selectedFormats));
       } catch (err) {}
 
-      syncFormatChipsUI();
+      syncFormatChipsUI(true);
       updateGenerateBtnText();
     };
 
     updateGenerateBtnText();
   }
 
-  function syncFormatChipsUI() {
+  function syncFormatChipsUI(fromChip = false) {
     const chips = document.querySelectorAll('.format-chip');
     chips.forEach(chip => {
       const fmt = chip.getAttribute('data-format');
       const isActive = state.selectedFormats.includes(fmt);
       chip.classList.toggle('active', isActive);
     });
+    const extra = state.selectedFormats.filter(f => !CORE_FORMATS.includes(f)).length;
+    const count = document.getElementById('formatMoreCount');
+    if (count) count.textContent = extra ? `· ${extra}개 켜짐` : '';
+    syncEvidencePicker({ allowHide: true, openOnShow: fromChip === true });
   }
 
   function updateGenerateBtnText() {
@@ -306,6 +326,8 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       box.appendChild(wrap);
     });
+    const tools = document.getElementById('photoAttachedTools');
+    if (tools) tools.hidden = !state.photos?.length;
   }
   window.renderPhotoPreviews = renderPhotoPreviews;
 
@@ -632,7 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   function init() {
     // 2. 소급 작성 날짜 초기화 (오늘 기본)
-    updateRecordDate(state.selectedDate || new Date().toISOString().split('T')[0]);
+    updateRecordDate(state.selectedDate || new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date()));
 
     // 3. 교사 UI 및 페르소나 동기화
     window.DaycareAuth?.syncTeacherSwitcherUI();

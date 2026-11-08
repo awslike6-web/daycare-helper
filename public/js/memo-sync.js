@@ -12,6 +12,7 @@
   function live(c) { return current === c && window.state?.authenticated && !window.state.pendingDraft; }
   function status(text, kind = 'info', c = current) {
     if (c && !live(c)) return;
+    if (kind === 'error' && el('memoSyncMore')) el('memoSyncMore').open = true;
     const node = el('memoSyncStatus'); if (node) { node.textContent = text; node.dataset.kind = kind; }
   }
   function resetTimers() { clearTimeout(idleTimer); clearTimeout(maximumTimer); idleTimer = maximumTimer = null; }
