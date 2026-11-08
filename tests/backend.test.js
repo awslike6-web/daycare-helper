@@ -123,7 +123,7 @@ test('사진 메모 API는 실제 원아·날짜·동의를 확인하고 미확�
   fixture.aiData = { rawMemo: '사진 1: 블록을 잡고 있음.', limitations: '사진 속 행동 주체를 확인해야 함.' };
   const headers = { Cookie: `daycare_device=${tokens.deviceToken}; daycare_session=${tokens.sessionToken}`, Origin: 'https://daycare.test', 'Content-Type': 'application/json' };
   const previous = global.fetch; global.fetch = fixture.fetch;
-  const payload = { childId, date: '2026-10-07', images: ['data:image/png;base64,YQ=='], photoConsent: true };
+  const payload = { childId, date: '2026-10-07', images: ['data:image/png;base64,YQ=='] };
   const call = (body, extra = {}) => worker.fetch(new Request('https://daycare.test/api/photo-memo', { method: 'POST', headers: { ...headers, ...extra }, body: JSON.stringify({ ...payload, ...body }) }), env);
   try {
     assert.equal((await call({}, { Cookie: '' })).status, 401);
@@ -131,7 +131,13 @@ test('사진 메모 API는 실제 원아·날짜·동의를 확인하고 미확�
     assert.equal((await call({ childId: 'class-all' })).status, 400);
     assert.equal((await call({ childId: '44444444-4444-4444-8444-444444444444' })).status, 403);
     assert.equal((await call({ date: '2026-02-30' })).status, 400);
-    assert.equal((await call({ photoConsent: false })).status, 400);
+    // 요청 본문의 동의 값은 무시하고 교사 계정에 저장된 설정만 따른다.
+    assert.equal((await call({ photoConsent: true })).status, 403);
+    await auth.run('consent', { ...tokens, acknowledge: true, photoAi: false });
+    assert.equal((await call({})).status, 403);
+    const generateWithPhoto = await worker.fetch(new Request('https://daycare.test/api/generate', { method: 'POST', headers, body: JSON.stringify({ childId, date: '2026-10-07', rawMemo: '블록', images: payload.images, selectedFormats: ['kidsnote'], photoConsent: true }) }), env);
+    assert.equal(generateWithPhoto.status, 403); assert.match((await generateWithPhoto.json()).error, /설정에서 켜/);
+    await auth.run('consent', { ...tokens, acknowledge: true, photoAi: true });
     assert.equal((await call({ images: ['https://example.test/photo.png'] })).status, 400);
     assert.equal(fixture.requests.filter(r => r.url.includes('generativelanguage')).length, 0);
     const response = await call({}); assert.equal(response.status, 200); assert.equal(response.headers.get('Cache-Control'), 'no-store');

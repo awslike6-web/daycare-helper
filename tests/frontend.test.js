@@ -34,7 +34,8 @@ test('일상 작성 화면은 가끔 쓰는 칸을 접거나 조건부로 둔다
   assert.ok(at('id="formatSelectCard"') < at('id="evidencePicker"') && at('id="evidencePicker"') < at('id="generateBtn"'), '과거 기록은 서식과 생성 버튼 사이');
   assert.match(html, /<div id="photoAttachedTools" class="photo-attached-tools" hidden>/);
   const tools = block('id="photoAttachedTools"', 'id="photoMemoPanel"');
-  for (const id of ['photoConsentCheck', 'photoMemoCreate', 'photoMemoStatus']) assert.ok(tools.includes(`id="${id}"`), id);
+  for (const id of ['photoAiStatus', 'photoAiEnable', 'photoMemoCreate', 'photoMemoStatus']) assert.ok(tools.includes(`id="${id}"`), id);
+  assert.ok(!html.includes('photoConsentCheck'), '사진 동의 체크박스는 계정 설정으로 대체');
   const more = block('id="formatMoreBox"', '</details>');
   for (const f of ['observation', 'hangroo_eval', 'daily_care', 'counseling', 'play_support']) assert.ok(more.includes(`data-format="${f}"`), f);
   for (const f of ['class_daily_report', 'kidsnote']) assert.ok(!more.includes(`data-format="${f}"`), f);

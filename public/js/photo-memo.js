@@ -52,7 +52,7 @@
     if (!s.authenticated || s.pendingDraft || s.savingNotion || s.savingIndividual || s.currentAbortController || saving) return;
     if (!s.selectedChild || s.selectedChild.id === 'class-all') { window.showToast?.('사진 행동 메모를 남길 원아 한 명을 선택해 주세요.'); return; }
     if (!s.photos?.length) { window.showToast?.('사진을 먼저 첨부해 주세요.'); return; }
-    if (!el('photoConsentCheck')?.checked) { window.showToast?.('사진의 외부 AI 전송 동의를 확인해 주세요.'); return; }
+    if (!window.DaycareConsent?.photoAi()) { window.showToast?.('사진 외부 AI 전송이 꺼져 있습니다. 사진 아래 [켜기] 또는 설정에서 켜 주세요.'); return; }
     if (draft && draft.contextKey === key() && samePhotos(sourcePhotos)) { reveal(); return; }
     const token = key(), ticket = ++epoch, photos = [...s.photos], originalMemo = input();
     const run = new AbortController(); controller = run; requestContext = token; s.currentAbortController = run;
@@ -63,7 +63,7 @@
       await window.DaycareRecords.save();
       const photoHash = await digest(photos);
       const result = await window.DaycareRecords.requestJson('/api/photo-memo', { method: 'POST', signal: run.signal, timeoutMs: 120000,
-        body: { childId: s.selectedChild.id, date: s.selectedDate, images: photos, photoConsent: true } });
+        body: { childId: s.selectedChild.id, date: s.selectedDate, images: photos } });
       if (!live(token) || ticket !== epoch || !samePhotos(photos) || run.signal.aborted) return;
       if (input() !== originalMemo) { status('분석 중 메모가 변경되어 초안을 반영하지 않았습니다. 현재 메모에서 다시 만들어 주세요.', true); return; }
       if (result.context?.childId !== s.selectedChild.id || result.context?.date !== s.selectedDate || result.context?.teacherId !== s.teacherId) throw new Error('사진 메모의 원아·관찰일을 확인해 주세요.');

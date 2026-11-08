@@ -67,7 +67,7 @@ generateDaycareLog(options), validateFormats(data, formats), FORMAT_KEYS. 선택
 
 ### 사진 행동 메모: api/photo-memo.js · public/js/photo-memo.js
 
-generatePhotoMemo(options), validatePhotoMemo(data)는 기존 api/gemini.js의 requestGeminiJson·parseImageData와 모델·오류 분류·제한 시간·재시도를 재사용합니다. 인증된 POST /api/photo-memo {childId,date,images,photoConsent:true}는 개인 원아·관찰일·사진 1~6장을 검증하고 rawMemo/limitations·확인 문맥만 반환하며 노션에 쓰지 않습니다. 신원·촬영일·감정·발화·행동 순서를 추측하지 않도록 지시합니다.
+generatePhotoMemo(options), validatePhotoMemo(data)는 기존 api/gemini.js의 requestGeminiJson·parseImageData와 모델·오류 분류·제한 시간·재시도를 재사용합니다. 인증된 POST /api/photo-memo {childId,date,images}는 계정의 사진 외부 AI 전송이 켜져 있어야 하며(아니면 403), 개인 원아·관찰일·사진 1~6장을 검증하고 rawMemo/limitations·확인 문맥만 반환하며 노션에 쓰지 않습니다. 신원·촬영일·감정·발화·행동 순서를 추측하지 않도록 지시합니다.
 
 DaycarePhotoMemo의 create/confirm/ready는 별도 초안→교사 확인→기존 DaycareMemo 저장 완료→서식 생성 순서입니다. captureDraft/restoreDraft는 기존 AES-GCM 초안에만 포함하며 복원 후 확인을 해제합니다. pause/contextChanged/photosChanged/memoChanged는 교사·대상·사진·원문 변경과 늦은 응답을 격리합니다. 확인 전 초안을 rawMemoInput이나 자동 저장에 넣지 않습니다. 사진을 노션에 보관하지 않으며 확인한 텍스트는 기존 원아별 메모·근거 선택으로 재사용합니다.
 
@@ -89,7 +89,11 @@ linkChildRecord(env,context,input,storage), verifyChildLinks(env,teacher,date,ru
 
 ### public/js/auth-security.js → DaycareAuth
 
-initAuthGate, lock, changePin, saveProfile, syncProfile, 교사 전환. 실제 인증 후 화면과 자기 반 노션 원아를 불러옵니다. 로그인 로딩·버전·연결 재시도와 키패드 대기 상태를 표시하며 잠금 시 DaycareRecords.cancelSave를 호출합니다. createDeviceInvite는 PIN 확인→링크 표시·복사·공유를 담당하고 clearDeviceInvite는 PIN·링크·만료 타이머·대기 요청을 제거합니다. 잠금·설정 닫기·교사 전환 뒤 늦은 응답은 표시하지 않습니다.
+initAuthGate, lock, changePin, saveProfile, syncProfile, 교사 전환. 실제 인증 후 화면과 자기 반 노션 원아를 불러옵니다. 로그인 로딩·버전·연결 재시도와 키패드 대기 상태를 표시하며 잠금 시 DaycareRecords.cancelSave를 호출합니다. createDeviceInvite는 PIN 확인→링크 표시·복사·공유를 담당하고 clearDeviceInvite는 PIN·링크·만료 타이머·대기 요청을 제거합니다. 잠금·설정 닫기·교사 전환 뒤 늦은 응답은 표시하지 않습니다. unlock은 세션의 consent를 DaycareConsent에 넘기고, 확인 전 계정이면 확인 화면을 엽니다.
+
+### 첫 접속 확인·사진 전송 설정: public/js/consent.js → DaycareConsent
+
+apply(consent)·reset()·open()·save(photoAi)·photoAi()·acknowledged(). 값은 서버(AuthStore 계정 consents, POST /api/consent)에만 두고 브라우저 저장소에 남기지 않습니다. 서버 응답 전·잠금 후에는 사진 전송을 꺼진 것으로 봅니다. #consentModal, 설정의 #settingPhotoAi, 사진 도구의 #photoAiStatus·#photoAiEnable을 맞춰 그립니다. photo-memo.js·ai-engine.js는 photoAi()가 거짓이면 사진 요청을 보내지 않습니다. 시험: tests/consent-frontend.test.js.
 
 ### 관리자 사용 현황 화면: public/admin-usage.html · public/js/admin-usage.js → DaycareAdminUsage
 

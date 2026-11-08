@@ -83,7 +83,6 @@ async function generate(body, env, teacher) {
   if (classAll && formats.some(f => ['observation', 'hangroo_eval', 'counseling'].includes(f))) throw new ApiError('관찰·발달평가·상담일지는 원아를 먼저 선택해 주세요.');
   const date = dateOf(body.date);
   const hasCurrentObservation = !!String(body.rawMemo || '').trim() || !!body.images?.length;
-  if (body.images?.length && body.photoConsent !== true) throw new ApiError('사진의 외부 AI 전송 동의를 확인해 주세요.');
   if (String(body.rawMemo || '').length > 30000 || (body.images?.length || 0) > 6) throw new ApiError('메모 또는 사진이 너무 많습니다.');
   const ids = body.evidenceIds || [];
   if (!Array.isArray(ids) || ids.length > 60 || new Set(ids).size !== ids.length) throw new ApiError('참조 기록은 최대 60개까지 선택해 주세요.');
@@ -251,7 +250,14 @@ export default {
       const session = await requireSession(request, env);
       const teacher = profileOf(await getTeachersList(env), session.teacherId);
       if (teacher.className !== session.className) throw new ApiError('담당반이 변경되어 기기 재등록이 필요합니다.', 403);
-      if (path === '/api/session') return json({ protected: true, profile: { ...publicProfile(teacher), style: teacher.style, sampleNote: teacher.sampleNote, closing: teacher.closing }, expiresAt: session.expiresAt, draftKey: session.draftKey });
+      if (path === '/api/session') return json({ protected: true, profile: { ...publicProfile(teacher), style: teacher.style, sampleNote: teacher.sampleNote, closing: teacher.closing }, expiresAt: session.expiresAt, draftKey: session.draftKey, consent: session.consent });
+      if (path === '/api/consent' && request.method === 'POST') {
+        const body = await bodyOf(request), c = cookies(request);
+        const data = await authCall(env, 'consent', { acknowledge: body.acknowledge, photoAi: body.photoAi, sessionToken: c.daycare_session, deviceToken: c.daycare_device });
+        return json({ consent: data.consent });
+      }
+      // 사진 외부 AI 전송 여부는 요청 본문이 아니라 교사 계정에 저장된 설정 하나로 판단한다.
+      const requirePhotoAi = () => { if (session.consent?.photoAi !== true) throw new ApiError('사진 외부 AI 전송이 꺼져 있습니다. 설정에서 켜 주세요.', 403); };
       if (path === '/api/connection') { await getChildrenList(env, teacher.className); return json({ status: 'ok', source: 'notion' }); }
       if (path === '/api/memo' && ['GET', 'PUT'].includes(request.method)) {
         const input = request.method === 'GET' ? Object.fromEntries(url.searchParams) : await bodyOf(request);
@@ -287,12 +293,14 @@ export default {
         const body = await bodyOf(request), date = dateOf(body.date);
         if (!body.childId || body.childId === 'class-all') throw new ApiError('사진 행동 메모를 남길 원아 한 명을 선택해 주세요.');
         await requireChild(env, body.childId, teacher.className);
-        if (body.photoConsent !== true) throw new ApiError('사진의 외부 AI 전송 동의를 확인해 주세요.');
+        requirePhotoAi();
         const result = await generatePhotoMemo({ images: body.images, date, apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL, fallbackModel: env.GEMINI_FALLBACK_MODEL, apiBase: env.GEMINI_API_BASE });
         return json({ ...result, context: { childId: body.childId, date, teacherId: teacher.id }, requiresConfirmation: true });
       }
       if (path === '/api/generate' && request.method === 'POST') {
-        const output = await generate(await bodyOf(request), env, teacher);
+        const body = await bodyOf(request);
+        if (body.images?.length) requirePhotoAi();
+        const output = await generate(body, env, teacher);
         await countUsage(request, env, 'generate');
         return json(output);
       }

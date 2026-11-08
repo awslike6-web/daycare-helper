@@ -106,7 +106,9 @@ test('원시 메모의 실제 Worker 노션·기기 공유 종단', { timeout: 9
     });
     await t.test('사진 초안에는 쓰기가 없으며 확인한 메모를 원아별 저장·PC 조회·월간 근거로 사용한다', async () => {
       const before = creates, date = '2026-10-07';
-      const photo = await call('/api/photo-memo', 'POST', { childId, date, images: ['data:image/png;base64,YQ=='], photoConsent: true }, phone);
+      assert.equal((await call('/api/photo-memo', 'POST', { childId, date, images: ['data:image/png;base64,YQ=='], photoConsent: true }, phone)).status, 403);
+      assert.equal((await call('/api/consent', 'POST', { acknowledge: true, photoAi: true }, pc)).status, 200);
+      const photo = await call('/api/photo-memo', 'POST', { childId, date, images: ['data:image/png;base64,YQ=='] }, phone);
       assert.equal(photo.status, 200); assert.equal(photo.data.requiresConfirmation, true); assert.equal(creates, before);
       const initial = await call('/api/memo?' + new URLSearchParams({ date, childId }), 'GET', undefined, phone);
       assert.equal(initial.data.rawMemo, '');
